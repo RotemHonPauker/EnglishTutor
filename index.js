@@ -15,7 +15,17 @@ client.on('ready', () => {
     console.log('Bot is ready!');
 });
 
-client.on('message', async (msg) => {
+client.on('disconnected', (reason) => {
+    console.log('Bot disconnected:', reason);
+    client.initialize();
+});
+
+client.on('message_create', async (msg) => {
+    // Only respond to messages YOU send
+    if (!msg.fromMe) return;
+
+    console.log('Message received:', msg.body);
+
     const hasHebrew = /[\u0590-\u05FF]/.test(msg.body);
     if (!hasHebrew) return;
 
