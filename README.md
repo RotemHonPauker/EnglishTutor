@@ -8,12 +8,12 @@ A WhatsApp bot that automatically detects Hebrew messages and translates them to
 
 ## Dependencies
 
-| Package | What it does |
-|---|---|
-| `whatsapp-web.js` | Controls WhatsApp Web like a virtual browser — lets your code send/receive messages |
-| `qrcode-terminal` | Displays the QR code in your terminal so you can scan it with your phone to log in |
+| Package             | What it does                                                                         |
+| ------------------- | ------------------------------------------------------------------------------------ |
+| `whatsapp-web.js`   | Controls WhatsApp Web like a virtual browser — lets your code send/receive messages  |
+| `qrcode-terminal`   | Displays the QR code in your terminal so you can scan it with your phone to log in   |
 | `@anthropic-ai/sdk` | The official Anthropic library — lets your code talk to Claude's API for translation |
-| `dotenv` | Reads your `.env` file and loads your secret API key into the app safely |
+| `dotenv`            | Reads your `.env` file and loads your secret API key into the app safely             |
 
 ---
 
@@ -59,12 +59,12 @@ A QR code will appear in your terminal. Scan it with your phone via WhatsApp (ju
 ## Project Structure
 
 ```
-whatsapp-translation-bot/
-├── node_modules/       ← installed libraries (do not edit)
-├── .env                ← your secret API key (do not commit)
-├── index.js            ← main bot code
-├── package.json        ← project configuration
-└── package-lock.json   ← locked dependency versions
+EnglishTutor/
+├── index.js               ← messaging/event logic only
+├── prompts.js             ← AI prompt templates
+├── responseHandler.js     ← parsing & formatting Claude's responses
+├── .env                   ← your secret API key (do not commit)
+└── package.json           ← project configuration
 ```
 
 ---

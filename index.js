@@ -1,3 +1,6 @@
+import { translatePrompt } from './prompts.js';
+import { parseTranslationResponse, formatTranslationReply } from './responseHandler.js';
+
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -30,6 +33,9 @@ client.on('message_create', async (msg) => {
     const chat = await msg.getChat();
     if (chat.id._serialized !== CHAT_ID) return;
 
+    // Skip messages the bot itself sent (avoid infinite loop)
+    if (msg.body.startsWith('📝')) return;
+
     console.log('Message received:', msg.body);
 
     const hasHebrew = /[\u0590-\u05FF]/.test(msg.body);
@@ -41,10 +47,12 @@ client.on('message_create', async (msg) => {
             max_tokens: 1024,
             messages: [{
                 role: 'user',
-                content: `Translate this Hebrew text to English. Return only the translation:\n\n${msg.body}`
+                content: translatePrompt(msg.body)
             }]
         });
-        await msg.reply(`🇬🇧 ${response.content[0].text}`);
+
+        const result = parseTranslationResponse(response.content[0].text);
+        await msg.reply(formatTranslationReply(result));
     } catch (err) {
         console.error('Translation error:', err);
     }
