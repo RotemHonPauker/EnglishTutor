@@ -13,9 +13,9 @@ A private WhatsApp chat where you send a Hebrew sentence and the bot replies wit
 - [x] Set up Node.js project with whatsapp-web.js and Anthropic SDK
 - [x] Write basic `index.js` bot code
 - [x] Push project to GitHub
-- [ ] Run the bot successfully and scan QR code
-- [ ] Create a dedicated WhatsApp chat for the bot (e.g. message your own number)
-- [ ] Test: send a Hebrew sentence and receive an English translation
+- [x] Run the bot successfully and scan QR code
+- [x] Create a dedicated WhatsApp chat for the bot (e.g. message your own number)
+- [x] Test: send a Hebrew sentence and receive an English translation
 
 ---
 

@@ -1,10 +1,13 @@
-require('dotenv').config();
-const { Client } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
-const Anthropic = require('@anthropic-ai/sdk');
+import dotenv from 'dotenv';
+dotenv.config();
+
+import { Client } from 'whatsapp-web.js';
+import qrcode from 'qrcode-terminal';
+import Anthropic from '@anthropic-ai/sdk';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const client = new Client();
+const CHAT_ID = process.env.CHAT_ID;
 
 client.on('qr', (qr) => {
     qrcode.generate(qr, { small: true });
@@ -23,6 +26,9 @@ client.on('disconnected', (reason) => {
 client.on('message_create', async (msg) => {
     // Only respond to messages YOU send
     if (!msg.fromMe) return;
+
+    const chat = await msg.getChat();
+    if (chat.id._serialized !== CHAT_ID) return;
 
     console.log('Message received:', msg.body);
 
