@@ -23,10 +23,10 @@ A private WhatsApp chat where you send a Hebrew sentence and the bot replies wit
 WhatsApp voice transcriptions can be inaccurate. Before translating, the bot will clean up and rephrase the Hebrew sentence, then translate it.
 
 ### Tasks:
-- [ ] Update the Claude prompt to first rephrase the Hebrew (fix grammar, transcription errors)
-- [ ] Then translate the rephrased version to English
-- [ ] Reply with both: the rephrased Hebrew AND the English translation
-- [ ] Test with real voice transcription examples
+- [x] Update the Claude prompt to first rephrase the Hebrew (fix grammar, transcription errors)
+- [x] Then translate the rephrased version to English
+- [x] Reply with both: the rephrased Hebrew AND the English translation
+- [x] Test with real voice transcription examples
 
 ### Example:
 > You send: *"לקחת את הכלב לטיול בבוקר טוב לו"*
