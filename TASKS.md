@@ -55,11 +55,11 @@ Save each sentence, its translation, a category, and the date to a database.
 ---
 
 ## Phase 4: Batch Grouping
-Group sentences into batches of 5 from the same category and close dates.
+Group sentences into batches of 4 from the same category and close dates.
 
 ### Tasks:
 - [ ] Write logic to group sentences: same category + nearest dates = one batch
-- [ ] Each batch contains exactly 5 sentences
+- [ ] Each batch contains exactly 4 sentences
 - [ ] Store batch metadata (category, date range, batch ID)
 - [ ] Test: add 10+ sentences in one category and verify batches are created correctly
 
@@ -92,8 +92,8 @@ You tell the bot what you're doing, and it suggests a batch of 5 sentences to pr
 ---
 
 ## Future Ideas (Backlog)
-- [ ] Web dashboard to view all saved sentences and batches
-- [ ] Export batches to PDF for offline use
-- [ ] Track which batches were practiced and when
-- [ ] Add difficulty rating per sentence
+- [ ] Add 2 levels of difficulty to translate each sentence 
 - [ ] Host the bot 24/7 on a cloud server (Railway or Render)
+- [ ] Web dashboard to view all saved sentences and batches
+- [ ] Track which batches were practiced and when
+- [ ] Export batches to Google Notes for offline use

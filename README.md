@@ -63,6 +63,8 @@ EnglishTutor/
 ├── index.js               ← messaging/event logic only
 ├── prompts.js             ← AI prompt templates
 ├── responseHandler.js     ← parsing & formatting Claude's responses
+├── botMessages.js         ← bot's own-message detection
+├── database.js            ← MongoDB read/write functions
 ├── .env                   ← your secret API key (do not commit)
 └── package.json           ← project configuration
 ```
