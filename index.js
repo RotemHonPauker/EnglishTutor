@@ -5,26 +5,14 @@ import { Client } from 'whatsapp-web.js';
 import qrcode from 'qrcode-terminal';
 import Anthropic from '@anthropic-ai/sdk';
 
-import { translatePrompt, suggestCategoriesPrompt } from './prompts.js';
-import { connectDB, saveSentence, getDistinctCategories } from './database.js';
+import { translatePrompt } from './prompts.js';
+import { connectDB, saveSentence } from './database.js';
 import { isBotOwnMessage } from './botMessages.js';
-import {
-    parseTranslationResponse,
-    parseCategorySuggestions,
-    formatTranslationReply,
-    formatCategoryOptions,
-    formatSavedConfirmation,
-    formatNewCategoryConfirmation
-} from './responseHandler.js';
+import {parseTranslationResponse, formatTranslationReply} from './responseHandler.js';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const client = new Client();
 const CHAT_ID = process.env.CHAT_ID;
-
-// Tracks the sentence waiting for a category (persists between messages)
-let pendingSentence = null;
-let pendingCategoryChoices = null; // holds the suggested categories array
-let awaitingNewCategoryName = false;
 
 client.on('qr', (qr) => {
     qrcode.generate(qr, { small: true });
@@ -52,47 +40,6 @@ client.on('message_create', async (msg) => {
     if (isBotOwnMessage(msg.body)) return;
     console.log('Message received:', msg.body);
 
-    // STATE 1: waiting for a brand new category name
-    if (awaitingNewCategoryName) {
-        const category = msg.body.trim();
-        await saveSentence({
-            hebrew: pendingSentence.hebrew,
-            rephrasedHebrew: pendingSentence.rephrased,
-            englishTranslation: pendingSentence.translation,
-            category
-        });
-        pendingSentence = null;
-        awaitingNewCategoryName = false;
-        await msg.reply(formatNewCategoryConfirmation(category));
-        return;
-    }
-
-    // STATE 2: waiting for user to pick option 1/2/3/other
-    if (pendingCategoryChoices) {
-        const choice = msg.body.trim();
-        const choiceIndex = parseInt(choice, 10) - 1;
-
-        if (choiceIndex >= 0 && choiceIndex < pendingCategoryChoices.length) {
-            const category = pendingCategoryChoices[choiceIndex];
-            await saveSentence({
-                hebrew: pendingSentence.hebrew,
-                rephrasedHebrew: pendingSentence.rephrased,
-                englishTranslation: pendingSentence.translation,
-                category
-            });
-            pendingSentence = null;
-            pendingCategoryChoices = null;
-            await msg.reply(formatSavedConfirmation(category))
-        } else {
-            // They chose "create new" (the last number) or typed something invalid
-            pendingCategoryChoices = null;
-            awaitingNewCategoryName = true;
-            await msg.reply('What should the new category be called?');
-        }
-        return;
-    }
-
-    // STATE 3: new sentence — translate it
     const hasHebrew = /[\u0590-\u05FF]/.test(msg.body);
     if (!hasHebrew) return;
 
@@ -109,32 +56,12 @@ client.on('message_create', async (msg) => {
         const result = parseTranslationResponse(response.content[0].text);
         await msg.reply(formatTranslationReply(result));
 
-        pendingSentence = {
-            hebrew: msg.body,
-            rephrased: result.rephrased,
-            translation: result.translation
-        };
+        await saveSentence({
+            hebrewText: result.correctedHebrew,
+            variant1: result.variant1,
+            variant2: result.variant2
+        });
 
-        // Fetch existing categories and ask Claude to suggest relevant ones
-        const existingCategories = await getDistinctCategories();
-        let suggestions = [];
-
-        if (existingCategories.length > 0) {
-            const suggestResponse = await anthropic.messages.create({
-                model: 'claude-sonnet-4-6',
-                max_tokens: 512,
-                messages: [{ 
-                    role: 'user', 
-                    content: suggestCategoriesPrompt(result.translation, existingCategories) 
-                }]
-            });
-            suggestions = parseCategorySuggestions(suggestResponse.content[0].text);
-        }
-
-        pendingCategoryChoices = suggestions;
-
-        // Build the numbered list message
-        await msg.reply(formatCategoryOptions(suggestions));
     } catch (err) {
         console.error('Translation error:', err);
     }

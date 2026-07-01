@@ -1,27 +1,17 @@
-export const translatePrompt = (text) => ` 
-    The following Hebrew text was transcribed from a voice message
-    and may contain transcription errors 
-    (wrong words, missing context, awkward phrasing).
+export const translatePrompt = (hebrewText) => `
+    You will receive a Hebrew phrase transcribed from a voice message.
+    Voice transcriptions often contain errors: wrong words, missing context, 
+    or awkward phrasing caused by the transcription process.
 
-    1. First, rephrase it into clear, grammatically correct Hebrew, 
-    fixing likely transcription mistakes while preserving the original meaning.
-    2. Then translate the rephrased Hebrew into natural English.
+    First, silently correct any transcription errors in the Hebrew, 
+    preserving the original meaning exactly — do not rephrase or change the intent.
 
-    Original text: "${text}"
+    Then translate the corrected Hebrew into two natural English variants 
+    that convey the same meaning but differ slightly in tone or phrasing.
+    Both should sound like something a real person would naturally say.
 
-    Respond ONLY with valid JSON in this exact format, no other text:
-    {"rephrased": "...", "translation": "..."}
-`;
-
-export const suggestCategoriesPrompt = (sentence, existingCategories) => `
-    Given this English sentence: "${sentence}"
-
-    And this list of existing categories: ${JSON.stringify(existingCategories)}
-
-    Pick up to 3 categories from the list that are MOST relevant to this sentence,
-    ordered by relevance (most relevant first).
-    If none are relevant, return an empty array.
+    Hebrew phrase: "${hebrewText}"
 
     Respond ONLY with valid JSON in this exact format, no other text:
-    {"suggestions": ["category1", "category2", "category3"]}
+    {"correctedHebrew": "...", "variant1": "...", "variant2": "..."}
 `;

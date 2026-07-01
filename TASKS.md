@@ -1,99 +1,66 @@
-# WhatsApp English Learning Bot — Project Roadmap
+# Hebrew-English Phrase Bot — Project Roadmap
 
 ## Vision
-A personal WhatsApp bot that helps practice English with your daughter during daily moments (bath time, dining, walks, etc.).
-You send Hebrew voice transcriptions → the bot cleans and translates them → saves them → and later suggests practice batches at the right moment.
+A personal WhatsApp bot to help practice English with Dror during daily moments.
+You send a Hebrew phrase (voice or text from your watch) → the bot corrects transcription errors, 
+translates it into two natural English variants, and saves it silently.
+Later, a review chat helps you refine and approve phrases, and a voice prep mode 
+reads approved phrases aloud before heading out.
 
 ---
 
-## Phase 1: Basic Translation ✅ (in progress)
-A private WhatsApp chat where you send a Hebrew sentence and the bot replies with an English translation.
-
-### Tasks:
+## Phase 1: Infrastructure ✅
 - [x] Set up Node.js project with whatsapp-web.js and Anthropic SDK
-- [x] Write basic `index.js` bot code
 - [x] Push project to GitHub
-- [x] Run the bot successfully and scan QR code
-- [x] Create a dedicated WhatsApp chat for the bot (e.g. message your own number)
-- [x] Test: send a Hebrew sentence and receive an English translation
+- [x] Run the bot and scan QR code
+- [x] Create dedicated WhatsApp chat for the bot
+- [x] Set up Postgres database on Supabase with pgvector enabled
+- [x] Create `phrases` table (hebrew_text, variant_1, variant_2, tag, status, embedding, created_at, approved_at)
 
 ---
 
-## Phase 2: Smart Translation (Rephrase + Translate)
-WhatsApp voice transcriptions can be inaccurate. Before translating, the bot will clean up and rephrase the Hebrew sentence, then translate it.
+## Phase 2: Capture and Instant Retrieval ✅
+Hebrew phrase in → two English variants out → saved silently as uncategorized.
 
-### Tasks:
-- [x] Update the Claude prompt to first rephrase the Hebrew (fix grammar, transcription errors)
-- [x] Then translate the rephrased version to English
-- [x] Reply with both: the rephrased Hebrew AND the English translation
-- [x] Test with real voice transcription examples
-
-### Example:
-> You send: *"לקחת את הכלב לטיול בבוקר טוב לו"*
-> Bot replies:
-> 📝 Rephrased: *"לקחת את הכלב לטיול בבוקר זה טוב לו"*
-> 🇬🇧 Translation: *"Taking the dog for a walk in the morning is good for him"*
+- [x] Prompt Claude to silently correct transcription errors, then return two English variants
+- [x] Reply to WhatsApp with the two variants immediately
+- [x] Save corrected Hebrew + both variants to Postgres, status = uncategorized
+- [ ] Test: send a Hebrew phrase, confirm reply and database row appear correctly
+- [ ] Deploy to VPS so bot runs 24/7 without needing your laptop on
 
 ---
 
-## Phase 3: Database — Save Sentences
-Save each sentence, its translation, a category, and the date to a database.
+## Phase 3: Review Chat (conversational editor)
+A web chat inside a dashboard where you review uncategorized phrases at the end of the day.
+The LLM helps you rephrase variants, assign a tag, and approve — one phrase at a time.
 
-### Tasks:
-- [ ] Choose a database (SQLite for simplicity — no server needed)
-- [ ] Create a `sentences` table with fields:
-  - `id`
-  - `hebrew` (original)
-  - `rephrased_hebrew`
-  - `english_translation`
-  - `category` (bath time, dining, walk, etc.)
-  - `created_at`
-- [ ] After each translation, ask the user in the chat: "Which category is this? (e.g. dining, bath time, walk)"
-- [ ] Save the sentence + category to the database
-- [ ] Test: verify sentences are saved correctly
+- [ ] Build basic web dashboard with an embedded chat interface
+- [ ] Wire LLM tools: fetch_next_uncategorized, propose_rephrase, propose_tag, save_approved, skip
+- [ ] Tag suggestion based on existing approved tags (embedding similarity pre-step)
+- [ ] Nothing writes to the database until you explicitly say approve
+- [ ] Test: clear a queue of 5 uncategorized phrases through conversation
 
 ---
 
-## Phase 4: Batch Grouping
-Group sentences into batches of 4 from the same category and close dates.
+## Phase 4: Approved Browser
+Browse and filter everything you've approved.
 
-### Tasks:
-- [ ] Write logic to group sentences: same category + nearest dates = one batch
-- [ ] Each batch contains exactly 4 sentences
-- [ ] Store batch metadata (category, date range, batch ID)
-- [ ] Test: add 10+ sentences in one category and verify batches are created correctly
+- [ ] List view of all approved phrases
+- [ ] Filter by tag
 
 ---
 
-## Phase 5: Practice Mode
-You tell the bot what you're doing, and it suggests a batch of 5 sentences to practice with your daughter.
+## Phase 5: Voice Prep (situational retrieval)
+Before heading out, describe the situation → bot reads 5 relevant phrases aloud.
 
-### Tasks:
-- [ ] Detect "practice trigger" messages (e.g. "I am dining with my daughter")
-- [ ] Identify the relevant category from the message
-- [ ] Ask the user: "Would you like the most recent batch or a random one?"
-- [ ] Display the batch: 5 Hebrew sentences + their English translations
-- [ ] If user says "give me a different one" → fetch another batch from the same category
-- [ ] Test the full flow end to end
-
-### Example conversation:
-> You: *"I am dining with my daughter"*
-> Bot: *"Great! I found 3 batches in the 'dining' category. Would you like the most recent one or a random one?"*
-> You: *"Random"*
-> Bot: *"Here's your batch:*
-> *1. ... → ...*
-> *2. ... → ...*
-> *3. ... → ...*
-> *4. ... → ...*
-> *5. ... → "*
-> You: *"Give me a different one"*
-> Bot: *"Sure! Here's another batch: ..."*
+- [ ] Populate embedding column on approval (Hebrew + variants combined)
+- [ ] pgvector similarity search: situation text → top 5 approved phrases
+- [ ] Google Cloud TTS (Chirp 3 HD): Hebrew phrase → pause → variant 1 → variant 2, ×5
+- [ ] Wire as second WhatsApp intent (keyword-routed)
+- [ ] Test: "I'm going to the playground with Dror" → voice note with 5 relevant phrases
 
 ---
 
-## Future Ideas (Backlog)
-- [ ] Add 2 levels of difficulty to translate each sentence 
-- [ ] Host the bot 24/7 on a cloud server (Railway or Render)
-- [ ] Web dashboard to view all saved sentences and batches
-- [ ] Track which batches were practiced and when
-- [ ] Export batches to Google Notes for offline use
+## Backlog
+- [ ] Session drop alerting for whatsapp-web.js (silent failure protection)
+- [ ] Backup capture path (basic web form) in case of WhatsApp ban

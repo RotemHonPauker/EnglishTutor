@@ -1,77 +1,71 @@
-# EnglishTutor
+# Hebrew-English Phrase Bot
 
-# WhatsApp Hebrew Translation Bot
-
-A WhatsApp bot that automatically detects Hebrew messages and translates them to English using the Claude AI API.
-
----
-
-## Dependencies
-
-| Package             | What it does                                                                         |
-| ------------------- | ------------------------------------------------------------------------------------ |
-| `whatsapp-web.js`   | Controls WhatsApp Web like a virtual browser — lets your code send/receive messages  |
-| `qrcode-terminal`   | Displays the QR code in your terminal so you can scan it with your phone to log in   |
-| `@anthropic-ai/sdk` | The official Anthropic library — lets your code talk to Claude's API for translation |
-| `dotenv`            | Reads your `.env` file and loads your secret API key into the app safely             |
+A personal WhatsApp bot for capturing Hebrew phrases on the go and practicing their 
+English translations with Dror during daily moments.
 
 ---
 
-## Installation
+## How it works
 
-```bash
-npm install whatsapp-web.js qrcode-terminal @anthropic-ai/sdk dotenv
+1. Send a Hebrew phrase from your watch or phone to a dedicated WhatsApp chat
+2. The bot silently corrects any voice transcription errors
+3. It replies immediately with two natural English variants
+4. The phrase is saved to the database as uncategorized — no further action needed in the moment
+5. Later, a review chat (Phase 3) lets you refine, tag, and approve phrases
+6. Before heading out, a voice prep mode (Phase 5) reads relevant phrases aloud
+
+---
+
+## Stack
+
+| Piece | Technology |
+|---|---|
+| WhatsApp integration | whatsapp-web.js |
+| LLM | Anthropic Claude (claude-sonnet-4-6) |
+| Database | Postgres via Supabase (pgvector enabled) |
+| TTS (Phase 5) | Google Cloud TTS, Chirp 3 HD |
+| Server | VPS (DigitalOcean / Hetzner) |
+
+---
+
+## Project structure
+
+```
+├── index.js           — WhatsApp client, message handler, intent router
+├── prompts.js         — Claude prompt templates
+├── responseHandler.js — parse and format Claude responses
+├── botMessages.js     — detect bot's own messages to avoid loops
+├── database.js        — Postgres read/write functions
+├── .env               — secrets (never commit)
+└── package.json
 ```
 
 ---
 
 ## Setup
 
-Create a `.env` file in the root of the project and add your Anthropic API key:
-
-```
-ANTHROPIC_API_KEY=your_actual_key_here
+```bash
+npm install
 ```
 
-> ⚠️ Never commit your `.env` file to GitHub. It is already ignored via `.gitignore`.
+Create a `.env` file:
 
----
+```
+ANTHROPIC_API_KEY=your_key
+DATABASE_URL=postgresql://postgres:[password]@db.[ref].supabase.co:5432/postgres
+CHAT_ID=your_whatsapp_chat_id@c.us
+```
 
-## Usage
+Run:
 
 ```bash
 node index.js
 ```
 
-A QR code will appear in your terminal. Scan it with your phone via WhatsApp (just like linking WhatsApp Web). Once scanned, the bot is live and will automatically translate any Hebrew messages it receives.
-
----
-
-## How It Works
-
-1. The bot listens for incoming WhatsApp messages
-2. It checks if the message contains Hebrew characters
-3. If Hebrew is detected, it sends the message to Claude's API for translation
-4. The bot replies to the original message with the English translation, prefixed with 🇬🇧
-
----
-
-## Project Structure
-
-```
-EnglishTutor/
-├── index.js               ← messaging/event logic only
-├── prompts.js             ← AI prompt templates
-├── responseHandler.js     ← parsing & formatting Claude's responses
-├── botMessages.js         ← bot's own-message detection
-├── database.js            ← MongoDB read/write functions
-├── .env                   ← your secret API key (do not commit)
-└── package.json           ← project configuration
-```
+Scan the QR code with WhatsApp on your phone. The bot is live once you see `Bot is ready!`
 
 ---
 
 ## Notes
-
-- This project uses `whatsapp-web.js`, an unofficial WhatsApp library. It is intended for personal/internal use only.
-- Make sure to keep your `.env` file and WhatsApp session data private.
+- Uses whatsapp-web.js, an unofficial WhatsApp library — intended for personal use only
+- Never commit your `.env` file

@@ -1,9 +1,7 @@
 export const BOT_REPLY_PREFIXES = [
     '📝',
-    '✅',
-    'Which category',
-    'Choose a category',
-    'What should the new category'
+    '🇬🇧',
+    '1.',
 ];
 
 export const isBotOwnMessage = (text) => {
