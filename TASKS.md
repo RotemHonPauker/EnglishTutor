@@ -25,8 +25,7 @@ Hebrew phrase in → two English variants out → saved silently as uncategorize
 - [x] Prompt Claude to silently correct transcription errors, then return two English variants
 - [x] Reply to WhatsApp with the two variants immediately
 - [x] Save corrected Hebrew + both variants to Postgres, status = uncategorized
-- [ ] Test: send a Hebrew phrase, confirm reply and database row appear correctly
-- [ ] Deploy to VPS so bot runs 24/7 without needing your laptop on
+- [x] Test: send a Hebrew phrase, confirm reply and database row appear correctly
 
 ---
 
@@ -58,6 +57,7 @@ Before heading out, describe the situation → bot reads 5 relevant phrases alou
 - [ ] Google Cloud TTS (Chirp 3 HD): Hebrew phrase → pause → variant 1 → variant 2, ×5
 - [ ] Wire as second WhatsApp intent (keyword-routed)
 - [ ] Test: "I'm going to the playground with Dror" → voice note with 5 relevant phrases
+- [ ] Deploy to VPS so bot runs 24/7 without needing your laptop on
 
 ---
 

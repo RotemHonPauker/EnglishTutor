@@ -20,35 +20,21 @@ export const saveSentence = async ({ hebrewText, variant1, variant2 }) => {
     );
 };
 
-// import dotenv from 'dotenv';
-// dotenv.config();
+export const getNextUncategorized = async () => {
+    const result = await pool.query(
+        `SELECT * FROM phrases 
+         WHERE status = 'uncategorized' 
+         ORDER BY created_at ASC 
+         LIMIT 1`
+    );
+    return result.rows[0] || null;
+};
 
-// import { MongoClient } from 'mongodb';
-
-// const client = new MongoClient(process.env.MONGODB_URI);
-// let db;
-
-// export const connectDB = async () => {
-//     await client.connect();
-//     db = client.db('englishTutor');
-//     console.log('Connected to MongoDB');
-// };
-
-// export const saveSentence = async ({ rephrasedHebrew, translation, style, category }) => {
-//     const sentence = {
-//         rephrasedHebrew,
-//         translation,
-//         style,
-//         category,
-//         createdAt: new Date()
-//     };
-//     await db.collection('sentences').insertOne(sentence);
-// }; 
-
-// export const getDistinctStyles = async () => {
-//     return await db.collection('sentences').distinct('style');
-// };
-
-// export const getDistinctCategories = async () => {
-//     return await db.collection('sentences').distinct('category');
-// };
+export const updatePhrase = async ({ id, variant1, variant2, tag, status }) => {
+    await pool.query(
+        `UPDATE phrases 
+         SET variant_1 = $1, variant_2 = $2, tag = $3, status = $4, approved_at = $5
+         WHERE id = $6`,
+        [variant1, variant2, tag, status, status === 'approved' ? new Date() : null, id]
+    );
+};

@@ -1,6 +1,6 @@
 # Hebrew-English Phrase Bot
 
-A personal WhatsApp bot for capturing Hebrew phrases on the go and practicing their 
+A personal WhatsApp bot for capturing Hebrew phrases on the go and practicing their
 English translations with Dror during daily moments.
 
 ---
@@ -18,26 +18,37 @@ English translations with Dror during daily moments.
 
 ## Stack
 
-| Piece | Technology |
-|---|---|
-| WhatsApp integration | whatsapp-web.js |
-| LLM | Anthropic Claude (claude-sonnet-4-6) |
-| Database | Postgres via Supabase (pgvector enabled) |
-| TTS (Phase 5) | Google Cloud TTS, Chirp 3 HD |
-| Server | VPS (DigitalOcean / Hetzner) |
+| Piece                | Technology                               |
+| -------------------- | ---------------------------------------- |
+| WhatsApp integration | whatsapp-web.js                          |
+| LLM                  | Anthropic Claude (claude-sonnet-4-6)     |
+| Database             | Postgres via Supabase (pgvector enabled) |
+| TTS (Phase 5)        | Google Cloud TTS, Chirp 3 HD             |
+| Server               | VPS (DigitalOcean / Hetzner)             |
 
 ---
 
 ## Project structure
 
 ```
-├── index.js           — WhatsApp client, message handler, intent router
-├── prompts.js         — Claude prompt templates
-├── responseHandler.js — parse and format Claude responses
-├── botMessages.js     — detect bot's own messages to avoid loops
-├── database.js        — Postgres read/write functions
-├── .env               — secrets (never commit)
-└── package.json
+EnglishTutor/
+├── bot/
+│   ├── botMessages.js
+│   ├── index.js
+│   ├── prompts.js
+│   └── responseHandler.js
+├── dashboard/
+│   ├── public/
+│   |   └── index.html
+│   ├── reviewChat.js
+│   ├── server.js
+│   ├── systemPrompt.js
+│   ├── toolHandler.js
+│   └── tools.js
+├── .env
+├── database.js
+├── package.json
+└── README.md
 ```
 
 ---
@@ -67,5 +78,6 @@ Scan the QR code with WhatsApp on your phone. The bot is live once you see `Bot 
 ---
 
 ## Notes
+
 - Uses whatsapp-web.js, an unofficial WhatsApp library — intended for personal use only
 - Never commit your `.env` file
