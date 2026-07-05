@@ -38,3 +38,12 @@ export const updatePhrase = async ({ id, variant1, variant2, tag, status }) => {
         [variant1, variant2, tag, status, status === 'approved' ? new Date() : null, id]
     );
 };
+
+export const getPhrases = async (status = null) => {
+    const query = status
+        ? `SELECT * FROM phrases WHERE status = $1 ORDER BY created_at DESC`
+        : `SELECT * FROM phrases ORDER BY created_at DESC`;
+    const params = status ? [status] : [];
+    const result = await pool.query(query, params);
+    return result.rows;
+};

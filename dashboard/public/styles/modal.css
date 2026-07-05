@@ -1,0 +1,53 @@
+#modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#modal {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 12px;
+    width: 640px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    gap: 14px;
+}
+
+#modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: #aaa;
+}
+
+#prompt-editor {
+    flex: 1;
+    background: #0f0f0f;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 12px;
+    color: #e8e8e8;
+    font-size: 13px;
+    font-family: 'Segoe UI', sans-serif;
+    line-height: 1.6;
+    resize: none;
+    min-height: 300px;
+    outline: none;
+}
+
+#prompt-editor:focus { border-color: #2563eb; }
+
+#modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
