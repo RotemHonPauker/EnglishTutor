@@ -1,7 +1,10 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import pg from 'pg';
 
 const pool = new pg.Pool({ 
-  connectionString: process.env.DATABASE_URI 
+  connectionString: process.env.DATABASE_URI_SESSION, 
 });
 
 export const connectDB = async () => {
