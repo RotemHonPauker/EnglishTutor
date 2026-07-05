@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-dotenv.config();
+dotenv.config({ path: '../.env' });
 
 import { Client } from 'whatsapp-web.js';
 import qrcode from 'qrcode-terminal';

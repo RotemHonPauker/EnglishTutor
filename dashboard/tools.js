@@ -29,5 +29,25 @@ export const tools = [
             properties: {},
             required: []
         }
+    },
+    {
+        name: 'update_system_prompt',
+        description: 'Rewrite the systemPrompt.txt file with new content after the user explicitly approves the change',
+        input_schema: {
+            type: 'object',
+            properties: {
+                newContent: { type: 'string', description: 'The full new content of the system prompt' }
+            },
+            required: ['newContent']
+        }
+    },
+    {
+        name: 'commit_system_prompt',
+        description: 'Commit the current systemPrompt.txt to git after the user asks to commit the change',
+        input_schema: {
+            type: 'object',
+            properties: {},
+            required: []
+        }
     }
 ];
