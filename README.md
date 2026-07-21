@@ -11,8 +11,8 @@ English translations with Dror during daily moments.
 2. The bot silently corrects any voice transcription errors
 3. It replies immediately with two natural English variants
 4. The phrase is saved to the database as uncategorized — no further action needed in the moment
-5. Later, a review chat (Phase 3) lets you refine, tag, and approve phrases
-6. Before heading out, a voice prep mode (Phase 5) reads relevant phrases aloud
+5. Later, a review chat at `localhost:3000` lets you refine, assign a tag, and approve phrases
+6. Approved phrases are browsable by tag at `localhost:3000/practice` for quick pre-session review
 
 ---
 
@@ -23,7 +23,6 @@ English translations with Dror during daily moments.
 | WhatsApp integration | whatsapp-web.js                          |
 | LLM                  | Anthropic Claude (claude-sonnet-4-6)     |
 | Database             | Postgres via Supabase (pgvector enabled) |
-| TTS (Phase 5)        | Google Cloud TTS, Chirp 3 HD             |
 | Server               | VPS (DigitalOcean / Hetzner)             |
 
 ---
@@ -39,7 +38,14 @@ EnglishTutor/
 │   └── responseHandler.js
 ├── dashboard/
 │   ├── public/
+│   |   ├── styles/
+│   |   ├── app.js
 │   |   └── index.html
+│   ├── routes/
+│   |   ├── chat.route.js
+│   |   ├── phrases.route.js
+│   |   ├── systemPrompt.route.js
+│   |   └── tags.route.js
 │   ├── reviewChat.js
 │   ├── server.js
 │   ├── systemPrompt.js
@@ -63,14 +69,20 @@ Create a `.env` file:
 
 ```
 ANTHROPIC_API_KEY=your_key
-DATABASE_URL=postgresql://postgres:[password]@db.[ref].supabase.co:5432/postgres
+DATABASE_URL=postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres
 CHAT_ID=your_whatsapp_chat_id@c.us
 ```
 
-Run:
+Run the WhatsApp bot:
 
 ```bash
-node index.js
+node bot/index.js
+```
+
+Run the review dashboard:
+
+```bash
+node dashboard/server.js
 ```
 
 Scan the QR code with WhatsApp on your phone. The bot is live once you see `Bot is ready!`
@@ -81,3 +93,4 @@ Scan the QR code with WhatsApp on your phone. The bot is live once you see `Bot 
 
 - Uses whatsapp-web.js, an unofficial WhatsApp library — intended for personal use only
 - Never commit your `.env` file
+- The session pooler connection string (not direct connection) is required for Supabase

@@ -1,8 +1,8 @@
 import { readFileSync, writeFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { getNextUncategorized, updatePhrase } from '../database.js';
 import { execSync } from 'child_process';
+import { getNextUncategorized, updatePhrase, getTags } from '../database.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const systemPromptPath = join(__dirname, 'systemPrompt.txt');
@@ -12,9 +12,11 @@ let currentPhrase = null;
 export const handleToolCall = async (toolName, toolInput) => {
     if (toolName === 'fetch_next_uncategorized') {
         currentPhrase = await getNextUncategorized();
-        return currentPhrase
-            ? JSON.stringify(currentPhrase)
-            : 'No more uncategorized phrases.';
+        if (!currentPhrase) return 'No more uncategorized phrases.';
+        
+        // Also fetch available tags so Claude can suggest one
+        const tags = await getTags();
+        return JSON.stringify({ phrase: currentPhrase, availableTags: tags });
     }
 
     if (toolName === 'save_approved') {
@@ -22,7 +24,7 @@ export const handleToolCall = async (toolName, toolInput) => {
             id: currentPhrase.id,
             variant1: toolInput.variant1,
             variant2: toolInput.variant2,
-            tag: toolInput.tag,
+            subtagId: toolInput.subtagId,
             status: 'approved'
         });
         currentPhrase = null;

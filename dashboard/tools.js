@@ -1,7 +1,7 @@
 export const tools = [
     {
         name: 'fetch_next_uncategorized',
-        description: 'Fetch the next uncategorized phrase from the database',
+        description: 'Fetch the next uncategorized phrase from the database, along with the available tags to choose from',
         input_schema: {
             type: 'object',
             properties: {},
@@ -10,15 +10,15 @@ export const tools = [
     },
     {
         name: 'save_approved',
-        description: 'Save the approved phrase with final variants and tag to the database',
+        description: 'Save the approved phrase with final variants and subtag to the database',
         input_schema: {
             type: 'object',
             properties: {
                 variant1: { type: 'string', description: 'First English variant' },
                 variant2: { type: 'string', description: 'Second English variant' },
-                tag: { type: 'string', description: 'Single tag for this phrase' }
+                subtagId: { type: 'string', description: 'UUID of the chosen subtag from the available tags list' }
             },
-            required: ['variant1', 'variant2', 'tag']
+            required: ['variant1', 'variant2', 'subtagId']
         }
     },
     {
