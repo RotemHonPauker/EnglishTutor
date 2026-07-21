@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="styles/table.css">
     <link rel="stylesheet" href="styles/chat.css">
     <link rel="stylesheet" href="styles/modal.css">
+    <link rel="stylesheet" href="styles/tags.css">
 </head>
 <body>
 
@@ -20,28 +21,40 @@
     </div>
 </header>
 
-<!-- TABLE -->
-<div id="table-section">
-    <div id="table-toolbar">
-        <span>Filter:</span>
-        <button class="active" onclick="filterTable('all', this)">All</button>
-        <button onclick="filterTable('uncategorized', this)">Uncategorized</button>
-        <button onclick="filterTable('approved', this)">Approved</button>
+<div id="table-area">
+    <!-- TAG SIDEBAR -->
+    <div id="tag-sidebar">
+        <div id="sidebar-header">
+            <span>Tags</span>
+        </div>
+        <div id="tag-list"></div>
+        <button onclick="showAddMainTag()">+ main tag</button>
+        <div id="tag-form"></div>
     </div>
-    <div id="table-wrapper">
-        <table>
-            <thead>
-                <tr>
-                    <th>Hebrew</th>
-                    <th>Variant 1</th>
-                    <th>Variant 2</th>
-                    <th>Tag</th>
-                    <th>Status</th>
-                    <th class="sortable" onclick="toggleSort()">Date ↓</th>
-                </tr>
-            </thead>
-            <tbody id="table-body"></tbody>
-        </table>
+
+    <!-- PHRASE TABLE -->
+    <div id="table-section">
+        <div id="table-toolbar">
+            <span>Filter:</span>
+            <button class="active" onclick="filterTable('all', this)">All</button>
+            <button onclick="filterTable('uncategorized', this)">Uncategorized</button>
+            <button onclick="filterTable('approved', this)">Approved</button>
+        </div>
+        <div id="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Hebrew</th>
+                        <th>Variant 1</th>
+                        <th>Variant 2</th>
+                        <th>Tag</th>
+                        <th>Status</th>
+                        <th class="sortable" onclick="toggleSort()">Date ↓</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body"></tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -70,6 +83,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="tags.js"></script>
 <script src="app.js"></script>
 
 </body>

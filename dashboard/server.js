@@ -4,10 +4,10 @@ dotenv.config({ path: '../.env' });
 import express from 'express';
 import { connectDB } from '../database.js';
 
-import { chatRouter } from  './routes/chat.js';
-import { phrasesRouter } from './routes/phrases.js';
-import { tagsRouter } from './routes/tags.js';
-import { systemPromptRouter } from './routes/systemPrompt.js';
+import { chatRouter } from  './routes/chat.route.js';
+import { phrasesRouter } from './routes/phrases.route.js';
+import { tagsRouter } from './routes/tags.route.js';
+import { systemPromptRouter } from './routes/systemPrompt.route.js';
 
 const app = express();
 const PORT = 3000;

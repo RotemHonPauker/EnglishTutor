@@ -27,7 +27,7 @@ function renderTable() {
             <td>${p.hebrew_text || ''}</td>
             <td>${p.variant_1 || ''}</td>
             <td>${p.variant_2 || ''}</td>
-            <td>${p.tag || '—'}</td>
+            <td>${p.subtag_name ? `${p.tag_name} / ${p.subtag_name}` : '—'}</td>
             <td><span class="status-badge ${p.status}">${p.status}</span></td>
             <td>${new Date(p.created_at).toLocaleDateString('en-GB')}</td>
         </tr>
@@ -144,6 +144,7 @@ async function savePrompt() {
 }
 
 window.onload = async () => {
+    await loadTags();
     await loadTable();
     await startSession();
 };
