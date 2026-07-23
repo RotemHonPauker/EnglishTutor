@@ -6,7 +6,7 @@ const { Client, LocalAuth } = pkg;
 import qrcode from 'qrcode-terminal';
 import Anthropic from '@anthropic-ai/sdk';
 
-import { translatePrompt } from './translatePrompt.js';
+import { botPrompt } from './botPrompt.js';
 import { connectDB, saveSentence } from '../database.js';
 import { isBotOwnMessage } from './botMessages.js';
 import {parseTranslationResponse, formatTranslationReply} from './responseHandler.js';
@@ -63,7 +63,7 @@ client.on('message_create', async (msg) => {
             max_tokens: 1024,
             messages: [{
                 role: 'user',
-                content: translatePrompt(msg.body)
+                content: botPrompt(msg.body)
             }]
         });
 

@@ -42,8 +42,10 @@ The LLM helps you rephrase variants, assign a subtag, and approve — one phrase
 ### Dashboard backend
 - [x] Express server with split route files (chat, phrases, tags, systemPrompt)
 - [x] database.js: getNextUncategorized, updatePhrase, getPhrases, getTags, createTag, updateTag, deleteTag
-- [x] systemPrompt.txt — editable prompt file, tracked by git
-- [x] tools.js — fetch_next_uncategorized, save_approved, skip, update_system_prompt, commit_system_prompt
+- [x] dashboard/systemPrompt.txt — the review chat's own instructions, tracked by git, edited manually (not through the chat)
+- [x] bot/botPrompt.js + bot/botPrompt.txt — WhatsApp bot's translation prompt, re-read on every message (no restart needed after an edit)
+- [x] tools.js — fetch_next_uncategorized, save_approved, skip, update_bot_prompt, commit_bot_prompt
+- [x] Review chat proposes edits to bot/botPrompt.txt (not its own dashboard/systemPrompt.txt) when a refinement suggests the bot prompt should change
 - [x] toolHandler.js — executes each tool (DB queries, file writes, git commands)
 - [x] reviewChat.js — conversation loop, tool call handling
 

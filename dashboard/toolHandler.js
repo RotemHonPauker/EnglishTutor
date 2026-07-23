@@ -1,11 +1,10 @@
-import { readFileSync, writeFileSync } from 'fs';
+import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { execSync } from 'child_process';
 import { getNextUncategorized, updatePhrase, getTags } from '../database.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const systemPromptPath = join(__dirname, 'systemPrompt.txt');
+const botPromptPath = join(__dirname, '..', 'bot', 'botPrompt.txt');
 
 let currentPhrase = null;
 
@@ -36,16 +35,11 @@ export const handleToolCall = async (toolName, toolInput) => {
         return 'Skipped.';
     }
 
-    if (toolName === 'update_system_prompt') {
-        writeFileSync(systemPromptPath, toolInput.newContent, 'utf-8');
-        return 'System prompt updated successfully.';
-    }
-
-    if (toolName === 'commit_system_prompt') {
-        execSync(
-            'git add dashboard/systemPrompt.txt && git commit -m "update system prompt from review session" && git push',
-            { cwd: join(__dirname, '..') }
-        );
-        return 'System prompt committed and pushed to GitHub.';
+    // Read-only: lets Claude see the bot's current translation prompt so it can
+    // propose an accurate edit. There is no matching write/commit tool — the
+    // user always copies any suggested wording into bot/botPrompt.txt themselves.
+    if (toolName === 'fetch_bot_prompt') {
+        const currentContent = readFileSync(botPromptPath, 'utf-8');
+        return currentContent;
     }
 };
