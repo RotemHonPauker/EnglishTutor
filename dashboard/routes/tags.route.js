@@ -37,7 +37,7 @@ router.delete('/tags/:id', async (req, res) => {
         await deleteTag(req.params.id);
         res.json({ ok: true });
     } catch (err) {
-        res.status(500).json({ error: 'Failed to delete tag' });
+        res.status(400).json({ error: err.message || 'Failed to delete tag' });
     }
 });
 

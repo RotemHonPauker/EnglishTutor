@@ -56,7 +56,7 @@
 
 .tag-name {
     flex: 1;
-    font-size: 0.8125rem;
+    font-size: 1rem;
     color: #e8e8e8;
 }
 
@@ -77,7 +77,7 @@
     border: none;
     color: #666;
     padding: 2px 4px;
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
     cursor: pointer;
 }
 
@@ -91,7 +91,7 @@
     color: #ccc;
     border: 1px solid #333;
     border-radius: 6px;
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
     padding: 4px 10px;
     margin-left: 20px;
     cursor: pointer;
@@ -122,7 +122,7 @@
     border-radius: 6px;
     padding: 8px 10px;
     color: #e8e8e8;
-    font-size: 0.8125rem;
+    font-size: 1rem;
     outline: none;
     width: 100%;
 }
@@ -138,8 +138,8 @@
 }
 
 .color-circle {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
     cursor: pointer;
     border: 2px solid transparent;
@@ -166,6 +166,10 @@
     justify-content: flex-end;
 }
 
+.form-error {
+    color: #f87171;
+}
+
 .merge-autocomplete {
     position: relative;
 }
@@ -176,7 +180,7 @@
     border-radius: 6px;
     padding: 8px 10px;
     color: #e8e8e8;
-    font-size: 0.8125rem;
+    font-size: 1rem;
     outline: none;
     width: 100%;
 }
@@ -207,7 +211,7 @@
 .merge-dropdown-item {
     padding: 8px 10px;
     color: #e8e8e8;
-    font-size: 0.8125rem;
+    font-size: 1rem;
     cursor: pointer;
 }
 
@@ -218,7 +222,7 @@
 .merge-dropdown-empty {
     padding: 8px 10px;
     color: #666;
-    font-size: 0.8125rem;
+    font-size: 1rem;
 }
 
 #sidebar-overlay {

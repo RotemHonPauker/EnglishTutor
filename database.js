@@ -81,6 +81,22 @@ export const updateTag = async ({ id, name, color }) => {
 };
 
 export const deleteTag = async (id) => {
+    const { rows: childRows } = await pool.query(
+        `SELECT COUNT(*)::int AS count FROM tags WHERE parent_id = $1`,
+        [id]
+    );
+    if (childRows[0].count > 0) {
+        throw new Error(`This tag still has ${childRows[0].count} subtag(s). Delete or merge them first.`);
+    }
+
+    const { rows: phraseRows } = await pool.query(
+        `SELECT COUNT(*)::int AS count FROM phrases WHERE subtag_id = $1`,
+        [id]
+    );
+    if (phraseRows[0].count > 0) {
+        throw new Error(`This subtag has ${phraseRows[0].count} phrase(s) linked to it. Migrate or merge them into another subtag first.`);
+    }
+
     await pool.query(`DELETE FROM tags WHERE id = $1`, [id]);
 };
 
