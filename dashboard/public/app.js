@@ -66,7 +66,7 @@ function addMessage(role, text) {
     const div = document.createElement('div');
     div.className = `message ${role}`;
     if (role === 'assistant') {
-        div.innerHTML = marked.parse(text);
+        div.innerHTML = marked.parse(text).trim();
     } else {
         div.textContent = text;
     }

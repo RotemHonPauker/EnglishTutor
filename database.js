@@ -83,3 +83,41 @@ export const updateTag = async ({ id, name, color }) => {
 export const deleteTag = async (id) => {
     await pool.query(`DELETE FROM tags WHERE id = $1`, [id]);
 };
+
+export const mergeSubtags = async ({ sourceId, targetId }) => {
+    if (sourceId === targetId) {
+        throw new Error('Cannot merge a subtag into itself');
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        const { rows } = await client.query(
+            `SELECT id, parent_id FROM tags WHERE id IN ($1, $2)`,
+            [sourceId, targetId]
+        );
+        const source = rows.find(t => t.id === sourceId);
+        const target = rows.find(t => t.id === targetId);
+
+        if (!source || !target || !source.parent_id || !target.parent_id) {
+            throw new Error('Both tags must be subtags');
+        }
+        if (source.parent_id !== target.parent_id) {
+            throw new Error('Subtags must share the same parent tag');
+        }
+
+        await client.query(
+            `UPDATE phrases SET subtag_id = $1 WHERE subtag_id = $2`,
+            [targetId, sourceId]
+        );
+        await client.query(`DELETE FROM tags WHERE id = $1`, [sourceId]);
+
+        await client.query('COMMIT');
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
+};

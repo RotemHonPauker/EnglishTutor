@@ -18,7 +18,7 @@
     max-width: 60%;
     padding: 10px 14px;
     border-radius: 12px;
-    font-size: 14px;
+    font-size: 0.875rem;;
     line-height: 1.6;
     white-space: pre-wrap;
 }
@@ -43,7 +43,7 @@
 .message.system {
     background: transparent;
     color: #555;
-    font-size: 12px;
+    font-size: 0.75rem;
     align-self: center;
     border: none;
     padding: 0;
@@ -64,7 +64,7 @@
     border-radius: 8px;
     padding: 10px 14px;
     color: #e8e8e8;
-    font-size: 14px;
+    font-size: 0.875rem;
     outline: none;
     resize: none;
     font-family: inherit;

@@ -24,7 +24,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 600;
     color: #aaa;
 }
@@ -36,7 +36,7 @@
     border-radius: 8px;
     padding: 12px;
     color: #e8e8e8;
-    font-size: 13px;
+    font-size: 0.8125rem;
     font-family: 'Segoe UI', sans-serif;
     line-height: 1.6;
     resize: none;

@@ -1,5 +1,5 @@
 import express from 'express';
-import { getTags, createTag, updateTag, deleteTag } from '../../database.js';
+import { getTags, createTag, updateTag, deleteTag, mergeSubtags } from '../../database.js';
 
 const router = express.Router();
 
@@ -38,6 +38,16 @@ router.delete('/tags/:id', async (req, res) => {
         res.json({ ok: true });
     } catch (err) {
         res.status(500).json({ error: 'Failed to delete tag' });
+    }
+});
+
+router.post('/tags/merge', async (req, res) => {
+    const { sourceId, targetId } = req.body;
+    try {
+        await mergeSubtags({ sourceId, targetId });
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(400).json({ error: err.message || 'Failed to merge tags' });
     }
 });
 
