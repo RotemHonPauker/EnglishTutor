@@ -1,4 +1,4 @@
-#modal-overlay {
+#prompt-modal-overlay {
     position: fixed;
     inset: 0;
     background: rgba(0,0,0,0.7);
@@ -12,8 +12,8 @@
     background: #1a1a1a;
     border: 1px solid #2a2a2a;
     border-radius: 12px;
-    width: 640px;
-    max-height: 80vh;
+    width: 860px;
+    max-height: 90vh;
     display: flex;
     flex-direction: column;
     padding: 20px;
@@ -24,7 +24,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 0.875rem;
+    font-size: 1rem;
     font-weight: 600;
     color: #aaa;
 }
@@ -36,11 +36,11 @@
     border-radius: 8px;
     padding: 12px;
     color: #e8e8e8;
-    font-size: 0.8125rem;
+    font-size: 1rem;
     font-family: 'Segoe UI', sans-serif;
     line-height: 1.6;
     resize: none;
-    min-height: 300px;
+    min-height: 500px;
     outline: none;
 }
 

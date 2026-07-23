@@ -113,31 +113,34 @@ async function resetSession() {
     await startSession();
 }
 
-async function commitPrompt() {
-    await openModal();
-}
+// --- PROMPT MODAL ---
 
-async function openModal() {
-    const res = await fetch('/system-prompt');
+let currentPromptEndpoint = null;
+
+async function openPromptModal(title, endpoint) {
+    currentPromptEndpoint = endpoint;
+    const res = await fetch(endpoint);
     const data = await res.json();
+    document.getElementById('modal-title').textContent = title;
     document.getElementById('prompt-editor').value = data.content;
-    document.getElementById('modal-overlay').style.display = 'flex';
+    document.getElementById('prompt-modal-overlay').style.display = 'flex';
 }
 
-function closeModal() {
-    document.getElementById('modal-overlay').style.display = 'none';
+function closePromptModal() {
+    document.getElementById('prompt-modal-overlay').style.display = 'none';
+    currentPromptEndpoint = null;
 }
 
 async function savePrompt() {
     const content = document.getElementById('prompt-editor').value;
     try {
-        await fetch('/system-prompt', {
+        await fetch(currentPromptEndpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ content })
         });
-        addMessage('system', 'System prompt saved and committed.');
-        closeModal();
+        addMessage('system', 'Prompt saved and committed.');
+        closePromptModal();
     } catch (err) {
         addMessage('system', 'Failed to save prompt.');
     }

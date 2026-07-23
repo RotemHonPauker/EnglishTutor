@@ -6,7 +6,7 @@ const { Client, LocalAuth } = pkg;
 import qrcode from 'qrcode-terminal';
 import Anthropic from '@anthropic-ai/sdk';
 
-import { translatePrompt } from './prompts.js';
+import { translatePrompt } from './translatePrompt.js';
 import { connectDB, saveSentence } from '../database.js';
 import { isBotOwnMessage } from './botMessages.js';
 import {parseTranslationResponse, formatTranslationReply} from './responseHandler.js';

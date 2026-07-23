@@ -17,7 +17,8 @@
     <h1>Phrase Review</h1>
     <div class="header-buttons">
         <button onclick="resetSession()">New session</button>
-        <button class="primary" onclick="commitPrompt()">Commit prompt</button>
+        <button class="primary" onclick="openPromptModal('Review Prompt', '/system-prompt')">Review prompt</button>
+        <button class="primary" onclick="openPromptModal('Bot Prompt', '/bot-prompt')">Bot prompt</button>
     </div>
 </header>
 
@@ -67,17 +68,49 @@
     </div>
 </div>
 
-<!-- MODAL -->
-<div id="modal-overlay" style="display:none">
+
+<!-- SHARED PROMPT MODAL -->
+<div id="prompt-modal-overlay" style="display:none">
     <div id="modal">
         <div id="modal-header">
-            <span>System Prompt</span>
-            <button onclick="closeModal()">✕</button>
+            <span id="modal-title"></span>
+            <button onclick="closePromptModal()">✕</button>
         </div>
         <textarea id="prompt-editor"></textarea>
         <div id="modal-footer">
-            <button onclick="closeModal()">Cancel</button>
+            <button onclick="closePromptModal()">Cancel</button>
             <button class="primary" onclick="savePrompt()">Save & Commit</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- SYSTEM PROMPT MODAL -->
+<div id="system-modal-overlay" style="display:none">
+    <div id="modal">
+        <div id="modal-header">
+            <span>System Prompt</span>
+            <button onclick="closeSystemModal()">✕</button>
+        </div>
+        <textarea id="system-prompt-editor"></textarea>
+        <div id="modal-footer">
+            <button onclick="closeSystemModal()">Cancel</button>
+            <button class="primary" onclick="saveSystemPrompt()">Save & Commit</button>
+        </div>
+    </div>
+</div>
+
+<!-- BOT PROMPT MODAL -->
+<div id="bot-modal-overlay" style="display:none">
+    <div id="modal">
+        <div id="modal-header">
+            <span>Bot Prompt</span>
+            <button onclick="closeBotModal()">✕</button>
+        </div>
+        <textarea id="bot-prompt-editor"></textarea>
+        <div id="modal-footer">
+            <button onclick="closeBotModal()">Cancel</button>
+            <button class="primary" onclick="saveBotPrompt()">Save & Commit</button>
         </div>
     </div>
 </div>
