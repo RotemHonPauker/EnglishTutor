@@ -6,7 +6,7 @@ import { execSync } from 'child_process';
 
 const router = express.Router();
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const botPromptPath = join(__dirname, '..', '..', 'bot', 'translatePrompt.txt');
+const botPromptPath = join(__dirname, '..', '..', 'bot', 'botPrompt.txt');
 
 router.get('/bot-prompt', (req, res) => {
     const content = readFileSync(botPromptPath, 'utf-8');
@@ -18,7 +18,7 @@ router.post('/bot-prompt', (req, res) => {
     try {
         writeFileSync(botPromptPath, content, 'utf-8');
         execSync(
-            'git add bot/translatePrompt.txt && git commit -m "update bot prompt from dashboard" && git push',
+            'git add bot/botPrompt.txt && git commit -m "update bot prompt from dashboard" && git push',
             { cwd: join(__dirname, '..', '..') }
         );
         res.json({ ok: true });

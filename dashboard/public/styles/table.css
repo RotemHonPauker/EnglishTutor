@@ -82,13 +82,13 @@ tr:hover td { background: #141414; }
 }
 
 .status-badge.approved {
-    background: #14532d;
-    color: #86efac;
+    background: #2a2a2a;
+    color: #888;
 }
 
 .status-badge.uncategorized {
-    background: #4c1519;
-    color: #fca5a5;
+    background: #eaeaea;
+    color: #1a1a1a;
 }
 
 .status-badge.clickable {

@@ -1,5 +1,5 @@
 import express from 'express';
-import { getPhrases, updatePhraseSubtag, updatePhraseStatus } from '../../database.js';
+import { getPhrases, updatePhraseSubtag, updatePhraseStatus, deletePhrase } from '../../database.js';
 
 const router = express.Router();
 
@@ -38,6 +38,20 @@ router.patch('/phrases/:id/status', async (req, res) => {
     } catch (err) {
         console.error('Error updating phrase status:', err);
         res.status(500).json({ error: 'Failed to update status' });
+    }
+});
+
+router.delete('/phrases/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const phrase = await deletePhrase(id);
+        if (!phrase) {
+            return res.status(404).json({ error: 'Phrase not found' });
+        }
+        res.json({ ok: true });
+    } catch (err) {
+        console.error('Error deleting phrase:', err);
+        res.status(500).json({ error: 'Failed to delete phrase' });
     }
 });
 

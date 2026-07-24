@@ -30,15 +30,6 @@ export const getNextUncategorized = async () => {
     return result.rows[0] || null;
 };
 
-export const updatePhrase = async ({ id, variant1, variant2, subtagId, status }) => {
-    await pool.query(
-        `UPDATE phrases 
-         SET variant_1 = $1, variant_2 = $2, subtag_id = $3, status = $4, approved_at = $5
-         WHERE id = $6`,
-        [variant1, variant2, subtagId, status, status === 'approved' ? new Date() : null, id]
-    );
-};
-
 // Chat-driven approval: sets the final variant wording and marks the phrase
 // approved, but never touches subtag_id — tagging stays entirely table-driven,
 // whether it happens before or after this approval.
@@ -71,6 +62,14 @@ export const updatePhraseStatus = async ({ id, status }) => {
         [status, status === 'approved' ? new Date() : null, id]
     );
     return result.rows[0];
+};
+
+export const deletePhrase = async (id) => {
+    const result = await pool.query(
+        `DELETE FROM phrases WHERE id = $1 RETURNING *`,
+        [id]
+    );
+    return result.rows[0] || null;
 };
 
 export const getPhrases = async (status = null) => {

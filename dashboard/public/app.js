@@ -15,14 +15,23 @@ async function loadTable() {
     renderTable();
 }
 
+const DEFAULT_TAG_COLOR = '#ccc';
+
+function getTagColor(tagId) {
+    if (!tagId) return null;
+    const tag = tags.find(t => t.id === tagId);
+    return (tag && tag.color) || null;
+}
+
 function buildMainTagSelect(phrase, currentMainId) {
     const mainTags = tags.filter(t => !t.parent_id);
     const opts = mainTags.map(mt => `
-        <option value="${mt.id}" ${mt.id === currentMainId ? 'selected' : ''}>${mt.name}</option>
+        <option value="${mt.id}" ${mt.id === currentMainId ? 'selected' : ''} style="color:${mt.color || DEFAULT_TAG_COLOR}">${mt.name}</option>
     `).join('');
+    const color = getTagColor(currentMainId) || DEFAULT_TAG_COLOR;
 
     return `
-        <select class="tag-select main-tag-select" onchange="onMainTagChange('${phrase.id}', this)">
+        <select class="tag-select main-tag-select" style="color:${color}" onchange="onMainTagChange('${phrase.id}', this)">
             <option value="">—</option>
             ${opts}
         </select>
@@ -31,14 +40,17 @@ function buildMainTagSelect(phrase, currentMainId) {
 
 function subtagOptionsHtml(mainId, selectedSubtagId) {
     if (!mainId) return '';
+    const color = getTagColor(mainId) || DEFAULT_TAG_COLOR;
     return tags.filter(t => t.parent_id === mainId).map(s => `
-        <option value="${s.id}" ${s.id === selectedSubtagId ? 'selected' : ''}>${s.name}</option>
+        <option value="${s.id}" ${s.id === selectedSubtagId ? 'selected' : ''} style="color:${color}">${s.name}</option>
     `).join('');
 }
 
 function buildSubtagSelect(phrase, currentMainId) {
+    // Subtags inherit their parent main tag's color rather than having their own.
+    const color = getTagColor(currentMainId) || DEFAULT_TAG_COLOR;
     return `
-        <select class="tag-select subtag-select" onchange="updateSubtag('${phrase.id}', this.value)" onblur="resetTagSelectsIfEmpty('${phrase.id}', this)" ${!currentMainId ? 'disabled' : ''}>
+        <select class="tag-select subtag-select" style="color:${color}" onchange="updateSubtag('${phrase.id}', this.value)" onblur="resetTagSelectsIfEmpty('${phrase.id}', this)" ${!currentMainId ? 'disabled' : ''}>
             <option value="">—</option>
             ${subtagOptionsHtml(currentMainId, phrase.subtag_id)}
         </select>
@@ -68,8 +80,11 @@ function onMainTagChange(phraseId, mainSelectEl) {
     const mainId = mainSelectEl.value;
     const row = mainSelectEl.closest('tr');
     const subtagSelect = row.querySelector('.subtag-select');
+    const color = getTagColor(mainId) || DEFAULT_TAG_COLOR;
 
+    mainSelectEl.style.color = color;
     subtagSelect.innerHTML = `<option value="">—</option>${subtagOptionsHtml(mainId, null)}`;
+    subtagSelect.style.color = color;
     subtagSelect.disabled = !mainId;
 
     if (mainId) {
@@ -81,7 +96,7 @@ function onMainTagChange(phraseId, mainSelectEl) {
 }
 
 function statusLabel(status) {
-    return status === 'approved' ? 'Approved' : 'Not approved';
+    return status === 'approved' ? 'Approved' : 'Unapproved';
 }
 
 function renderTable() {
@@ -103,9 +118,26 @@ function renderTable() {
             <td>${buildSubtagSelect(p, currentMainId)}</td>
             <td><span class="status-badge ${p.status} clickable" onclick="toggleStatus('${p.id}', '${p.status}')">${statusLabel(p.status)}</span></td>
             <td>${new Date(p.created_at).toLocaleDateString('en-GB')}</td>
+            <td class="delete-cell">
+                <button class="delete-btn" title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑</button>
+            </td>
         </tr>
     `;
     }).join('');
+}
+
+async function deletePhraseRow(id) {
+    const phrase = allPhrases.find(p => p.id === id);
+    const preview = phrase ? (phrase.hebrew_text || '').slice(0, 40) : '';
+    if (!confirm(`Delete this phrase?${preview ? `\n"${preview}"` : ''}`)) return;
+
+    try {
+        const res = await fetch(`/phrases/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Failed to delete phrase');
+        await loadTable();
+    } catch (err) {
+        alert('Failed to delete phrase');
+    }
 }
 
 async function updateSubtag(id, subtagId) {
