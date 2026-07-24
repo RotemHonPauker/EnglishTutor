@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { getNextUncategorized, updatePhrase, getTags } from '../database.js';
+import { getNextUncategorized, updatePhraseApproval } from '../database.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const botPromptPath = join(__dirname, '..', 'bot', 'botPrompt.txt');
@@ -12,19 +12,20 @@ export const handleToolCall = async (toolName, toolInput) => {
     if (toolName === 'fetch_next_uncategorized') {
         currentPhrase = await getNextUncategorized();
         if (!currentPhrase) return 'No more uncategorized phrases.';
-        
-        // Also fetch available tags so Claude can suggest one
-        const tags = await getTags();
-        return JSON.stringify({ phrase: currentPhrase, availableTags: tags });
+        // Only pass along what the chat should ever see/discuss — never the
+        // raw row, which also contains subtag_id, status, id, and dates.
+        return JSON.stringify({
+            hebrewText: currentPhrase.hebrew_text,
+            variant1: currentPhrase.variant_1,
+            variant2: currentPhrase.variant_2
+        });
     }
 
     if (toolName === 'save_approved') {
-        await updatePhrase({
+        await updatePhraseApproval({
             id: currentPhrase.id,
             variant1: toolInput.variant1,
-            variant2: toolInput.variant2,
-            subtagId: toolInput.subtagId,
-            status: 'approved'
+            variant2: toolInput.variant2
         });
         currentPhrase = null;
         return 'Saved successfully.';

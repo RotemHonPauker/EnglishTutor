@@ -38,7 +38,7 @@
         <div id="table-toolbar">
             <span>Filter:</span>
             <button class="active" onclick="filterTable('all', this)">All</button>
-            <button onclick="filterTable('uncategorized', this)">Uncategorized</button>
+            <button onclick="filterTable('uncategorized', this)">Not approved</button>
             <button onclick="filterTable('approved', this)">Approved</button>
         </div>
         <div id="table-wrapper">
@@ -48,7 +48,8 @@
                         <th>Hebrew</th>
                         <th>Variant 1</th>
                         <th>Variant 2</th>
-                        <th>Tag</th>
+                        <th>Main tag</th>
+                        <th>Subtag</th>
                         <th>Status</th>
                         <th class="sortable" onclick="toggleSort()">Date ↓</th>
                     </tr>

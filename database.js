@@ -39,6 +39,40 @@ export const updatePhrase = async ({ id, variant1, variant2, subtagId, status })
     );
 };
 
+// Chat-driven approval: sets the final variant wording and marks the phrase
+// approved, but never touches subtag_id — tagging stays entirely table-driven,
+// whether it happens before or after this approval.
+export const updatePhraseApproval = async ({ id, variant1, variant2 }) => {
+    const result = await pool.query(
+        `UPDATE phrases 
+         SET variant_1 = $1, variant_2 = $2, status = 'approved', approved_at = NOW()
+         WHERE id = $3 RETURNING *`,
+        [variant1, variant2, id]
+    );
+    return result.rows[0];
+};
+
+// Table-driven edits: each touches exactly one column, so picking a tag can
+// never accidentally overwrite the status (or vice versa), and neither ever
+// touches variant_1 / variant_2.
+export const updatePhraseSubtag = async ({ id, subtagId }) => {
+    const result = await pool.query(
+        `UPDATE phrases SET subtag_id = $1 WHERE id = $2 RETURNING *`,
+        [subtagId || null, id]
+    );
+    return result.rows[0];
+};
+
+export const updatePhraseStatus = async ({ id, status }) => {
+    const result = await pool.query(
+        `UPDATE phrases 
+         SET status = $1, approved_at = $2
+         WHERE id = $3 RETURNING *`,
+        [status, status === 'approved' ? new Date() : null, id]
+    );
+    return result.rows[0];
+};
+
 export const getPhrases = async (status = null) => {
     const query = status
         ? `SELECT p.*, t.name as subtag_name, pt.name as tag_name, pt.color as tag_color

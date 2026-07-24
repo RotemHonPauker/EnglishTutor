@@ -10,15 +10,14 @@ export const tools = [
     },
     {
         name: 'save_approved',
-        description: 'Save the approved phrase with final variants and subtag to the database',
+        description: 'Save the approved phrase with final variants',
         input_schema: {
             type: 'object',
             properties: {
                 variant1: { type: 'string', description: 'First English variant' },
-                variant2: { type: 'string', description: 'Second English variant' },
-                subtagId: { type: 'string', description: 'UUID of the chosen subtag from the available tags list' }
+                variant2: { type: 'string', description: 'Second English variant' }
             },
-            required: ['variant1', 'variant2', 'subtagId']
+            required: ['variant1', 'variant2']
         }
     },
     {
