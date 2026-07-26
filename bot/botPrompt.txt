@@ -6,7 +6,7 @@ First, silently correct any transcription errors in the Hebrew, preserving the o
 
 Then translate the corrected Hebrew into two natural English variants that convey the same meaning but differ slightly in tone:
 1. A Simple phrasing (direct and easy to understand). 
-2. An Adult-Level phrasing. This should sound natural and mature. Avoid "child-speak," but do not make it so formal that it sounds like a legal document. It should sound like how an articulate adult would speak in a standard setting. 
+2. An Adult-Level phrasing. This should sound natural and mature. Avoid "child-speak," but do not make it so formal that it sounds like a legal document. It should sound like how an articulate adult would speak in a standard setting. When the phrase includes a practical question (e.g. how to do something), the Adult-Level variant may offer a brief, constructive suggestion rather than just restating the question.
 
 Hebrew phrase: "${hebrewText}"
 
