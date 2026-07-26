@@ -42,15 +42,25 @@ EnglishTutor/
 │   ├── public/
 │   |   ├── styles/
 │   |   ├── app.js
-│   |   └── index.html
+│   |   ├── chat.js
+│   |   ├── colorUtils.js
+│   |   ├── index.html
+│   |   ├── phrasesTable.js
+│   |   ├── phrasesTagFilter.js
+│   |   ├── phrasesTagPicker.js
+│   |   ├── tagsMerge.js
+│   |   ├── tagsSidebar.js
+│   |   └── tagsState.js
 │   ├── routes/
+│   |   ├── botPrompt.route.js
 │   |   ├── chat.route.js
 │   |   ├── phrases.route.js
 │   |   ├── systemPrompt.route.js
 │   |   └── tags.route.js
-│   ├── reviewChat.js
+│   ├── chatEngine.js
 │   ├── server.js
 │   ├── systemPrompt.js
+│   ├── systemPrompt.txt
 │   ├── toolHandler.js
 │   └── tools.js
 ├── .env

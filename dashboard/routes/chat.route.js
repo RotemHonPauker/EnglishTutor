@@ -1,5 +1,5 @@
 import express from 'express';
-import { handleReviewMessage } from '../reviewChat.js';
+import { handleReviewMessage } from '../chatEngine.js';
 import {
     getPendingBotPromptProposal, clearPendingBotPromptProposal,
     getPendingSystemPromptProposal, clearPendingSystemPromptProposal
