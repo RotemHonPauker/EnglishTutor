@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { execSync } from 'child_process';
-import { clearPendingTranslationPromptProposal } from '../toolHandler.js';
+import { clearPendingTranslationPromptProposal } from '../editor/toolHandler.js';
 
 const router = express.Router();
 const __dirname = dirname(fileURLToPath(import.meta.url));

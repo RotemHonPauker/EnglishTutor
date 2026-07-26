@@ -1,10 +1,10 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { getPhraseById, updatePhraseApproval } from '../database.js';
+import { getPhraseById, updatePhraseApproval } from '../../database.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const translationPromptPath = join(__dirname, 'translation', 'translationPrompt.txt');
+const translationPromptPath = join(__dirname, '..', 'translation', 'translationPrompt.txt');
 const editorPromptPath = join(__dirname, 'editorPrompt.txt');
 
 let currentPhrase = null;

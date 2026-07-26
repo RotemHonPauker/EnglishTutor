@@ -1,9 +1,9 @@
 import express from 'express';
-import { handleReviewMessage } from '../editorEngine.js';
+import { handleReviewMessage } from '../editor/editorEngine.js';
 import {
     getPendingTranslationPromptProposal, clearPendingTranslationPromptProposal,
     getPendingEditorPromptProposal, clearPendingEditorPromptProposal
-} from '../toolHandler.js';
+} from '../editor/toolHandler.js';
 
 const router = express.Router();
 let conversationHistory = [];

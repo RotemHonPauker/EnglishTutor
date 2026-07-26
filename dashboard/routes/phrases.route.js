@@ -1,6 +1,6 @@
 import express from 'express';
 import { getPhrases, saveSentence, updatePhraseSubtag, updatePhraseStatus, deletePhrase } from '../../database.js';
-import { translatePhrase } from '../translatePhrase.js';
+import { translatePhrase } from '../translation/translationEngine.js';
 
 const router = express.Router();
 

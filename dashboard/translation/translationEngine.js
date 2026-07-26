@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { translationPrompt } from './translation/translationPrompt.js';
-import { parseTranslationResponse } from './translation/parseTranslationResponse.js';
+import { translationPrompt } from './translationPrompt.js';
+import { parseTranslationResponse } from './parseTranslationResponse.js';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 

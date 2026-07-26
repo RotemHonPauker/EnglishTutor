@@ -3,11 +3,11 @@ import { readFileSync, writeFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { execSync } from 'child_process';
-import { clearPendingEditorPromptProposal } from '../toolHandler.js';
+import { clearPendingEditorPromptProposal } from '../editor/toolHandler.js';
 
 const router = express.Router();
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const editorPromptPath = join(__dirname, '..', 'editorPrompt.txt');
+const editorPromptPath = join(__dirname, '..', 'editor', 'editorPrompt.txt');
 
 router.get('/editor-prompt', (req, res) => {
     const content = readFileSync(editorPromptPath, 'utf-8');
@@ -19,7 +19,7 @@ router.post('/editor-prompt', (req, res) => {
     try {
         writeFileSync(editorPromptPath, content, 'utf-8');
         execSync(
-            'git add dashboard/editorPrompt.txt && git commit -m "update editor prompt from review session" && git push',
+            'git add dashboard/editor/editorPrompt.txt && git commit -m "update editor prompt from review session" && git push',
             { cwd: join(__dirname, '..', '..') }
         );
         clearPendingEditorPromptProposal();

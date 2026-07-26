@@ -53,7 +53,7 @@ export const tools = [
     },
     {
         name: 'fetch_editor_prompt',
-        description: 'Read-only: fetch the current content of dashboard/editorPrompt.txt (this editor\'s own instructions), so any suggested wording change is based on the actual current text rather than a guess. Only call this after the user explicitly asked to edit the editor prompt (an "EDIT_EDITOR_PROMPT" message). This tool cannot write or commit — it only returns the current content for reference.',
+        description: 'Read-only: fetch the current content of dashboard/editor/editorPrompt.txt (this editor\'s own instructions), so any suggested wording change is based on the actual current text rather than a guess. Only call this after the user explicitly asked to edit the editor prompt (an "EDIT_EDITOR_PROMPT" message). This tool cannot write or commit — it only returns the current content for reference.',
         input_schema: {
             type: 'object',
             properties: {},
@@ -62,11 +62,11 @@ export const tools = [
     },
     {
         name: 'propose_editor_prompt_update',
-        description: 'Propose a replacement for dashboard/editorPrompt.txt. Always call fetch_editor_prompt first. Pass the FULL new file content (not a diff, not just the changed lines) — the user will see a compact diff against the current version in the UI and can approve (commit) or discard it themselves. This tool never writes or commits anything by itself. Keep the change as minimal as possible relative to the current content — only touch the wording that actually needs to change.',
+        description: 'Propose a replacement for dashboard/editor/editorPrompt.txt. Always call fetch_editor_prompt first. Pass the FULL new file content (not a diff, not just the changed lines) — the user will see a compact diff against the current version in the UI and can approve (commit) or discard it themselves. This tool never writes or commits anything by itself. Keep the change as minimal as possible relative to the current content — only touch the wording that actually needs to change.',
         input_schema: {
             type: 'object',
             properties: {
-                newContent: { type: 'string', description: 'The full proposed new content of dashboard/editorPrompt.txt' }
+                newContent: { type: 'string', description: 'The full proposed new content of dashboard/editor/editorPrompt.txt' }
             },
             required: ['newContent']
         }
