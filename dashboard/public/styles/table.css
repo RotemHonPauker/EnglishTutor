@@ -36,6 +36,36 @@
     margin-left: auto;
 }
 
+.active-filters-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 24px 10px;
+}
+
+.active-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    padding: 3px 6px 3px 10px;
+    border-radius: 12px;
+}
+
+.active-filter-chip button {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: 0.75rem;
+    padding: 0 2px;
+    opacity: 0.8;
+}
+
+.active-filter-chip button:hover {
+    opacity: 1;
+}
+
 #table-wrapper {
     overflow-y: auto;
     flex: 1;

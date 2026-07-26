@@ -94,7 +94,8 @@
 }
 
 #delete-modal-overlay,
-#tag-picker-modal-overlay {
+#tag-picker-modal-overlay,
+#tag-filter-modal-overlay {
     position: fixed;
     inset: 0;
     background: rgba(0,0,0,0.7);
@@ -117,9 +118,21 @@
     gap: 16px;
 }
 
-#tag-picker-modal {
+#tag-picker-modal,
+#tag-filter-modal {
     max-height: 80vh;
     overflow-y: auto;
+}
+
+.tag-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+}
+
+.tag-filter-group:last-child {
+    margin-bottom: 0;
 }
 
 #delete-modal-text {

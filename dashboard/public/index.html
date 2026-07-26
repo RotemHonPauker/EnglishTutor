@@ -105,8 +105,10 @@
                     <button class="active" onclick="filterTable('all', this)">All</button>
                     <button onclick="filterTable('uncategorized', this)">Unapproved</button>
                     <button onclick="filterTable('approved', this)">Approved</button>
+                    <button onclick="openTagFilterModal()">Tags</button>
                     <button id="sort-btn" onclick="toggleSort()">Date ↓</button>
                 </div>
+                <div id="active-tag-filters" class="active-filters-row" style="display:none"></div>
                 <div id="table-wrapper">
                     <div id="table-body" class="phrase-cards"></div>
                 </div>
@@ -155,6 +157,21 @@
     </button>
 </nav>
 
+
+<!-- TAG FILTER MODAL -->
+<div id="tag-filter-modal-overlay" style="display:none">
+    <div id="tag-filter-modal" class="confirm-modal">
+        <div class="modal-header">
+            <span>Filter by tag</span>
+            <button onclick="closeTagFilterModal()">✕</button>
+        </div>
+        <div id="tag-filter-groups"></div>
+        <div class="modal-footer">
+            <button onclick="clearTagFilter()">Clear</button>
+            <button class="primary" onclick="applyTagFilter()">Apply</button>
+        </div>
+    </div>
+</div>
 
 <!-- TAG PICKER MODAL -->
 <div id="tag-picker-modal-overlay" style="display:none">
