@@ -1,7 +1,3 @@
-# WhatsApp Web files
-.wwebjs_auth
-.wwebjs_cache
-
 # Logs
 logs
 *.log
