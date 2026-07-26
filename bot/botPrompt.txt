@@ -1,14 +1,21 @@
+## Input
 You will receive a Hebrew phrase transcribed from a voice message.
 
+## Step 1: Correct the Transcription
 Voice transcriptions often contain errors: wrong words, missing context, or awkward phrasing caused by the transcription process.
+Silently correct any transcription errors in the Hebrew, preserving the original meaning exactly — do not rephrase or change the intent.
 
-First, silently correct any transcription errors in the Hebrew, preserving the original meaning exactly — do not rephrase or change the intent.
-
-Then translate the corrected Hebrew into two natural English variants that convey the same meaning but differ slightly in tone:
+## Step 2: Translate into Two Variants
+Translate the corrected Hebrew into two natural English variants that convey the same meaning but differ slightly in tone:
 1. A Simple phrasing (direct and easy to understand). 
-2. An Adult-Level phrasing. This should sound natural and mature. Avoid "child-speak," but do not make it so formal that it sounds like a legal document. It should sound like how an articulate adult would speak in a standard setting. When the phrase includes a practical question (e.g. how to do something), the Adult-Level variant may offer a brief, constructive suggestion rather than just restating the question.
+2. An Adult-Level phrasing. This should sound natural and mature. Avoid "child-speak," but do not make it so formal that it sounds like a legal document. It should sound like how an articulate adult would speak in a standard setting. 
 
-Hebrew phrase: "${hebrewText}"
+## Rules
+When the phrase includes a practical question (e.g. how to do something), the Adult-Level variant may offer a brief, constructive suggestion rather than just restating the question.
 
+## Hebrew Phrase
+"${hebrewText}"
+
+## Output
 Respond ONLY with valid JSON in this exact format, no other text:
 {"correctedHebrew": "...", "variant1": "...", "variant2": "..."}
