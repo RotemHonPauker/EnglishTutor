@@ -17,6 +17,15 @@ async function loadTable() {
 
 const DEFAULT_TAG_COLOR = '#ccc';
 
+function getContrastColor(hex) {
+    if (!hex) return '#ccc';
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.5 ? '#1a1a1a' : '#ffffff';
+}
+
 function getTagColor(tagId) {
     if (!tagId) return null;
     const tag = tags.find(t => t.id === tagId);
@@ -26,12 +35,12 @@ function getTagColor(tagId) {
 function buildMainTagSelect(phrase, currentMainId) {
     const mainTags = tags.filter(t => !t.parent_id);
     const opts = mainTags.map(mt => `
-        <option value="${mt.id}" ${mt.id === currentMainId ? 'selected' : ''} style="color:${mt.color || DEFAULT_TAG_COLOR}">${mt.name}</option>
+        <option value="${mt.id}" ${mt.id === currentMainId ? 'selected' : ''}>${mt.name}</option>
     `).join('');
-    const color = getTagColor(currentMainId) || DEFAULT_TAG_COLOR;
-
+    const color = getTagColor(currentMainId);
+    const style = color ? `background-color:${color}; color:${getContrastColor(color)}; border-color:${color};` : '';
     return `
-        <select class="tag-select main-tag-select" style="color:${color}" onchange="onMainTagChange('${phrase.id}', this)">
+        <select class="tag-select main-tag-select" style="${style}" onchange="onMainTagChange('${phrase.id}', this)">
             <option value="">—</option>
             ${opts}
         </select>
@@ -47,10 +56,10 @@ function subtagOptionsHtml(mainId, selectedSubtagId) {
 }
 
 function buildSubtagSelect(phrase, currentMainId) {
-    // Subtags inherit their parent main tag's color rather than having their own.
-    const color = getTagColor(currentMainId) || DEFAULT_TAG_COLOR;
+    const color = getTagColor(currentMainId);
+    const style = color ? `background:${color}; color:${getContrastColor(color)}; border-color:${color};` : '';
     return `
-        <select class="tag-select subtag-select" style="color:${color}" onchange="updateSubtag('${phrase.id}', this.value)" onblur="resetTagSelectsIfEmpty('${phrase.id}', this)" ${!currentMainId ? 'disabled' : ''}>
+        <select class="tag-select subtag-select" style="${style}" onchange="updateSubtag('${phrase.id}', this.value)" onblur="resetTagSelectsIfEmpty('${phrase.id}', this)" ${!currentMainId ? 'disabled' : ''}>
             <option value="">—</option>
             ${subtagOptionsHtml(currentMainId, phrase.subtag_id)}
         </select>
@@ -80,18 +89,29 @@ function onMainTagChange(phraseId, mainSelectEl) {
     const mainId = mainSelectEl.value;
     const row = mainSelectEl.closest('tr');
     const subtagSelect = row.querySelector('.subtag-select');
-    const color = getTagColor(mainId) || DEFAULT_TAG_COLOR;
+    const color = getTagColor(mainId);
 
-    mainSelectEl.style.color = color;
+    if (color) {
+        const contrast = getContrastColor(color);
+        [mainSelectEl, subtagSelect].forEach(el => {
+            el.style.backgroundColor = color;
+            el.style.color = contrast;
+            el.style.borderColor = color;
+        });
+    } else {
+        [mainSelectEl, subtagSelect].forEach(el => {
+            el.style.backgroundColor = '';
+            el.style.color = '';
+            el.style.borderColor = '';
+        });
+    }
+
     subtagSelect.innerHTML = `<option value="">—</option>${subtagOptionsHtml(mainId, null)}`;
-    subtagSelect.style.color = color;
     subtagSelect.disabled = !mainId;
 
     if (mainId) {
         subtagSelect.focus();
-        if (typeof subtagSelect.showPicker === 'function') {
-            subtagSelect.showPicker();
-        }
+        if (typeof subtagSelect.showPicker === 'function') subtagSelect.showPicker();
     }
 }
 
