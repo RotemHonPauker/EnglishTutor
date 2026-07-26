@@ -8,7 +8,7 @@ import { editorRouter } from  './routes/editor.route.js';
 import { phrasesRouter } from './routes/phrases.route.js';
 import { tagsRouter } from './routes/tags.route.js';
 import { editorPromptRouter } from './routes/editorPrompt.route.js';
-import botPromptRouter from './routes/botPrompt.route.js';
+import translationPromptRouter from './routes/translationPrompt.route.js';
 
 const app = express();
 const PORT = 3000;
@@ -20,7 +20,7 @@ app.use(editorRouter);
 app.use(phrasesRouter);
 app.use(tagsRouter);
 app.use(editorPromptRouter);
-app.use(botPromptRouter);
+app.use(translationPromptRouter);
 
 app.listen(PORT, async () => {
     await connectDB();

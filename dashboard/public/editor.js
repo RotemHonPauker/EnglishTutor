@@ -85,11 +85,11 @@ function renderDiffHtml(parts) {
 // --- PROMPT PROPOSAL ---
 
 const PROMPT_KIND_CONFIG = {
-    bot: {
-        label: 'Suggested bot prompt change',
-        saveEndpoint: '/bot-prompt',
-        discardEndpoint: '/bot-prompt/discard',
-        failMessage: 'Failed to save bot prompt.'
+    translation: {
+        label: 'Suggested translation prompt change',
+        saveEndpoint: '/translation-prompt',
+        discardEndpoint: '/translation-prompt/discard',
+        failMessage: 'Failed to save translation prompt.'
     },
     editor: {
         label: 'Suggested editor prompt change',
@@ -102,7 +102,7 @@ const PROMPT_KIND_CONFIG = {
 function addPromptProposal(kind, proposal) {
     const config = PROMPT_KIND_CONFIG[kind];
     const div = document.createElement('div');
-    div.className = 'message assistant bot-prompt-proposal';
+    div.className = 'message assistant translation-prompt-proposal';
 
     const label = document.createElement('div');
     label.className = 'proposal-label';
@@ -166,7 +166,7 @@ function addPromptProposal(kind, proposal) {
 // the reply.
 function handleEditorReply(data) {
     addMessage('assistant', data.reply);
-    if (data.botPromptProposal) addPromptProposal('bot', data.botPromptProposal);
+    if (data.translationPromptProposal) addPromptProposal('translation', data.translationPromptProposal);
     if (data.editorPromptProposal) addPromptProposal('editor', data.editorPromptProposal);
 }
 
@@ -252,16 +252,16 @@ function showEditorHome() {
     editPhraseBtn.textContent = 'Edit a phrase';
     editPhraseBtn.onclick = () => showView('table');
 
-    const editBotBtn = document.createElement('button');
-    editBotBtn.textContent = 'Edit bot prompt';
-    editBotBtn.onclick = () => startPromptEditFlow('EDIT_BOT_PROMPT', 'Edit bot prompt');
+    const editTranslationBtn = document.createElement('button');
+    editTranslationBtn.textContent = 'Edit translation prompt';
+    editTranslationBtn.onclick = () => startPromptEditFlow('EDIT_TRANSLATION_PROMPT', 'Edit translation prompt');
 
     const editEditorPromptBtn = document.createElement('button');
     editEditorPromptBtn.textContent = 'Edit editor prompt';
     editEditorPromptBtn.onclick = () => startPromptEditFlow('EDIT_EDITOR_PROMPT', 'Edit editor prompt');
 
     actions.appendChild(editPhraseBtn);
-    actions.appendChild(editBotBtn);
+    actions.appendChild(editTranslationBtn);
     actions.appendChild(editEditorPromptBtn);
 
     div.appendChild(text);

@@ -4,15 +4,15 @@ import { dirname, join } from 'path';
 import { getPhraseById, updatePhraseApproval } from '../database.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const botPromptPath = join(__dirname, 'translation', 'translationPrompt.txt');
+const translationPromptPath = join(__dirname, 'translation', 'translationPrompt.txt');
 const editorPromptPath = join(__dirname, 'editorPrompt.txt');
 
 let currentPhrase = null;
-let pendingBotPromptProposal = null;
+let pendingTranslationPromptProposal = null;
 let pendingEditorPromptProposal = null;
 
-export const getPendingBotPromptProposal = () => pendingBotPromptProposal;
-export const clearPendingBotPromptProposal = () => { pendingBotPromptProposal = null; };
+export const getPendingTranslationPromptProposal = () => pendingTranslationPromptProposal;
+export const clearPendingTranslationPromptProposal = () => { pendingTranslationPromptProposal = null; };
 
 export const getPendingEditorPromptProposal = () => pendingEditorPromptProposal;
 export const clearPendingEditorPromptProposal = () => { pendingEditorPromptProposal = null; };
@@ -47,19 +47,19 @@ export const handleToolCall = async (toolName, toolInput) => {
 
     // Read-only: lets Claude see the current translation prompt so it can
     // propose an accurate edit. The matching write/commit only ever happens
-    // through propose_bot_prompt_update below plus the user's explicit approval
+    // through propose_translation_prompt_update below plus the user's explicit approval
     // in the dashboard — never directly from this tool.
-    if (toolName === 'fetch_bot_prompt') {
-        const currentContent = readFileSync(botPromptPath, 'utf-8');
+    if (toolName === 'fetch_translation_prompt') {
+        const currentContent = readFileSync(translationPromptPath, 'utf-8');
         return currentContent;
     }
 
-    // Records a proposed replacement for the bot prompt. Never writes to disk
-    // and never commits — it just stakes out the old/new pair so the frontend
+    // Records a proposed replacement for the translation prompt. Never writes to
+    // disk and never commits — it just stakes out the old/new pair so the frontend
     // can render a diff and let the user approve or discard it explicitly.
-    if (toolName === 'propose_bot_prompt_update') {
-        const oldContent = readFileSync(botPromptPath, 'utf-8');
-        pendingBotPromptProposal = { oldContent, newContent: toolInput.newContent };
+    if (toolName === 'propose_translation_prompt_update') {
+        const oldContent = readFileSync(translationPromptPath, 'utf-8');
+        pendingTranslationPromptProposal = { oldContent, newContent: toolInput.newContent };
         return 'Proposal recorded and will be shown to the user as a diff. Do not repeat the wording in your text reply — just briefly say the draft is ready for review.';
     }
 
@@ -71,7 +71,7 @@ export const handleToolCall = async (toolName, toolInput) => {
         return currentContent;
     }
 
-    // Same pattern as propose_bot_prompt_update: stakes out an old/new pair for
+    // Same pattern as propose_translation_prompt_update: stakes out an old/new pair for
     // the dashboard to diff and the user to approve or discard — never writes
     // or commits by itself.
     if (toolName === 'propose_editor_prompt_update') {

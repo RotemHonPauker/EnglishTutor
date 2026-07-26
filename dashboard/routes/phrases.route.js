@@ -15,8 +15,7 @@ router.get('/phrases', async (req, res) => {
     }
 });
 
-// New-phrase capture: takes raw Hebrew, translates it the same way the old
-// WhatsApp bot did (corrects transcription, produces two English variants),
+// New-phrase capture: takes raw Hebrew, corrects transcription, produces two English variants,
 // and saves it immediately as uncategorized — no confirmation step, by design.
 router.post('/phrases', async (req, res) => {
     const { hebrewText } = req.body;

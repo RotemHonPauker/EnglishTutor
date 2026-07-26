@@ -4,8 +4,6 @@ import { parseTranslationResponse } from './translation/parseTranslationResponse
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// Same prompt template and parsing the old bot used — reused, not duplicated,
-// so a wording edit made through the "Edit bot prompt" editor flow applies here too.
 export const translatePhrase = async (hebrewText) => {
     const response = await anthropic.messages.create({
         model: 'claude-sonnet-4-6',

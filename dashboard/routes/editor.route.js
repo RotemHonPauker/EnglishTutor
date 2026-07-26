@@ -1,7 +1,7 @@
 import express from 'express';
 import { handleReviewMessage } from '../editorEngine.js';
 import {
-    getPendingBotPromptProposal, clearPendingBotPromptProposal,
+    getPendingTranslationPromptProposal, clearPendingTranslationPromptProposal,
     getPendingEditorPromptProposal, clearPendingEditorPromptProposal
 } from '../toolHandler.js';
 
@@ -15,11 +15,11 @@ router.post('/editor', async (req, res) => {
         conversationHistory = history;
         // Sent to the client at most once per proposal — cleared right after
         // so it doesn't resurface on later, unrelated turns.
-        const botPromptProposal = getPendingBotPromptProposal();
-        if (botPromptProposal) clearPendingBotPromptProposal();
+        const translationPromptProposal = getPendingTranslationPromptProposal();
+        if (translationPromptProposal) clearPendingTranslationPromptProposal();
         const editorPromptProposal = getPendingEditorPromptProposal();
         if (editorPromptProposal) clearPendingEditorPromptProposal();
-        res.json({ reply, botPromptProposal, editorPromptProposal });
+        res.json({ reply, translationPromptProposal, editorPromptProposal });
     } catch (err) {
         console.error('Review editor error:', err);
         res.status(500).json({ error: 'Something went wrong' });
@@ -28,7 +28,7 @@ router.post('/editor', async (req, res) => {
 
 router.get('/reset', (req, res) => {
     conversationHistory = [];
-    clearPendingBotPromptProposal();
+    clearPendingTranslationPromptProposal();
     clearPendingEditorPromptProposal();
     res.json({ ok: true });
 });
