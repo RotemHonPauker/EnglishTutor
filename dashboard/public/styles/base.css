@@ -41,3 +41,11 @@ button.active {
     color: white;
     border-color: #2563eb;
 }
+
+button.danger {
+    background: #dc2626;
+    color: white;
+    border-color: #dc2626;
+}
+
+button.danger:hover { background: #b91c1c; }

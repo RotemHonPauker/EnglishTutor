@@ -222,18 +222,6 @@
     font-size: 1rem;
 }
 
-#sidebar-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.4);
-    z-index: 49;
-}
-
-#sidebar-overlay.open {
-    display: block;
-}
-
 .subtag-list.collapsed {
     display: none;
 }

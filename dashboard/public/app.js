@@ -32,89 +32,6 @@ function getTagColor(tagId) {
     return (tag && tag.color) || null;
 }
 
-function buildMainTagSelect(phrase, currentMainId) {
-    const mainTags = tags.filter(t => !t.parent_id);
-    const opts = mainTags.map(mt => `
-        <option value="${mt.id}" ${mt.id === currentMainId ? 'selected' : ''}>${mt.name}</option>
-    `).join('');
-    const color = getTagColor(currentMainId);
-    const style = color ? `background-color:${color}; color:${getContrastColor(color)}; border-color:${color};` : '';
-    return `
-        <select class="tag-select main-tag-select" style="${style}" onchange="onMainTagChange('${phrase.id}', this)">
-            <option value="">—</option>
-            ${opts}
-        </select>
-    `;
-}
-
-function subtagOptionsHtml(mainId, selectedSubtagId) {
-    if (!mainId) return '';
-    const color = getTagColor(mainId) || DEFAULT_TAG_COLOR;
-    return tags.filter(t => t.parent_id === mainId).map(s => `
-        <option value="${s.id}" ${s.id === selectedSubtagId ? 'selected' : ''} style="color:${color}">${s.name}</option>
-    `).join('');
-}
-
-function buildSubtagSelect(phrase, currentMainId) {
-    const color = getTagColor(currentMainId);
-    const style = color ? `background:${color}; color:${getContrastColor(color)}; border-color:${color};` : '';
-    return `
-        <select class="tag-select subtag-select" style="${style}" onchange="updateSubtag('${phrase.id}', this.value)" onblur="resetTagSelectsIfEmpty('${phrase.id}', this)" ${!currentMainId ? 'disabled' : ''}>
-            <option value="">—</option>
-            ${subtagOptionsHtml(currentMainId, phrase.subtag_id)}
-        </select>
-    `;
-}
-
-// If the user opened the subtag picker (after choosing a main tag) and then
-// clicked/tabbed away without actually picking one, snap both dropdowns back
-// to what's really saved — so an abandoned selection can never look like a
-// committed main-tag-only state.
-function resetTagSelectsIfEmpty(phraseId, subtagSelectEl) {
-    if (subtagSelectEl.value !== '') return; // a real choice was made — updateSubtag already handled it
-    const phrase = allPhrases.find(p => p.id === phraseId);
-    if (!phrase) return;
-    const subtag = tags.find(t => t.id === phrase.subtag_id);
-    const currentMainId = subtag ? subtag.parent_id : '';
-    const row = subtagSelectEl.closest('tr');
-    const cells = row.querySelectorAll('td');
-    cells[3].innerHTML = buildMainTagSelect(phrase, currentMainId);
-    cells[4].innerHTML = buildSubtagSelect(phrase, currentMainId);
-}
-
-// Picking a main tag never saves anything by itself — it only repopulates
-// and opens the subtag dropdown. The PATCH only fires from updateSubtag,
-// once an actual subtag is chosen.
-function onMainTagChange(phraseId, mainSelectEl) {
-    const mainId = mainSelectEl.value;
-    const row = mainSelectEl.closest('tr');
-    const subtagSelect = row.querySelector('.subtag-select');
-    const color = getTagColor(mainId);
-
-    if (color) {
-        const contrast = getContrastColor(color);
-        [mainSelectEl, subtagSelect].forEach(el => {
-            el.style.backgroundColor = color;
-            el.style.color = contrast;
-            el.style.borderColor = color;
-        });
-    } else {
-        [mainSelectEl, subtagSelect].forEach(el => {
-            el.style.backgroundColor = '';
-            el.style.color = '';
-            el.style.borderColor = '';
-        });
-    }
-
-    subtagSelect.innerHTML = `<option value="">—</option>${subtagOptionsHtml(mainId, null)}`;
-    subtagSelect.disabled = !mainId;
-
-    if (mainId) {
-        subtagSelect.focus();
-        if (typeof subtagSelect.showPicker === 'function') subtagSelect.showPicker();
-    }
-}
-
 function statusLabel(status) {
     return status === 'approved' ? 'Approved' : 'Unapproved';
 }
@@ -129,34 +46,141 @@ function renderTable() {
     tableBody.innerHTML = sorted.map(p => {
         const subtag = tags.find(t => t.id === p.subtag_id);
         const currentMainId = subtag ? subtag.parent_id : '';
+        const mainColor = getTagColor(currentMainId);
+        const cardTextColor = mainColor ? getContrastColor(mainColor) : null;
+        const cardStyle = mainColor ? `background:${mainColor}; border-color:${mainColor}; color:${cardTextColor};` : '';
+        const badgeStyle = mainColor
+            ? `background:${cardTextColor === '#ffffff' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'}; color:${cardTextColor};`
+            : '';
         return `
-        <tr>
-            <td>${p.hebrew_text || ''}</td>
-            <td>${p.variant_1 || ''}</td>
-            <td>${p.variant_2 || ''}</td>
-            <td>${buildMainTagSelect(p, currentMainId)}</td>
-            <td>${buildSubtagSelect(p, currentMainId)}</td>
-            <td><span class="status-badge ${p.status} clickable" onclick="toggleStatus('${p.id}', '${p.status}')">${statusLabel(p.status)}</span></td>
-            <td>${new Date(p.created_at).toLocaleDateString('en-GB')}</td>
-            <td class="delete-cell">
-                <button class="review-btn" title="Review this phrase" onclick="selectPhraseForReview('${p.id}')">📝</button>
-                <button class="delete-btn" title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑</button>
-            </td>
-        </tr>
+        <div class="phrase-card${mainColor ? ' has-color' : ''}" style="${cardStyle}">
+            <div class="phrase-card-main">
+                <div class="phrase-hebrew">${p.hebrew_text || ''}</div>
+                <div class="phrase-variant">${p.variant_1 || ''}</div>
+                <div class="phrase-variant">${p.variant_2 || ''}</div>
+            </div>
+            <div class="phrase-card-side">
+                <button class="tag-badge" style="${badgeStyle}" onclick="openTagPicker('${p.id}')">${subtag ? subtag.name : '—'}</button>
+                <span class="status-badge ${p.status} clickable" onclick="toggleStatus('${p.id}', '${p.status}')">${statusLabel(p.status)}</span>
+                <span class="phrase-date">${new Date(p.created_at).toLocaleDateString('en-GB')}</span>
+                <div class="phrase-card-icons">
+                    <button title="Review this phrase" onclick="selectPhraseForReview('${p.id}')">📝</button>
+                    <button title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑</button>
+                </div>
+            </div>
+        </div>
     `;
     }).join('');
 }
 
-async function deletePhraseRow(id) {
-    const phrase = allPhrases.find(p => p.id === id);
-    const preview = phrase ? (phrase.hebrew_text || '').slice(0, 40) : '';
-    if (!confirm(`Delete this phrase?${preview ? `\n"${preview}"` : ''}`)) return;
+// --- TAG PICKER MODAL ---
 
+let tagPickerPhraseId = null;
+let tagPickerSelectedMain = null;
+let tagPickerSelectedSub = null;
+
+function openTagPicker(phraseId) {
+    const phrase = allPhrases.find(p => p.id === phraseId);
+    if (!phrase) return;
+    tagPickerPhraseId = phraseId;
+    const subtag = tags.find(t => t.id === phrase.subtag_id);
+    tagPickerSelectedMain = subtag ? subtag.parent_id : null;
+    tagPickerSelectedSub = phrase.subtag_id || null;
+    renderTagPickerMain();
+    renderTagPickerSub();
+    document.getElementById('tag-picker-modal-overlay').style.display = 'flex';
+}
+
+function closeTagPicker() {
+    tagPickerPhraseId = null;
+    tagPickerSelectedMain = null;
+    tagPickerSelectedSub = null;
+    document.getElementById('tag-picker-modal-overlay').style.display = 'none';
+}
+
+function renderTagPickerMain() {
+    const mainTags = tags.filter(t => !t.parent_id);
+    const noneChip = `<div class="tag-chip none ${!tagPickerSelectedMain ? 'selected' : ''}" onclick="selectPickerMain(null)">—</div>`;
+    const chips = mainTags.map(mt => {
+        const contrast = getContrastColor(mt.color);
+        const selected = tagPickerSelectedMain === mt.id;
+        return `<div class="tag-chip ${selected ? 'selected' : ''}" style="background:${mt.color || '#333'}; color:${contrast}" onclick="selectPickerMain('${mt.id}')">${mt.name}</div>`;
+    }).join('');
+    document.getElementById('tag-picker-main-list').innerHTML = noneChip + chips;
+}
+
+function selectPickerMain(mainId) {
+    tagPickerSelectedMain = mainId;
+    tagPickerSelectedSub = null;
+    renderTagPickerMain();
+    renderTagPickerSub();
+}
+
+function renderTagPickerSub() {
+    const section = document.getElementById('tag-picker-sub-section');
+    const container = document.getElementById('tag-picker-sub-list');
+    if (!tagPickerSelectedMain) {
+        section.style.display = 'none';
+        container.innerHTML = '';
+        return;
+    }
+    section.style.display = '';
+    const mainTag = tags.find(t => t.id === tagPickerSelectedMain);
+    const color = (mainTag && mainTag.color) || DEFAULT_TAG_COLOR;
+    const contrast = getContrastColor(color);
+    const subtags = tags.filter(t => t.parent_id === tagPickerSelectedMain);
+    container.innerHTML = subtags.map(s => {
+        const selected = tagPickerSelectedSub === s.id;
+        return `<div class="tag-chip ${selected ? 'selected' : ''}" style="background:${color}; color:${contrast}" onclick="selectPickerSub('${s.id}')">${s.name}</div>`;
+    }).join('');
+}
+
+function selectPickerSub(subId) {
+    tagPickerSelectedSub = subId;
+    renderTagPickerSub();
+}
+
+async function confirmTagPick() {
+    if (!tagPickerPhraseId) return;
+    // If a main tag is picked but no subtag yet, there's nothing resolvable
+    // to save — closing here just leaves the phrase's tag untouched rather
+    // than saving a half-made choice.
+    if (tagPickerSelectedMain && !tagPickerSelectedSub) {
+        closeTagPicker();
+        return;
+    }
+    const phraseId = tagPickerPhraseId;
+    const subtagId = tagPickerSelectedSub;
+    closeTagPicker();
+    await updateSubtag(phraseId, subtagId);
+}
+
+let pendingDeleteId = null;
+
+function deletePhraseRow(id) {
+    const phrase = allPhrases.find(p => p.id === id);
+    const preview = phrase ? (phrase.hebrew_text || '').slice(0, 60) : '';
+    pendingDeleteId = id;
+    document.getElementById('delete-modal-text').innerHTML =
+        `Delete this phrase? This can't be undone.${preview ? `<span class="preview">"${preview}"</span>` : ''}`;
+    document.getElementById('delete-modal-overlay').style.display = 'flex';
+}
+
+function closeDeleteModal() {
+    pendingDeleteId = null;
+    document.getElementById('delete-modal-overlay').style.display = 'none';
+}
+
+async function confirmDeletePhrase() {
+    if (!pendingDeleteId) return;
+    const id = pendingDeleteId;
     try {
         const res = await fetch(`/phrases/${id}`, { method: 'DELETE' });
         if (!res.ok) throw new Error('Failed to delete phrase');
+        closeDeleteModal();
         await loadTable();
     } catch (err) {
+        closeDeleteModal();
         alert('Failed to delete phrase');
     }
 }
@@ -199,8 +223,7 @@ function filterTable(status, btn) {
 
 function toggleSort() {
     sortAsc = !sortAsc;
-    const header = document.querySelector('th.sortable');
-    header.textContent = `Date ${sortAsc ? '↑' : '↓'}`;
+    document.getElementById('sort-btn').textContent = `Date ${sortAsc ? '↑' : '↓'}`;
     renderTable();
 }
 
@@ -363,6 +386,8 @@ function addBotPromptProposal(proposal) {
 async function selectPhraseForReview(id) {
     const phrase = allPhrases.find(p => p.id === id);
     if (!phrase) return;
+
+    showView('chat');
 
     // Every selection starts a clean conversation — no leftover context from
     // whatever was reviewed (or left mid-discussion) before, whether or not

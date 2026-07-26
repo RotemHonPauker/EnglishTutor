@@ -12,20 +12,6 @@
     <link rel="stylesheet" href="styles/tags.css">
     <link rel="stylesheet" href="styles/tabs.css">
     <style>
-        .delete-col { width: 56px; }
-        .delete-cell { text-align: center; white-space: nowrap; }
-        .delete-btn, .review-btn {
-            visibility: hidden;
-            border: none;
-            background: none;
-            cursor: pointer;
-            font-size: 14px;
-            opacity: 0.6;
-            padding: 2px 6px;
-        }
-        .delete-btn:hover, .review-btn:hover { opacity: 1; }
-        tbody tr:hover .delete-btn, tbody tr:hover .review-btn { visibility: visible; }
-
         .bot-prompt-proposal {
             background: #1a1a1a;
             border: 1px solid #2a2a2a;
@@ -119,23 +105,10 @@
                     <button class="active" onclick="filterTable('all', this)">All</button>
                     <button onclick="filterTable('uncategorized', this)">Unapproved</button>
                     <button onclick="filterTable('approved', this)">Approved</button>
+                    <button id="sort-btn" onclick="toggleSort()">Date ↓</button>
                 </div>
                 <div id="table-wrapper">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Hebrew</th>
-                                <th>Variant 1</th>
-                                <th>Variant 2</th>
-                                <th>Main tag</th>
-                                <th>Subtag</th>
-                                <th>Status</th>
-                                <th class="sortable" onclick="toggleSort()">Date ↓</th>
-                                <th class="delete-col"></th>
-                            </tr>
-                        </thead>
-                        <tbody id="table-body"></tbody>
-                    </table>
+                    <div id="table-body" class="phrase-cards"></div>
                 </div>
             </div>
         </div>
@@ -182,6 +155,39 @@
     </button>
 </nav>
 
+
+<!-- TAG PICKER MODAL -->
+<div id="tag-picker-modal-overlay" style="display:none">
+    <div id="tag-picker-modal" class="confirm-modal">
+        <div class="modal-header">
+            <span>Choose a tag</span>
+            <button onclick="closeTagPicker()">✕</button>
+        </div>
+        <div class="tag-picker-section">
+            <div class="tag-picker-label">Main tag</div>
+            <div id="tag-picker-main-list" class="tag-picker-chip-list"></div>
+        </div>
+        <div class="tag-picker-section" id="tag-picker-sub-section" style="display:none">
+            <div class="tag-picker-label">Subtag</div>
+            <div id="tag-picker-sub-list" class="tag-picker-chip-list"></div>
+        </div>
+        <div class="modal-footer">
+            <button onclick="closeTagPicker()">Cancel</button>
+            <button class="primary" id="tag-picker-confirm-btn" onclick="confirmTagPick()">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<!-- DELETE CONFIRM MODAL -->
+<div id="delete-modal-overlay" style="display:none">
+    <div id="delete-modal" class="confirm-modal">
+        <div id="delete-modal-text"></div>
+        <div class="modal-footer">
+            <button onclick="closeDeleteModal()">Cancel</button>
+            <button class="primary danger" onclick="confirmDeletePhrase()">Delete</button>
+        </div>
+    </div>
+</div>
 
 <!-- SHARED PROMPT MODAL -->
 <div id="prompt-modal-overlay" style="display:none">

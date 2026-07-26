@@ -32,54 +32,121 @@
     margin-right: 4px;
 }
 
+#sort-btn {
+    margin-left: auto;
+}
+
 #table-wrapper {
     overflow-y: auto;
     flex: 1;
 }
 
-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 1rem;
+.phrase-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
 }
 
-thead {
-    position: sticky;
-    top: 0;
-    background: #1a1a1a;
-    z-index: 1;
+.phrase-card {
+    display: grid;
+    grid-template-columns: 80% 20%;
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 10px;
+    overflow: hidden;
 }
 
-th {
-    padding: 10px 16px;
-    text-align: left;
-    color: #666;
+.phrase-card-main {
+    padding: 10px 12px;
+    border-right: 1px solid #222;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+}
+
+.phrase-hebrew {
+    font-size: 0.9375rem;
+    color: #e8e8e8;
+    line-height: 1.4;
+}
+
+.phrase-variant {
+    font-size: 0.9rem;
+    color: #999;
+    line-height: 1.4;
+}
+
+.phrase-card.has-color .phrase-card-main {
+    border-right-color: rgba(0,0,0,0.15);
+}
+
+.phrase-card.has-color .phrase-hebrew,
+.phrase-card.has-color .phrase-variant,
+.phrase-card.has-color .phrase-date {
+    color: inherit;
+}
+
+.phrase-card.has-color .phrase-variant,
+.phrase-card.has-color .phrase-date {
+    opacity: 0.8;
+}
+
+.phrase-card-side {
+    padding: 8px 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-start;
+    min-width: 0;
+}
+
+.tag-badge {
+    border: none;
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 0.6875rem;
     font-weight: 500;
-    border-bottom: 1px solid #222;
+    background: #2a2a2a;
+    color: #888;
+    cursor: pointer;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-th.sortable {
+.phrase-date {
+    font-size: 0.6875rem;
+    color: #555;
+}
+
+.phrase-card-icons {
+    display: flex;
+    gap: 6px;
+    margin-top: 2px;
+}
+
+.phrase-card-icons button {
+    border: none;
+    background: none;
     cursor: pointer;
-    user-select: none;
+    font-size: 14px;
+    opacity: 0.7;
+    padding: 2px;
 }
 
-th.sortable:hover { color: #aaa; }
-
-td {
-    padding: 10px 16px;
-    border-bottom: 1px solid #1a1a1a;
-    vertical-align: top;
-    line-height: 1.5;
+.phrase-card-icons button:hover {
+    opacity: 1;
 }
-
-tr:hover td { background: #141414; }
 
 .status-badge {
     padding: 2px 8px;
     border-radius: 4px;
     font-size: 0.6875rem;
     font-weight: 500;
+    display: inline-block;
 }
 
 .status-badge.approved {
@@ -99,26 +166,4 @@ tr:hover td { background: #141414; }
 
 .status-badge.clickable:hover {
     filter: brightness(1.3);
-}
-
-.tag-select {
-    appearance: auto;
-    -webkit-appearance: auto;
-    background: #141414;
-    color: #e8e8e8;
-    border: 1px solid #2a2a2a;
-    border-radius: 4px;
-    padding: 3px 6px;
-    font-size: 0.8125rem;
-    max-width: 140px;
-    transition: background 0.15s, color 0.15s;
-}
-
-.tag-select:hover {
-    border-color: #444;
-}
-
-.tag-select option {
-    background: #1a1a1a;
-    color: #e8e8e8;
 }
