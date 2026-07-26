@@ -1,5 +1,6 @@
 import express from 'express';
-import { getPhrases, updatePhraseSubtag, updatePhraseStatus, deletePhrase } from '../../database.js';
+import { getPhrases, saveSentence, updatePhraseSubtag, updatePhraseStatus, deletePhrase } from '../../database.js';
+import { translatePhrase } from '../translatePhrase.js';
 
 const router = express.Router();
 
@@ -11,6 +12,28 @@ router.get('/phrases', async (req, res) => {
     } catch (err) {
         console.error('Error fetching phrases:', err);
         res.status(500).json({ error: 'Failed to fetch phrases' });
+    }
+});
+
+// New-phrase capture: takes raw Hebrew, translates it the same way the old
+// WhatsApp bot did (corrects transcription, produces two English variants),
+// and saves it immediately as uncategorized — no confirmation step, by design.
+router.post('/phrases', async (req, res) => {
+    const { hebrewText } = req.body;
+    if (!hebrewText || !hebrewText.trim()) {
+        return res.status(400).json({ error: 'Hebrew text is required' });
+    }
+    try {
+        const result = await translatePhrase(hebrewText.trim());
+        const phrase = await saveSentence({
+            hebrewText: result.correctedHebrew,
+            variant1: result.variant1,
+            variant2: result.variant2
+        });
+        res.json(phrase);
+    } catch (err) {
+        console.error('Error translating/saving phrase:', err);
+        res.status(500).json({ error: 'Failed to translate phrase' });
     }
 });
 

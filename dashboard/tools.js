@@ -33,7 +33,7 @@ export const tools = [
     },
     {
         name: 'fetch_bot_prompt',
-        description: 'Read-only: fetch the current content of bot/botPrompt.txt (the WhatsApp bot\'s translation prompt), so any suggested wording change is based on the actual current text rather than a guess. This tool cannot write or commit — it only returns the current content for reference.',
+        description: 'Read-only: fetch the current content of dashboard/translation/translationPrompt.txt (the translation prompt used when a new phrase is captured), so any suggested wording change is based on the actual current text rather than a guess. This tool cannot write or commit — it only returns the current content for reference.',
         input_schema: {
             type: 'object',
             properties: {},
@@ -42,11 +42,11 @@ export const tools = [
     },
     {
         name: 'propose_bot_prompt_update',
-        description: 'Propose a replacement for bot/botPrompt.txt. Always call fetch_bot_prompt first. Pass the FULL new file content (not a diff, not just the changed lines) — the user will see a compact diff against the current version in the UI and can approve (commit) or discard it themselves. This tool never writes or commits anything by itself. Keep the change as minimal as possible relative to the current content — only touch the wording that actually needs to change.',
+        description: 'Propose a replacement for dashboard/translation/translationPrompt.txt. Always call fetch_bot_prompt first. Pass the FULL new file content (not a diff, not just the changed lines) — the user will see a compact diff against the current version in the UI and can approve (commit) or discard it themselves. This tool never writes or commits anything by itself. Keep the change as minimal as possible relative to the current content — only touch the wording that actually needs to change.',
         input_schema: {
             type: 'object',
             properties: {
-                newContent: { type: 'string', description: 'The full proposed new content of bot/botPrompt.txt' }
+                newContent: { type: 'string', description: 'The full proposed new content of dashboard/translation/translationPrompt.txt' }
             },
             required: ['newContent']
         }

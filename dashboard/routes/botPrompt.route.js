@@ -7,7 +7,7 @@ import { clearPendingBotPromptProposal } from '../toolHandler.js';
 
 const router = express.Router();
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const botPromptPath = join(__dirname, '..', '..', 'bot', 'botPrompt.txt');
+const botPromptPath = join(__dirname, '..', 'translation', 'translationPrompt.txt');
 
 router.get('/bot-prompt', (req, res) => {
     const content = readFileSync(botPromptPath, 'utf-8');
@@ -19,7 +19,7 @@ router.post('/bot-prompt', (req, res) => {
     try {
         writeFileSync(botPromptPath, content, 'utf-8');
         execSync(
-            'git add bot/botPrompt.txt && git commit -m "update bot prompt from dashboard" && git push',
+            'git add dashboard/translation/translationPrompt.txt && git commit -m "update translation prompt from dashboard" && git push',
             { cwd: join(__dirname, '..', '..') }
         );
         clearPendingBotPromptProposal();

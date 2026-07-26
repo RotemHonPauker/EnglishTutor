@@ -13,11 +13,12 @@ export const connectDB = async () => {
 };
 
 export const saveSentence = async ({ hebrewText, variant1, variant2 }) => {
-    await pool.query(
+    const result = await pool.query(
         `INSERT INTO phrases (hebrew_text, variant_1, variant_2)
-         VALUES ($1, $2, $3)`,
+         VALUES ($1, $2, $3) RETURNING *`,
         [hebrewText, variant1, variant2]
     );
+    return result.rows[0];
 };
 
 export const getPhraseById = async (id) => {

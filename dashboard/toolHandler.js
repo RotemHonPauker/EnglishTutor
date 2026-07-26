@@ -4,7 +4,7 @@ import { dirname, join } from 'path';
 import { getPhraseById, updatePhraseApproval } from '../database.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const botPromptPath = join(__dirname, '..', 'bot', 'botPrompt.txt');
+const botPromptPath = join(__dirname, 'translation', 'translationPrompt.txt');
 const systemPromptPath = join(__dirname, 'systemPrompt.txt');
 
 let currentPhrase = null;
@@ -45,7 +45,7 @@ export const handleToolCall = async (toolName, toolInput) => {
         return 'Skipped.';
     }
 
-    // Read-only: lets Claude see the bot's current translation prompt so it can
+    // Read-only: lets Claude see the current translation prompt so it can
     // propose an accurate edit. The matching write/commit only ever happens
     // through propose_bot_prompt_update below plus the user's explicit approval
     // in the dashboard — never directly from this tool.

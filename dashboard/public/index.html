@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="styles/modal.css">
     <link rel="stylesheet" href="styles/tags.css">
     <link rel="stylesheet" href="styles/tabs.css">
+    <link rel="stylesheet" href="styles/newPhrase.css">
     <style>
         .bot-prompt-proposal {
             background: #1a1a1a;
@@ -125,6 +126,17 @@
         </div>
     </div>
 
+    <!-- NEW PHRASE VIEW -->
+    <div id="view-new" class="view">
+        <div id="new-phrase-section">
+            <div id="new-phrase-log"></div>
+            <div id="new-phrase-input-area">
+                <textarea id="new-phrase-input" rows="1" placeholder="Type a Hebrew phrase..."></textarea>
+                <button class="primary" id="new-phrase-send" onclick="submitNewPhrase()">Send</button>
+            </div>
+        </div>
+    </div>
+
 </main>
 
 <!-- BOTTOM TAB BAR -->
@@ -140,6 +152,10 @@
     <button class="tab-btn" data-view="tags" onclick="showView('tags', this)">
         <span class="tab-icon">🏷</span>
         <span>Tags</span>
+    </button>
+    <button class="tab-btn" data-view="new" onclick="showView('new', this)">
+        <span class="tab-icon">➕</span>
+        <span>New</span>
     </button>
 </nav>
 
@@ -201,6 +217,7 @@
 <script src="phraseTagPicker.js"></script>
 <script src="phraseTagFilter.js"></script>
 <script src="chat.js"></script>
+<script src="newPhrase.js"></script>
 <script src="app.js"></script>
 
 </body>
