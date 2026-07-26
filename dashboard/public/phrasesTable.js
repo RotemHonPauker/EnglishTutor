@@ -11,6 +11,18 @@ async function loadTable() {
     renderTable();
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Coarse age bucket instead of an exact date — the exact date isn't useful
+// at a glance, and sorting still uses the real timestamp underneath, so
+// nothing is lost, only what's displayed changes.
+function getAgeCategory(createdAt) {
+    const ageDays = (Date.now() - new Date(createdAt).getTime()) / DAY_MS;
+    if (ageDays <= 14) return '2 weeks';
+    if (ageDays <= 60) return '2 months';
+    return 'Old';
+}
+
 function renderTable() {
     const sorted = allPhrases
         .filter(phraseMatchesTagFilter)
@@ -19,6 +31,8 @@ function renderTable() {
             const db = new Date(b.created_at);
             return sortAsc ? da - db : db - da;
         });
+
+    document.getElementById('phrase-count').textContent = sorted.length;
 
     tableBody.innerHTML = sorted.map(p => {
         const subtag = tags.find(t => t.id === p.subtag_id);
@@ -39,7 +53,7 @@ function renderTable() {
             <div class="phrase-card-side">
                 <button class="tag-badge" style="${badgeStyle}" onclick="openTagPicker('${p.id}')">${subtag ? subtag.name : '—'}</button>
                 <span class="status-badge ${p.status} clickable" onclick="toggleStatus('${p.id}', '${p.status}')">${statusLabel(p.status)}</span>
-                <span class="phrase-date">${new Date(p.created_at).toLocaleDateString('en-GB')}</span>
+                <span class="phrase-date">${getAgeCategory(p.created_at)}</span>
                 <div class="phrase-card-icons">
                     <button title="Review this phrase" onclick="selectPhraseForReview('${p.id}')">📝</button>
                     <button title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑</button>
