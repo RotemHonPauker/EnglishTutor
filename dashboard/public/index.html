@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="styles/chat.css">
     <link rel="stylesheet" href="styles/modal.css">
     <link rel="stylesheet" href="styles/tags.css">
+    <link rel="stylesheet" href="styles/tabs.css">
     <style>
         .delete-col { width: 56px; }
         .delete-cell { text-align: center; white-space: nowrap; }
@@ -107,53 +108,79 @@
     </div>
 </header>
 
-<div id="table-area">
-    <!-- TAG SIDEBAR -->
-    <div id="tag-sidebar">
-        <div id="sidebar-header">
-            <span>Tags</span>
+<main id="view-container">
+
+    <!-- TABLE VIEW -->
+    <div id="view-table" class="view active">
+        <div id="table-area">
+            <div id="table-section">
+                <div id="table-toolbar">
+                    <span>Filter:</span>
+                    <button class="active" onclick="filterTable('all', this)">All</button>
+                    <button onclick="filterTable('uncategorized', this)">Unapproved</button>
+                    <button onclick="filterTable('approved', this)">Approved</button>
+                </div>
+                <div id="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Hebrew</th>
+                                <th>Variant 1</th>
+                                <th>Variant 2</th>
+                                <th>Main tag</th>
+                                <th>Subtag</th>
+                                <th>Status</th>
+                                <th class="sortable" onclick="toggleSort()">Date ↓</th>
+                                <th class="delete-col"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body"></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-        <div id="tag-list"></div>
-        <button onclick="showAddMainTag()">+ main tag</button>
-        <div id="tag-form"></div>
     </div>
 
-    <!-- PHRASE TABLE -->
-    <div id="table-section">
-        <div id="table-toolbar">
-            <span>Filter:</span>
-            <button class="active" onclick="filterTable('all', this)">All</button>
-            <button onclick="filterTable('uncategorized', this)">Unapproved</button>
-            <button onclick="filterTable('approved', this)">Approved</button>
-        </div>
-        <div id="table-wrapper">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Hebrew</th>
-                        <th>Variant 1</th>
-                        <th>Variant 2</th>
-                        <th>Main tag</th>
-                        <th>Subtag</th>
-                        <th>Status</th>
-                        <th class="sortable" onclick="toggleSort()">Date ↓</th>
-                        <th class="delete-col"></th>
-                    </tr>
-                </thead>
-                <tbody id="table-body"></tbody>
-            </table>
+    <!-- CHAT VIEW -->
+    <div id="view-chat" class="view">
+        <div id="chat-section">
+            <div id="chat"></div>
+            <div id="input-area">
+                <textarea id="input" rows="1" placeholder="Type a message..."></textarea>
+                <button class="primary" id="send" onclick="sendMessage()">Send</button>
+            </div>
         </div>
     </div>
-</div>
 
-<!-- CHAT -->
-<div id="chat-section">
-    <div id="chat"></div>
-    <div id="input-area">
-        <textarea id="input" rows="1" placeholder="Type a message..."></textarea>
-        <button class="primary" id="send" onclick="sendMessage()">Send</button>
+    <!-- TAGS VIEW -->
+    <div id="view-tags" class="view">
+        <div id="tag-sidebar">
+            <div id="sidebar-header">
+                <span>Tags</span>
+            </div>
+            <div id="tag-list"></div>
+            <button onclick="showAddMainTag()">+ main tag</button>
+            <div id="tag-form"></div>
+        </div>
     </div>
-</div>
+
+</main>
+
+<!-- BOTTOM TAB BAR -->
+<nav id="tab-bar">
+    <button class="tab-btn active" data-view="table" onclick="showView('table', this)">
+        <span class="tab-icon">▤</span>
+        <span>Table</span>
+    </button>
+    <button class="tab-btn" data-view="chat" onclick="showView('chat', this)">
+        <span class="tab-icon">💬</span>
+        <span>Chat</span>
+    </button>
+    <button class="tab-btn" data-view="tags" onclick="showView('tags', this)">
+        <span class="tab-icon">🏷</span>
+        <span>Tags</span>
+    </button>
+</nav>
 
 
 <!-- SHARED PROMPT MODAL -->
@@ -168,37 +195,6 @@
         <div id="modal-footer">
             <button id="modal-cancel-btn">Cancel</button>
             <button id="modal-primary-btn" class="primary">Review changes</button>
-        </div>
-    </div>
-</div>
-
-
-<!-- SYSTEM PROMPT MODAL -->
-<div id="system-modal-overlay" style="display:none">
-    <div id="modal">
-        <div id="modal-header">
-            <span>System Prompt</span>
-            <button onclick="closeSystemModal()">✕</button>
-        </div>
-        <textarea id="system-prompt-editor"></textarea>
-        <div id="modal-footer">
-            <button onclick="closeSystemModal()">Cancel</button>
-            <button class="primary" onclick="saveSystemPrompt()">Save & Commit</button>
-        </div>
-    </div>
-</div>
-
-<!-- BOT PROMPT MODAL -->
-<div id="bot-modal-overlay" style="display:none">
-    <div id="modal">
-        <div id="modal-header">
-            <span>Bot Prompt</span>
-            <button onclick="closeBotModal()">✕</button>
-        </div>
-        <textarea id="bot-prompt-editor"></textarea>
-        <div id="modal-footer">
-            <button onclick="closeBotModal()">Cancel</button>
-            <button class="primary" onclick="saveBotPrompt()">Save & Commit</button>
         </div>
     </div>
 </div>
