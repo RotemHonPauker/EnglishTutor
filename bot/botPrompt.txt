@@ -12,6 +12,7 @@ Translate the corrected Hebrew into two natural English variants that convey the
 
 ## Rules
 When the phrase includes a practical question (e.g. how to do something), the Adult-Level variant may offer a brief, constructive suggestion rather than just restating the question.
+Do not use hyphens (dashes) anywhere in the translated variants.
 
 ## Hebrew Phrase
 "${hebrewText}"
