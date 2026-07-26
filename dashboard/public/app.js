@@ -271,6 +271,15 @@ function escapeHtml(str) {
 
 function renderDiffHtml(parts) {
     return parts.map(part => {
+        // A del/ins token that's pure whitespace (e.g. a blank line collapsing
+        // into a single newline) is otherwise invisible — nothing to see in an
+        // empty strikethrough or underline. Mark it explicitly so a lost or
+        // added line break can actually be noticed before approving.
+        if ((part.type === 'del' || part.type === 'add') && /^\s+$/.test(part.text)) {
+            const visible = escapeHtml(part.text).replace(/\n/g, '¶\n');
+            const tag = part.type === 'del' ? 'del' : 'ins';
+            return `<${tag} class="ws-diff">${visible}</${tag}>`;
+        }
         const escaped = escapeHtml(part.text);
         if (part.type === 'del') return `<del>${escaped}</del>`;
         if (part.type === 'add') return `<ins>${escaped}</ins>`;
