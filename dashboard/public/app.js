@@ -230,6 +230,114 @@ function addMessage(role, text) {
     chat.scrollTop = chat.scrollHeight;
 }
 
+// --- BOT PROMPT DIFF PROPOSAL ---
+
+// Word-level LCS diff — old/new are tokenized on whitespace boundaries (kept
+// as tokens) so the result reflows as normal text, not a line-by-line block.
+function diffWords(oldText, newText) {
+    const oldTokens = oldText.split(/(\s+)/);
+    const newTokens = newText.split(/(\s+)/);
+    const n = oldTokens.length, m = newTokens.length;
+    const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+    for (let i = n - 1; i >= 0; i--) {
+        for (let j = m - 1; j >= 0; j--) {
+            dp[i][j] = oldTokens[i] === newTokens[j]
+                ? dp[i + 1][j + 1] + 1
+                : Math.max(dp[i + 1][j], dp[i][j + 1]);
+        }
+    }
+    const parts = [];
+    let i = 0, j = 0;
+    while (i < n && j < m) {
+        if (oldTokens[i] === newTokens[j]) {
+            parts.push({ type: 'same', text: oldTokens[i] });
+            i++; j++;
+        } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+            parts.push({ type: 'del', text: oldTokens[i] });
+            i++;
+        } else {
+            parts.push({ type: 'add', text: newTokens[j] });
+            j++;
+        }
+    }
+    while (i < n) { parts.push({ type: 'del', text: oldTokens[i] }); i++; }
+    while (j < m) { parts.push({ type: 'add', text: newTokens[j] }); j++; }
+    return parts;
+}
+
+function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function renderDiffHtml(parts) {
+    return parts.map(part => {
+        const escaped = escapeHtml(part.text);
+        if (part.type === 'del') return `<del>${escaped}</del>`;
+        if (part.type === 'add') return `<ins>${escaped}</ins>`;
+        return escaped;
+    }).join('');
+}
+
+function addBotPromptProposal(proposal) {
+    const div = document.createElement('div');
+    div.className = 'message assistant bot-prompt-proposal';
+
+    const label = document.createElement('div');
+    label.className = 'proposal-label';
+    label.textContent = 'Suggested bot prompt change';
+
+    const diffBox = document.createElement('div');
+    diffBox.className = 'diff-box';
+    diffBox.innerHTML = renderDiffHtml(diffWords(proposal.oldContent, proposal.newContent));
+
+    const actions = document.createElement('div');
+    actions.className = 'proposal-actions';
+
+    const discardBtn = document.createElement('button');
+    discardBtn.textContent = 'Discard';
+    discardBtn.onclick = async () => {
+        discardBtn.disabled = true;
+        try {
+            await fetch('/bot-prompt/discard', { method: 'POST' });
+        } finally {
+            div.remove();
+        }
+    };
+
+    const approveBtn = document.createElement('button');
+    approveBtn.className = 'primary';
+    approveBtn.textContent = 'Approve & commit';
+    approveBtn.onclick = async () => {
+        approveBtn.disabled = true;
+        discardBtn.disabled = true;
+        approveBtn.textContent = 'Saving...';
+        try {
+            const res = await fetch('/bot-prompt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: proposal.newContent })
+            });
+            if (!res.ok) throw new Error('save failed');
+            actions.innerHTML = '<span class="approved-label">✓ Committed</span>';
+        } catch (err) {
+            approveBtn.disabled = false;
+            discardBtn.disabled = false;
+            approveBtn.textContent = 'Approve & commit';
+            addMessage('system', 'Failed to save bot prompt.');
+        }
+    };
+
+    actions.appendChild(discardBtn);
+    actions.appendChild(approveBtn);
+
+    div.appendChild(label);
+    div.appendChild(diffBox);
+    div.appendChild(actions);
+
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+}
+
 async function selectPhraseForReview(id) {
     const phrase = allPhrases.find(p => p.id === id);
     if (!phrase) return;
@@ -253,6 +361,7 @@ async function selectPhraseForReview(id) {
         });
         const data = await res.json();
         addMessage('assistant', data.reply);
+        if (data.botPromptProposal) addBotPromptProposal(data.botPromptProposal);
         loadTable();
     } catch (err) {
         addMessage('system', 'Something went wrong loading that phrase.');
@@ -275,6 +384,7 @@ async function sendMessage() {
         });
         const data = await res.json();
         addMessage('assistant', data.reply);
+        if (data.botPromptProposal) addBotPromptProposal(data.botPromptProposal);
         loadTable(); // refresh table after every message
     } catch (err) {
         addMessage('system', 'Something went wrong. Try again.');
@@ -288,23 +398,64 @@ function startSession() {
 // --- PROMPT MODAL ---
 
 let currentPromptEndpoint = null;
+let originalPromptContent = '';
 
 async function openPromptModal(title, endpoint) {
     currentPromptEndpoint = endpoint;
     const res = await fetch(endpoint);
     const data = await res.json();
+    originalPromptContent = data.content;
     document.getElementById('modal-title').textContent = title;
     document.getElementById('prompt-editor').value = data.content;
+    showPromptEditView();
     document.getElementById('prompt-modal-overlay').style.display = 'flex';
 }
 
 function closePromptModal() {
     document.getElementById('prompt-modal-overlay').style.display = 'none';
     currentPromptEndpoint = null;
+    showPromptEditView(); // reset controls for the next time this modal opens
 }
 
-async function savePrompt() {
+// Textarea visible, editable. "Review changes" moves to the diff view below.
+function showPromptEditView() {
+    document.getElementById('prompt-editor').style.display = '';
+    document.getElementById('prompt-diff-preview').style.display = 'none';
+
+    const cancelBtn = document.getElementById('modal-cancel-btn');
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.onclick = closePromptModal;
+
+    const primaryBtn = document.getElementById('modal-primary-btn');
+    primaryBtn.disabled = false;
+    primaryBtn.textContent = 'Review changes';
+    primaryBtn.onclick = showPromptDiffView;
+}
+
+// Same compact word-diff used for chat-proposed changes, so a manual edit and
+// an LLM-proposed one are reviewed identically before anything is committed.
+function showPromptDiffView() {
+    const newContent = document.getElementById('prompt-editor').value;
+    const diffPreview = document.getElementById('prompt-diff-preview');
+    diffPreview.innerHTML = renderDiffHtml(diffWords(originalPromptContent, newContent));
+
+    document.getElementById('prompt-editor').style.display = 'none';
+    diffPreview.style.display = 'block';
+
+    const cancelBtn = document.getElementById('modal-cancel-btn');
+    cancelBtn.textContent = 'Back to edit';
+    cancelBtn.onclick = showPromptEditView;
+
+    const primaryBtn = document.getElementById('modal-primary-btn');
+    primaryBtn.textContent = 'Confirm & commit';
+    primaryBtn.onclick = confirmSavePrompt;
+}
+
+async function confirmSavePrompt() {
     const content = document.getElementById('prompt-editor').value;
+    const primaryBtn = document.getElementById('modal-primary-btn');
+    primaryBtn.disabled = true;
+    primaryBtn.textContent = 'Saving...';
     try {
         await fetch(currentPromptEndpoint, {
             method: 'POST',
@@ -315,6 +466,8 @@ async function savePrompt() {
         closePromptModal();
     } catch (err) {
         addMessage('system', 'Failed to save prompt.');
+        primaryBtn.disabled = false;
+        primaryBtn.textContent = 'Confirm & commit';
     }
 }
 

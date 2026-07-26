@@ -24,6 +24,70 @@
         }
         .delete-btn:hover, .review-btn:hover { opacity: 1; }
         tbody tr:hover .delete-btn, tbody tr:hover .review-btn { visibility: visible; }
+
+        .bot-prompt-proposal {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 10px;
+            padding: 12px 14px;
+            max-width: 100%;
+        }
+        .proposal-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #999;
+            margin-bottom: 8px;
+        }
+        .diff-box {
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 0.92rem;
+            line-height: 1.6;
+            color: #e8e8e8;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .diff-box del {
+            color: #f87171;
+            background: rgba(248, 113, 113, 0.12);
+            text-decoration: line-through;
+        }
+        .diff-box ins {
+            color: #4ade80;
+            background: rgba(74, 222, 128, 0.12);
+            text-decoration: none;
+        }
+        .proposal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .proposal-actions button {
+            padding: 5px 12px;
+            border-radius: 6px;
+            border: 1px solid #333;
+            background: none;
+            color: #ccc;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        .proposal-actions button.primary {
+            background: #2563eb;
+            border-color: #2563eb;
+            color: #fff;
+        }
+        .proposal-actions button:disabled { opacity: 0.6; cursor: default; }
+        .approved-label { color: #4ade80; font-size: 0.85rem; }
+
+        #prompt-diff-preview {
+            flex: 1;
+            min-height: 500px;
+            overflow-y: auto;
+            background: #0f0f0f;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 12px;
+        }
     </style>
 </head>
 <body>
@@ -93,9 +157,10 @@
             <button onclick="closePromptModal()">✕</button>
         </div>
         <textarea id="prompt-editor"></textarea>
+        <div id="prompt-diff-preview" class="diff-box" style="display:none"></div>
         <div id="modal-footer">
-            <button onclick="closePromptModal()">Cancel</button>
-            <button class="primary" onclick="savePrompt()">Save & Commit</button>
+            <button id="modal-cancel-btn">Cancel</button>
+            <button id="modal-primary-btn" class="primary">Review changes</button>
         </div>
     </div>
 </div>

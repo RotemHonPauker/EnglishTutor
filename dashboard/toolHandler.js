@@ -7,6 +7,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const botPromptPath = join(__dirname, '..', 'bot', 'botPrompt.txt');
 
 let currentPhrase = null;
+let pendingBotPromptProposal = null;
+
+export const getPendingBotPromptProposal = () => pendingBotPromptProposal;
+export const clearPendingBotPromptProposal = () => { pendingBotPromptProposal = null; };
 
 export const handleToolCall = async (toolName, toolInput) => {
     if (toolName === 'fetch_phrase_by_id') {
@@ -42,5 +46,14 @@ export const handleToolCall = async (toolName, toolInput) => {
     if (toolName === 'fetch_bot_prompt') {
         const currentContent = readFileSync(botPromptPath, 'utf-8');
         return currentContent;
+    }
+
+    // Records a proposed replacement for the bot prompt. Never writes to disk
+    // and never commits — it just stakes out the old/new pair so the frontend
+    // can render a diff and let the user approve or discard it explicitly.
+    if (toolName === 'propose_bot_prompt_update') {
+        const oldContent = readFileSync(botPromptPath, 'utf-8');
+        pendingBotPromptProposal = { oldContent, newContent: toolInput.newContent };
+        return 'Proposal recorded and will be shown to the user as a diff. Do not repeat the wording in your text reply — just briefly say the draft is ready for review.';
     }
 };
