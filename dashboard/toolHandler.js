@@ -5,23 +5,23 @@ import { getPhraseById, updatePhraseApproval } from '../database.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const botPromptPath = join(__dirname, 'translation', 'translationPrompt.txt');
-const systemPromptPath = join(__dirname, 'systemPrompt.txt');
+const editorPromptPath = join(__dirname, 'editorPrompt.txt');
 
 let currentPhrase = null;
 let pendingBotPromptProposal = null;
-let pendingSystemPromptProposal = null;
+let pendingEditorPromptProposal = null;
 
 export const getPendingBotPromptProposal = () => pendingBotPromptProposal;
 export const clearPendingBotPromptProposal = () => { pendingBotPromptProposal = null; };
 
-export const getPendingSystemPromptProposal = () => pendingSystemPromptProposal;
-export const clearPendingSystemPromptProposal = () => { pendingSystemPromptProposal = null; };
+export const getPendingEditorPromptProposal = () => pendingEditorPromptProposal;
+export const clearPendingEditorPromptProposal = () => { pendingEditorPromptProposal = null; };
 
 export const handleToolCall = async (toolName, toolInput) => {
     if (toolName === 'fetch_phrase_by_id') {
         currentPhrase = await getPhraseById(toolInput.phraseId);
         if (!currentPhrase) return 'Phrase not found.';
-        // Only pass along what the chat should ever see/discuss — never the
+        // Only pass along what the editor should ever see/discuss — never the
         // raw row, which also contains subtag_id, status, id, and dates.
         return JSON.stringify({
             hebrewText: currentPhrase.hebrew_text,
@@ -64,19 +64,19 @@ export const handleToolCall = async (toolName, toolInput) => {
     }
 
     // Read-only: lets Claude see its own current instructions before proposing
-    // an edit. Only ever called after the user explicitly triggers system-prompt
-    // editing (an "EDIT_SYSTEM_PROMPT" message) — never on Claude's own initiative.
-    if (toolName === 'fetch_system_prompt') {
-        const currentContent = readFileSync(systemPromptPath, 'utf-8');
+    // an edit. Only ever called after the user explicitly triggers editor-prompt
+    // editing (an "EDIT_EDITOR_PROMPT" message) — never on Claude's own initiative.
+    if (toolName === 'fetch_editor_prompt') {
+        const currentContent = readFileSync(editorPromptPath, 'utf-8');
         return currentContent;
     }
 
     // Same pattern as propose_bot_prompt_update: stakes out an old/new pair for
     // the dashboard to diff and the user to approve or discard — never writes
     // or commits by itself.
-    if (toolName === 'propose_system_prompt_update') {
-        const oldContent = readFileSync(systemPromptPath, 'utf-8');
-        pendingSystemPromptProposal = { oldContent, newContent: toolInput.newContent };
+    if (toolName === 'propose_editor_prompt_update') {
+        const oldContent = readFileSync(editorPromptPath, 'utf-8');
+        pendingEditorPromptProposal = { oldContent, newContent: toolInput.newContent };
         return 'Proposal recorded and will be shown to the user as a diff. Do not repeat the wording in your text reply — just briefly say the draft is ready for review.';
     }
 };

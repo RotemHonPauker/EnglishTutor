@@ -4,7 +4,7 @@ import { dirname, join } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-export const getSystemPrompt = () => readFileSync(
-    join(__dirname, 'systemPrompt.txt'),
+export const getEditorPrompt = () => readFileSync(
+    join(__dirname, 'editorPrompt.txt'),
     'utf-8'
 );

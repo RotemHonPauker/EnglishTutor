@@ -1,14 +1,14 @@
 import express from 'express';
-import { handleReviewMessage } from '../chatEngine.js';
+import { handleReviewMessage } from '../editorEngine.js';
 import {
     getPendingBotPromptProposal, clearPendingBotPromptProposal,
-    getPendingSystemPromptProposal, clearPendingSystemPromptProposal
+    getPendingEditorPromptProposal, clearPendingEditorPromptProposal
 } from '../toolHandler.js';
 
 const router = express.Router();
 let conversationHistory = [];
 
-router.post('/chat', async (req, res) => {
+router.post('/editor', async (req, res) => {
     const { message } = req.body;
     try {
         const { reply, history } = await handleReviewMessage(message, conversationHistory);
@@ -17,11 +17,11 @@ router.post('/chat', async (req, res) => {
         // so it doesn't resurface on later, unrelated turns.
         const botPromptProposal = getPendingBotPromptProposal();
         if (botPromptProposal) clearPendingBotPromptProposal();
-        const systemPromptProposal = getPendingSystemPromptProposal();
-        if (systemPromptProposal) clearPendingSystemPromptProposal();
-        res.json({ reply, botPromptProposal, systemPromptProposal });
+        const editorPromptProposal = getPendingEditorPromptProposal();
+        if (editorPromptProposal) clearPendingEditorPromptProposal();
+        res.json({ reply, botPromptProposal, editorPromptProposal });
     } catch (err) {
-        console.error('Review chat error:', err);
+        console.error('Review editor error:', err);
         res.status(500).json({ error: 'Something went wrong' });
     }
 });
@@ -29,8 +29,8 @@ router.post('/chat', async (req, res) => {
 router.get('/reset', (req, res) => {
     conversationHistory = [];
     clearPendingBotPromptProposal();
-    clearPendingSystemPromptProposal();
+    clearPendingEditorPromptProposal();
     res.json({ ok: true });
 });
 
-export { router as chatRouter };
+export { router as editorRouter };

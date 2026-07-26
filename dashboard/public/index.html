@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="styles/base.css">
     <link rel="stylesheet" href="styles/header.css">
     <link rel="stylesheet" href="styles/table.css">
-    <link rel="stylesheet" href="styles/chat.css">
+    <link rel="stylesheet" href="styles/editor.css">
     <link rel="stylesheet" href="styles/modal.css">
     <link rel="stylesheet" href="styles/tags.css">
     <link rel="stylesheet" href="styles/tabs.css">
@@ -103,10 +103,10 @@
         </div>
     </div>
 
-    <!-- CHAT VIEW -->
-    <div id="view-chat" class="view">
-        <div id="chat-section">
-            <div id="chat"></div>
+    <!-- EDITOR VIEW -->
+    <div id="view-editor" class="view">
+        <div id="editor-section">
+            <div id="editor-log"></div>
             <div id="input-area">
                 <textarea id="input" rows="1" placeholder="Type a message..."></textarea>
                 <button class="primary" id="send" onclick="sendMessage()">Send</button>
@@ -145,9 +145,9 @@
         <span class="tab-icon">▤</span>
         <span>Table</span>
     </button>
-    <button class="tab-btn" data-view="chat" onclick="enterChatTab(this)">
+    <button class="tab-btn" data-view="editor" onclick="enterEditorTab(this)">
         <span class="tab-icon">💬</span>
-        <span>Chat</span>
+        <span>Editor</span>
     </button>
     <button class="tab-btn" data-view="tags" onclick="showView('tags', this)">
         <span class="tab-icon">🏷</span>
@@ -216,7 +216,7 @@
 <script src="phrasesTable.js"></script>
 <script src="phraseTagPicker.js"></script>
 <script src="phraseTagFilter.js"></script>
-<script src="chat.js"></script>
+<script src="editor.js"></script>
 <script src="newPhrase.js"></script>
 <script src="app.js"></script>
 

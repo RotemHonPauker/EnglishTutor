@@ -1,4 +1,4 @@
-const chat = document.getElementById('chat');
+const editorLog = document.getElementById('editor-log');
 const input = document.getElementById('input');
 
 input.addEventListener('input', () => {
@@ -21,8 +21,8 @@ function addMessage(role, text) {
     } else {
         div.textContent = text;
     }
-    chat.appendChild(div);
-    chat.scrollTop = chat.scrollHeight;
+    editorLog.appendChild(div);
+    editorLog.scrollTop = editorLog.scrollHeight;
 }
 
 // --- PROMPT DIFF ---
@@ -91,11 +91,11 @@ const PROMPT_KIND_CONFIG = {
         discardEndpoint: '/bot-prompt/discard',
         failMessage: 'Failed to save bot prompt.'
     },
-    system: {
-        label: 'Suggested system prompt change',
-        saveEndpoint: '/system-prompt',
-        discardEndpoint: '/system-prompt/discard',
-        failMessage: 'Failed to save system prompt.'
+    editor: {
+        label: 'Suggested editor prompt change',
+        saveEndpoint: '/editor-prompt',
+        discardEndpoint: '/editor-prompt/discard',
+        failMessage: 'Failed to save editor prompt.'
     }
 };
 
@@ -156,17 +156,18 @@ function addPromptProposal(kind, proposal) {
     div.appendChild(diffBox);
     div.appendChild(actions);
 
-    chat.appendChild(div);
-    chat.scrollTop = chat.scrollHeight;
+    editorLog.appendChild(div);
+    editorLog.scrollTop = editorLog.scrollHeight;
 }
 
-// A single place to apply whatever a /chat response contains, reused by every
-// entry point (phrase review, free typing, and both prompt-edit flows) so none
-// of them can forget to render a proposal that came back alongside the reply.
-function handleChatReply(data) {
+// A single place to apply whatever an /editor response contains, reused by
+// every entry point (phrase review, free typing, and both prompt-edit flows)
+// so none of them can forget to render a proposal that came back alongside
+// the reply.
+function handleEditorReply(data) {
     addMessage('assistant', data.reply);
     if (data.botPromptProposal) addPromptProposal('bot', data.botPromptProposal);
-    if (data.systemPromptProposal) addPromptProposal('system', data.systemPromptProposal);
+    if (data.editorPromptProposal) addPromptProposal('editor', data.editorPromptProposal);
 }
 
 // --- SENDING MESSAGES ---
@@ -175,27 +176,27 @@ async function selectPhraseForReview(id) {
     const phrase = allPhrases.find(p => p.id === id);
     if (!phrase) return;
 
-    showView('chat');
+    showView('editor');
 
     // Every selection starts a clean conversation — no leftover context from
     // whatever was reviewed (or left mid-discussion) before, whether or not
     // that previous phrase was ever approved.
     await fetch('/reset');
-    chat.innerHTML = '';
+    editorLog.innerHTML = '';
 
-    // Show something friendly in the chat bubble, but send the backend a
-    // strict, parseable instruction — the review prompt only ever loads a
-    // phrase in response to this exact format.
+    // Show something friendly in the log, but send the backend a strict,
+    // parseable instruction — the editor prompt only ever loads a phrase in
+    // response to this exact format.
     addMessage('user', phrase.hebrew_text || '(phrase)');
 
     try {
-        const res = await fetch('/chat', {
+        const res = await fetch('/editor', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message: `SELECT_PHRASE:${id}` })
         });
         const data = await res.json();
-        handleChatReply(data);
+        handleEditorReply(data);
         loadTable();
     } catch (err) {
         addMessage('system', 'Something went wrong loading that phrase.');
@@ -211,41 +212,41 @@ async function sendMessage() {
     input.style.height = 'auto';
 
     try {
-        const res = await fetch('/chat', {
+        const res = await fetch('/editor', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message: text })
         });
         const data = await res.json();
-        handleChatReply(data);
+        handleEditorReply(data);
         loadTable(); // refresh table after every message
     } catch (err) {
         addMessage('system', 'Something went wrong. Try again.');
     }
 }
 
-// --- CHAT TAB ENTRY (home screen) ---
+// --- EDITOR TAB ENTRY (home screen) ---
 
-// Entering the Chat tab directly (not via a phrase's review button) always
-// starts a clean slate and shows the 3 things this chat can do. Reset lives
-// here, not in showView(), so selectPhraseForReview's own reset+load isn't
-// duplicated when it calls showView('chat') internally.
-async function enterChatTab(btnEl) {
-    showView('chat', btnEl);
+// Entering the Editor tab directly (not via a phrase's review button) always
+// starts a clean slate and shows the 3 things this can do. Reset lives here,
+// not in showView(), so selectPhraseForReview's own reset+load isn't
+// duplicated when it calls showView('editor') internally.
+async function enterEditorTab(btnEl) {
+    showView('editor', btnEl);
     await fetch('/reset');
-    chat.innerHTML = '';
-    showChatHome();
+    editorLog.innerHTML = '';
+    showEditorHome();
 }
 
-function showChatHome() {
+function showEditorHome() {
     const div = document.createElement('div');
-    div.className = 'message assistant chat-home';
+    div.className = 'message assistant editor-home';
 
     const text = document.createElement('div');
     text.innerHTML = marked.parse("What would you like to do?").trim();
 
     const actions = document.createElement('div');
-    actions.className = 'chat-home-actions';
+    actions.className = 'editor-home-actions';
 
     const editPhraseBtn = document.createElement('button');
     editPhraseBtn.textContent = 'Edit a phrase';
@@ -255,30 +256,30 @@ function showChatHome() {
     editBotBtn.textContent = 'Edit bot prompt';
     editBotBtn.onclick = () => startPromptEditFlow('EDIT_BOT_PROMPT', 'Edit bot prompt');
 
-    const editSystemBtn = document.createElement('button');
-    editSystemBtn.textContent = 'Edit system prompt';
-    editSystemBtn.onclick = () => startPromptEditFlow('EDIT_SYSTEM_PROMPT', 'Edit system prompt');
+    const editEditorPromptBtn = document.createElement('button');
+    editEditorPromptBtn.textContent = 'Edit editor prompt';
+    editEditorPromptBtn.onclick = () => startPromptEditFlow('EDIT_EDITOR_PROMPT', 'Edit editor prompt');
 
     actions.appendChild(editPhraseBtn);
     actions.appendChild(editBotBtn);
-    actions.appendChild(editSystemBtn);
+    actions.appendChild(editEditorPromptBtn);
 
     div.appendChild(text);
     div.appendChild(actions);
-    chat.appendChild(div);
-    chat.scrollTop = chat.scrollHeight;
+    editorLog.appendChild(div);
+    editorLog.scrollTop = editorLog.scrollHeight;
 }
 
 async function startPromptEditFlow(triggerMessage, userFacingLabel) {
     addMessage('user', userFacingLabel);
     try {
-        const res = await fetch('/chat', {
+        const res = await fetch('/editor', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message: triggerMessage })
         });
         const data = await res.json();
-        handleChatReply(data);
+        handleEditorReply(data);
     } catch (err) {
         addMessage('system', 'Something went wrong.');
     }

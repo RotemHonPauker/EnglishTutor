@@ -29,7 +29,7 @@ export const getPhraseById = async (id) => {
     return result.rows[0] || null;
 };
 
-// Chat-driven approval: sets the final variant wording and marks the phrase
+// Editor-driven approval: sets the final variant wording and marks the phrase
 // approved, but never touches subtag_id — tagging stays entirely table-driven,
 // whether it happens before or after this approval.
 export const updatePhraseApproval = async ({ id, variant1, variant2 }) => {
