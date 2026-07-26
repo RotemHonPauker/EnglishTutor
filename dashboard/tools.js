@@ -1,11 +1,13 @@
 export const tools = [
     {
-        name: 'fetch_next_uncategorized',
-        description: 'Fetch the next uncategorized phrase from the database, along with the available tags to choose from',
+        name: 'fetch_phrase_by_id',
+        description: 'Fetch a specific phrase by its ID, as selected by the user from the table in the dashboard. This is the only way a phrase should enter the conversation — never call this unless the user explicitly selected a phrase.',
         input_schema: {
             type: 'object',
-            properties: {},
-            required: []
+            properties: {
+                phraseId: { type: 'string', description: 'The ID of the phrase to load' }
+            },
+            required: ['phraseId']
         }
     },
     {

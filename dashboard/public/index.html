@@ -11,9 +11,9 @@
     <link rel="stylesheet" href="styles/modal.css">
     <link rel="stylesheet" href="styles/tags.css">
     <style>
-        .delete-col { width: 32px; }
-        .delete-cell { text-align: center; }
-        .delete-btn {
+        .delete-col { width: 56px; }
+        .delete-cell { text-align: center; white-space: nowrap; }
+        .delete-btn, .review-btn {
             visibility: hidden;
             border: none;
             background: none;
@@ -22,8 +22,8 @@
             opacity: 0.6;
             padding: 2px 6px;
         }
-        .delete-btn:hover { opacity: 1; }
-        tbody tr:hover .delete-btn { visibility: visible; }
+        .delete-btn:hover, .review-btn:hover { opacity: 1; }
+        tbody tr:hover .delete-btn, tbody tr:hover .review-btn { visibility: visible; }
     </style>
 </head>
 <body>
@@ -31,7 +31,6 @@
 <header>
     <h1>Phrase Review</h1>
     <div class="header-buttons">
-        <button onclick="resetSession()">New session</button>
         <button class="primary" onclick="openPromptModal('Review Prompt', '/system-prompt')">Review prompt</button>
         <button class="primary" onclick="openPromptModal('Bot Prompt', '/bot-prompt')">Bot prompt</button>
     </div>

@@ -20,12 +20,10 @@ export const saveSentence = async ({ hebrewText, variant1, variant2 }) => {
     );
 };
 
-export const getNextUncategorized = async () => {
+export const getPhraseById = async (id) => {
     const result = await pool.query(
-        `SELECT * FROM phrases 
-         WHERE status = 'uncategorized' 
-         ORDER BY created_at ASC 
-         LIMIT 1`
+        `SELECT * FROM phrases WHERE id = $1`,
+        [id]
     );
     return result.rows[0] || null;
 };

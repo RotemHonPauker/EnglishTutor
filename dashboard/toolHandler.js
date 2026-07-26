@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { getNextUncategorized, updatePhraseApproval } from '../database.js';
+import { getPhraseById, updatePhraseApproval } from '../database.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const botPromptPath = join(__dirname, '..', 'bot', 'botPrompt.txt');
@@ -9,9 +9,9 @@ const botPromptPath = join(__dirname, '..', 'bot', 'botPrompt.txt');
 let currentPhrase = null;
 
 export const handleToolCall = async (toolName, toolInput) => {
-    if (toolName === 'fetch_next_uncategorized') {
-        currentPhrase = await getNextUncategorized();
-        if (!currentPhrase) return 'No more uncategorized phrases.';
+    if (toolName === 'fetch_phrase_by_id') {
+        currentPhrase = await getPhraseById(toolInput.phraseId);
+        if (!currentPhrase) return 'Phrase not found.';
         // Only pass along what the chat should ever see/discuss — never the
         // raw row, which also contains subtag_id, status, id, and dates.
         return JSON.stringify({

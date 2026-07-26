@@ -139,6 +139,7 @@ function renderTable() {
             <td><span class="status-badge ${p.status} clickable" onclick="toggleStatus('${p.id}', '${p.status}')">${statusLabel(p.status)}</span></td>
             <td>${new Date(p.created_at).toLocaleDateString('en-GB')}</td>
             <td class="delete-cell">
+                <button class="review-btn" title="Review this phrase" onclick="selectPhraseForReview('${p.id}')">📝</button>
                 <button class="delete-btn" title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑</button>
             </td>
         </tr>
@@ -229,6 +230,35 @@ function addMessage(role, text) {
     chat.scrollTop = chat.scrollHeight;
 }
 
+async function selectPhraseForReview(id) {
+    const phrase = allPhrases.find(p => p.id === id);
+    if (!phrase) return;
+
+    // Every selection starts a clean conversation — no leftover context from
+    // whatever was reviewed (or left mid-discussion) before, whether or not
+    // that previous phrase was ever approved.
+    await fetch('/reset');
+    chat.innerHTML = '';
+
+    // Show something friendly in the chat bubble, but send the backend a
+    // strict, parseable instruction — the review prompt only ever loads a
+    // phrase in response to this exact format.
+    addMessage('user', phrase.hebrew_text || '(phrase)');
+
+    try {
+        const res = await fetch('/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: `SELECT_PHRASE:${id}` })
+        });
+        const data = await res.json();
+        addMessage('assistant', data.reply);
+        loadTable();
+    } catch (err) {
+        addMessage('system', 'Something went wrong loading that phrase.');
+    }
+}
+
 async function sendMessage() {
     const text = input.value.trim();
     if (!text) return;
@@ -251,21 +281,8 @@ async function sendMessage() {
     }
 }
 
-async function startSession() {
-    const res = await fetch('/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: 'start' })
-    });
-    const data = await res.json();
-    addMessage('assistant', data.reply);
-}
-
-async function resetSession() {
-    await fetch('/reset');
-    chat.innerHTML = '';
-    addMessage('system', 'Session reset.');
-    await startSession();
+function startSession() {
+    addMessage('assistant', "Welcome! 👋 I'm your phrase review assistant.\n\nTo get started, just click the button next to any phrase in the table to select it, and I'll load it up for you to review and refine.");
 }
 
 // --- PROMPT MODAL ---
@@ -304,5 +321,5 @@ async function savePrompt() {
 window.onload = async () => {
     await loadTags();
     await loadTable();
-    await startSession();
+    startSession();
 };
