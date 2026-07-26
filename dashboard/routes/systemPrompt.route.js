@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { execSync } from 'child_process';
+import { clearPendingSystemPromptProposal } from '../toolHandler.js';
 
 const router = express.Router();
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -21,11 +22,17 @@ router.post('/system-prompt', (req, res) => {
             'git add dashboard/systemPrompt.txt && git commit -m "update system prompt from review session" && git push',
             { cwd: join(__dirname, '..', '..') }
         );
+        clearPendingSystemPromptProposal();
         res.json({ ok: true });
     } catch (err) {
         console.error('Prompt save error:', err);
         res.status(500).json({ error: 'Failed to save prompt' });
     }
+});
+
+router.post('/system-prompt/discard', (req, res) => {
+    clearPendingSystemPromptProposal();
+    res.json({ ok: true });
 });
 
 export { router as systemPromptRouter };

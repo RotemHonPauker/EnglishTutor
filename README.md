@@ -12,7 +12,7 @@ English translations with Dror during daily moments.
 3. It replies immediately with two natural English variants
 4. The phrase is saved to the database as uncategorized — no further action needed in the moment
 5. Later, a review chat at `localhost:3000` lets you refine, assign a tag, and approve phrases
-6. If a refinement suggests the bot's translation prompt itself should change, the review chat can propose an edit to `bot/botPrompt.txt` and commit it — changes apply to the very next WhatsApp message, no restart needed
+6. If a refinement suggests the bot's translation prompt itself should change, the review chat can propose an edit to `bot/botPrompt.txt` and commit it — changes apply to the very next WhatsApp message, no restart needed. The review chat's own instructions (`dashboard/systemPrompt.txt`) can be edited the same way, started from the chat's home screen — every proposed change still needs your explicit approval before it's committed
 7. Approved phrases are browsable by tag at `localhost:3000/practice` for quick pre-session review
 
 ---
@@ -96,4 +96,4 @@ Scan the QR code with WhatsApp on your phone. The bot is live once you see `Bot 
 - Uses whatsapp-web.js, an unofficial WhatsApp library — intended for personal use only
 - Never commit your `.env` file
 - The session pooler connection string (not direct connection) is required for Supabase
-- Two separate prompt files, edited differently: `bot/botPrompt.txt` (the WhatsApp bot's translation prompt) is edited and committed through the review chat itself; `dashboard/systemPrompt.txt` (the review chat's own instructions) is edited manually, never by the review chat
+- Two prompt files, both editable through the review chat itself, both requiring explicit approval before anything is committed: `bot/botPrompt.txt` (the WhatsApp bot's translation prompt) and `dashboard/systemPrompt.txt` (the review chat's own instructions). Editing either one is always user-initiated — from the chat's home screen — never suggested by the LLM on its own

@@ -1,6 +1,9 @@
 import express from 'express';
 import { handleReviewMessage } from '../reviewChat.js';
-import { getPendingBotPromptProposal, clearPendingBotPromptProposal } from '../toolHandler.js';
+import {
+    getPendingBotPromptProposal, clearPendingBotPromptProposal,
+    getPendingSystemPromptProposal, clearPendingSystemPromptProposal
+} from '../toolHandler.js';
 
 const router = express.Router();
 let conversationHistory = [];
@@ -14,7 +17,9 @@ router.post('/chat', async (req, res) => {
         // so it doesn't resurface on later, unrelated turns.
         const botPromptProposal = getPendingBotPromptProposal();
         if (botPromptProposal) clearPendingBotPromptProposal();
-        res.json({ reply, botPromptProposal });
+        const systemPromptProposal = getPendingSystemPromptProposal();
+        if (systemPromptProposal) clearPendingSystemPromptProposal();
+        res.json({ reply, botPromptProposal, systemPromptProposal });
     } catch (err) {
         console.error('Review chat error:', err);
         res.status(500).json({ error: 'Something went wrong' });
@@ -24,6 +29,7 @@ router.post('/chat', async (req, res) => {
 router.get('/reset', (req, res) => {
     conversationHistory = [];
     clearPendingBotPromptProposal();
+    clearPendingSystemPromptProposal();
     res.json({ ok: true });
 });
 

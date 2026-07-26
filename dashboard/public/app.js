@@ -422,13 +422,29 @@ function renderDiffHtml(parts) {
     }).join('');
 }
 
-function addBotPromptProposal(proposal) {
+const PROMPT_KIND_CONFIG = {
+    bot: {
+        label: 'Suggested bot prompt change',
+        saveEndpoint: '/bot-prompt',
+        discardEndpoint: '/bot-prompt/discard',
+        failMessage: 'Failed to save bot prompt.'
+    },
+    system: {
+        label: 'Suggested system prompt change',
+        saveEndpoint: '/system-prompt',
+        discardEndpoint: '/system-prompt/discard',
+        failMessage: 'Failed to save system prompt.'
+    }
+};
+
+function addPromptProposal(kind, proposal) {
+    const config = PROMPT_KIND_CONFIG[kind];
     const div = document.createElement('div');
     div.className = 'message assistant bot-prompt-proposal';
 
     const label = document.createElement('div');
     label.className = 'proposal-label';
-    label.textContent = 'Suggested bot prompt change';
+    label.textContent = config.label;
 
     const diffBox = document.createElement('div');
     diffBox.className = 'diff-box';
@@ -442,7 +458,7 @@ function addBotPromptProposal(proposal) {
     discardBtn.onclick = async () => {
         discardBtn.disabled = true;
         try {
-            await fetch('/bot-prompt/discard', { method: 'POST' });
+            await fetch(config.discardEndpoint, { method: 'POST' });
         } finally {
             div.remove();
         }
@@ -456,7 +472,7 @@ function addBotPromptProposal(proposal) {
         discardBtn.disabled = true;
         approveBtn.textContent = 'Saving...';
         try {
-            const res = await fetch('/bot-prompt', {
+            const res = await fetch(config.saveEndpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ content: proposal.newContent })
@@ -467,7 +483,7 @@ function addBotPromptProposal(proposal) {
             approveBtn.disabled = false;
             discardBtn.disabled = false;
             approveBtn.textContent = 'Approve & commit';
-            addMessage('system', 'Failed to save bot prompt.');
+            addMessage('system', config.failMessage);
         }
     };
 
@@ -480,6 +496,15 @@ function addBotPromptProposal(proposal) {
 
     chat.appendChild(div);
     chat.scrollTop = chat.scrollHeight;
+}
+
+// A single place to apply whatever a /chat response contains, reused by every
+// entry point (phrase review, free typing, and both prompt-edit flows) so none
+// of them can forget to render a proposal that came back alongside the reply.
+function handleChatReply(data) {
+    addMessage('assistant', data.reply);
+    if (data.botPromptProposal) addPromptProposal('bot', data.botPromptProposal);
+    if (data.systemPromptProposal) addPromptProposal('system', data.systemPromptProposal);
 }
 
 async function selectPhraseForReview(id) {
@@ -506,8 +531,7 @@ async function selectPhraseForReview(id) {
             body: JSON.stringify({ message: `SELECT_PHRASE:${id}` })
         });
         const data = await res.json();
-        addMessage('assistant', data.reply);
-        if (data.botPromptProposal) addBotPromptProposal(data.botPromptProposal);
+        handleChatReply(data);
         loadTable();
     } catch (err) {
         addMessage('system', 'Something went wrong loading that phrase.');
@@ -529,96 +553,74 @@ async function sendMessage() {
             body: JSON.stringify({ message: text })
         });
         const data = await res.json();
-        addMessage('assistant', data.reply);
-        if (data.botPromptProposal) addBotPromptProposal(data.botPromptProposal);
+        handleChatReply(data);
         loadTable(); // refresh table after every message
     } catch (err) {
         addMessage('system', 'Something went wrong. Try again.');
     }
 }
 
-function startSession() {
-    addMessage('assistant', "Welcome! 👋 I'm your phrase review assistant.\n\nTo get started, just click the button next to any phrase in the table to select it, and I'll load it up for you to review and refine.");
+// --- CHAT TAB ENTRY (home screen) ---
+
+// Entering the Chat tab directly (not via a phrase's review button) always
+// starts a clean slate and shows the 3 things this chat can do. Reset lives
+// here, not in showView(), so selectPhraseForReview's own reset+load isn't
+// duplicated when it calls showView('chat') internally.
+async function enterChatTab(btnEl) {
+    showView('chat', btnEl);
+    await fetch('/reset');
+    chat.innerHTML = '';
+    showChatHome();
 }
 
-// --- PROMPT MODAL ---
+function showChatHome() {
+    const div = document.createElement('div');
+    div.className = 'message assistant chat-home';
 
-let currentPromptEndpoint = null;
-let originalPromptContent = '';
+    const text = document.createElement('div');
+    text.innerHTML = marked.parse("What would you like to do?").trim();
 
-async function openPromptModal(title, endpoint) {
-    currentPromptEndpoint = endpoint;
-    const res = await fetch(endpoint);
-    const data = await res.json();
-    originalPromptContent = data.content;
-    document.getElementById('modal-title').textContent = title;
-    document.getElementById('prompt-editor').value = data.content;
-    showPromptEditView();
-    document.getElementById('prompt-modal-overlay').style.display = 'flex';
+    const actions = document.createElement('div');
+    actions.className = 'chat-home-actions';
+
+    const editPhraseBtn = document.createElement('button');
+    editPhraseBtn.textContent = 'Edit a phrase';
+    editPhraseBtn.onclick = () => showView('table');
+
+    const editBotBtn = document.createElement('button');
+    editBotBtn.textContent = 'Edit bot prompt';
+    editBotBtn.onclick = () => startPromptEditFlow('EDIT_BOT_PROMPT', 'Edit bot prompt');
+
+    const editSystemBtn = document.createElement('button');
+    editSystemBtn.textContent = 'Edit system prompt';
+    editSystemBtn.onclick = () => startPromptEditFlow('EDIT_SYSTEM_PROMPT', 'Edit system prompt');
+
+    actions.appendChild(editPhraseBtn);
+    actions.appendChild(editBotBtn);
+    actions.appendChild(editSystemBtn);
+
+    div.appendChild(text);
+    div.appendChild(actions);
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
 }
 
-function closePromptModal() {
-    document.getElementById('prompt-modal-overlay').style.display = 'none';
-    currentPromptEndpoint = null;
-    showPromptEditView(); // reset controls for the next time this modal opens
-}
-
-// Textarea visible, editable. "Review changes" moves to the diff view below.
-function showPromptEditView() {
-    document.getElementById('prompt-editor').style.display = '';
-    document.getElementById('prompt-diff-preview').style.display = 'none';
-
-    const cancelBtn = document.getElementById('modal-cancel-btn');
-    cancelBtn.textContent = 'Cancel';
-    cancelBtn.onclick = closePromptModal;
-
-    const primaryBtn = document.getElementById('modal-primary-btn');
-    primaryBtn.disabled = false;
-    primaryBtn.textContent = 'Review changes';
-    primaryBtn.onclick = showPromptDiffView;
-}
-
-// Same compact word-diff used for chat-proposed changes, so a manual edit and
-// an LLM-proposed one are reviewed identically before anything is committed.
-function showPromptDiffView() {
-    const newContent = document.getElementById('prompt-editor').value;
-    const diffPreview = document.getElementById('prompt-diff-preview');
-    diffPreview.innerHTML = renderDiffHtml(diffWords(originalPromptContent, newContent));
-
-    document.getElementById('prompt-editor').style.display = 'none';
-    diffPreview.style.display = 'block';
-
-    const cancelBtn = document.getElementById('modal-cancel-btn');
-    cancelBtn.textContent = 'Back to edit';
-    cancelBtn.onclick = showPromptEditView;
-
-    const primaryBtn = document.getElementById('modal-primary-btn');
-    primaryBtn.textContent = 'Confirm & commit';
-    primaryBtn.onclick = confirmSavePrompt;
-}
-
-async function confirmSavePrompt() {
-    const content = document.getElementById('prompt-editor').value;
-    const primaryBtn = document.getElementById('modal-primary-btn');
-    primaryBtn.disabled = true;
-    primaryBtn.textContent = 'Saving...';
+async function startPromptEditFlow(triggerMessage, userFacingLabel) {
+    addMessage('user', userFacingLabel);
     try {
-        await fetch(currentPromptEndpoint, {
+        const res = await fetch('/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content })
+            body: JSON.stringify({ message: triggerMessage })
         });
-        addMessage('system', 'Prompt saved and committed.');
-        closePromptModal();
+        const data = await res.json();
+        handleChatReply(data);
     } catch (err) {
-        addMessage('system', 'Failed to save prompt.');
-        primaryBtn.disabled = false;
-        primaryBtn.textContent = 'Confirm & commit';
+        addMessage('system', 'Something went wrong.');
     }
 }
 
 window.onload = async () => {
     await loadTags();
     await loadTable();
-    startSession();
 };

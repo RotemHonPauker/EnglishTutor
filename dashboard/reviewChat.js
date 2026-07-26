@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { tools } from './tools.js';
-import { systemPrompt } from './systemPrompt.js';
+import { getSystemPrompt } from './systemPrompt.js';
 import { handleToolCall } from './toolHandler.js';
 
 
@@ -25,7 +25,7 @@ export const handleReviewMessage = async (userMessage, conversationHistory) => {
     let response = await anthropic.messages.create({
         model: 'claude-sonnet-4-6',
         max_tokens: 1024,
-        system: systemPrompt,
+        system: getSystemPrompt(),
         tools,
         messages: conversationHistory
     });
@@ -50,7 +50,7 @@ export const handleReviewMessage = async (userMessage, conversationHistory) => {
         response = await anthropic.messages.create({
             model: 'claude-sonnet-4-6',
             max_tokens: 1024,
-            system: systemPrompt,
+            system: getSystemPrompt(),
             tools,
             messages: conversationHistory
         });

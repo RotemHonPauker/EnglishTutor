@@ -14,8 +14,3 @@ header h1 {
     color: #aaa;
     text-transform: uppercase;
 }
-
-.header-buttons {
-    display: flex;
-    gap: 10px;
-}

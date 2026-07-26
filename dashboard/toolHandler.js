@@ -5,12 +5,17 @@ import { getPhraseById, updatePhraseApproval } from '../database.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const botPromptPath = join(__dirname, '..', 'bot', 'botPrompt.txt');
+const systemPromptPath = join(__dirname, 'systemPrompt.txt');
 
 let currentPhrase = null;
 let pendingBotPromptProposal = null;
+let pendingSystemPromptProposal = null;
 
 export const getPendingBotPromptProposal = () => pendingBotPromptProposal;
 export const clearPendingBotPromptProposal = () => { pendingBotPromptProposal = null; };
+
+export const getPendingSystemPromptProposal = () => pendingSystemPromptProposal;
+export const clearPendingSystemPromptProposal = () => { pendingSystemPromptProposal = null; };
 
 export const handleToolCall = async (toolName, toolInput) => {
     if (toolName === 'fetch_phrase_by_id') {
@@ -41,8 +46,9 @@ export const handleToolCall = async (toolName, toolInput) => {
     }
 
     // Read-only: lets Claude see the bot's current translation prompt so it can
-    // propose an accurate edit. There is no matching write/commit tool — the
-    // user always copies any suggested wording into bot/botPrompt.txt themselves.
+    // propose an accurate edit. The matching write/commit only ever happens
+    // through propose_bot_prompt_update below plus the user's explicit approval
+    // in the dashboard — never directly from this tool.
     if (toolName === 'fetch_bot_prompt') {
         const currentContent = readFileSync(botPromptPath, 'utf-8');
         return currentContent;
@@ -54,6 +60,23 @@ export const handleToolCall = async (toolName, toolInput) => {
     if (toolName === 'propose_bot_prompt_update') {
         const oldContent = readFileSync(botPromptPath, 'utf-8');
         pendingBotPromptProposal = { oldContent, newContent: toolInput.newContent };
+        return 'Proposal recorded and will be shown to the user as a diff. Do not repeat the wording in your text reply — just briefly say the draft is ready for review.';
+    }
+
+    // Read-only: lets Claude see its own current instructions before proposing
+    // an edit. Only ever called after the user explicitly triggers system-prompt
+    // editing (an "EDIT_SYSTEM_PROMPT" message) — never on Claude's own initiative.
+    if (toolName === 'fetch_system_prompt') {
+        const currentContent = readFileSync(systemPromptPath, 'utf-8');
+        return currentContent;
+    }
+
+    // Same pattern as propose_bot_prompt_update: stakes out an old/new pair for
+    // the dashboard to diff and the user to approve or discard — never writes
+    // or commits by itself.
+    if (toolName === 'propose_system_prompt_update') {
+        const oldContent = readFileSync(systemPromptPath, 'utf-8');
+        pendingSystemPromptProposal = { oldContent, newContent: toolInput.newContent };
         return 'Proposal recorded and will be shown to the user as a diff. Do not repeat the wording in your text reply — just briefly say the draft is ready for review.';
     }
 };
