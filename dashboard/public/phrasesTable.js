@@ -51,13 +51,13 @@ function renderTable() {
                 <div class="phrase-variant">${p.variant_2 || ''}</div>
             </div>
             <div class="phrase-card-side">
+                <div class="phrase-card-icons">
+                    <button title="Review this phrase" onclick="selectPhraseForReview('${p.id}')">✏️</button>
+                    <button title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑</button>
+                </div>
                 <button class="tag-badge" style="${badgeStyle}" onclick="openTagPicker('${p.id}')">${subtag ? subtag.name : '—'}</button>
                 <span class="status-badge ${p.status} clickable" onclick="toggleStatus('${p.id}', '${p.status}')">${statusLabel(p.status)}</span>
                 <span class="phrase-date">${getAgeCategory(p.created_at)}</span>
-                <div class="phrase-card-icons">
-                    <button title="Review this phrase" onclick="selectPhraseForReview('${p.id}')">📝</button>
-                    <button title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑</button>
-                </div>
             </div>
         </div>
     `;

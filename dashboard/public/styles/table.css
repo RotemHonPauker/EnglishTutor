@@ -41,6 +41,24 @@
     margin-right: 4px;
 }
 
+#status-filter-btn.filter-all {
+    background: #2563eb;
+    color: white;
+    border-color: #2563eb;
+}
+
+#status-filter-btn.filter-unapproved {
+    background: #eaeaea;
+    color: #1a1a1a;
+    border-color: #eaeaea;
+}
+
+#status-filter-btn.filter-approved {
+    background: #2a2a2a;
+    color: #888;
+    border-color: #2a2a2a;
+}
+
 #sort-btn {
     margin-left: auto;
 }
@@ -97,7 +115,7 @@
 }
 
 .phrase-card-main {
-    padding: 10px 12px;
+    padding: 6px 8px;
     border-right: 1px solid #222;
     display: flex;
     flex-direction: column;
@@ -106,7 +124,7 @@
 }
 
 .phrase-hebrew {
-    font-size: 0.9375rem;
+    font-size: 0.9rem;
     color: #e8e8e8;
     line-height: 1.4;
 }
@@ -133,7 +151,7 @@
 }
 
 .phrase-card-side {
-    padding: 8px 6px;
+    padding: 6px 6px;
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -164,7 +182,6 @@
 .phrase-card-icons {
     display: flex;
     gap: 6px;
-    margin-top: 2px;
 }
 
 .phrase-card-icons button {
@@ -205,22 +222,4 @@
 
 .status-badge.clickable:hover {
     filter: brightness(1.3);
-}
-
-#status-filter-btn.filter-all {
-    background: #2563eb;
-    color: white;
-    border-color: #2563eb;
-}
-
-#status-filter-btn.filter-unapproved {
-    background: #eaeaea;
-    color: #1a1a1a;
-    border-color: #eaeaea;
-}
-
-#status-filter-btn.filter-approved {
-    background: #2a2a2a;
-    color: #888;
-    border-color: #2a2a2a;
 }
