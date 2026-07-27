@@ -1,46 +1,42 @@
 let mergeTargetId = null;
 let mergeSiblings = [];
 
-function startMerge(id, parentId) {
-    renderMergeForm({ id, parentId });
-}
+// ===== State: Merge search =====
+// Uses editModalTagId (the subtag being merged away) and its parent, found
+// via tags[], to list sibling subtags it could be merged into.
 
-// ===== Render Merge Form =====
-
-function renderMergeForm({ id, parentId }) {
+function renderTagEditMerge() {
     mergeTargetId = null;
-    mergeSiblings = tags.filter(t => t.parent_id === parentId && t.id !== id);
-    const formContainer = document.getElementById('tag-form');
-    const subtag = tags.find(t => t.id === id);
+    const tag = tags.find(t => t.id === editModalTagId);
+    mergeSiblings = tags.filter(t => t.parent_id === tag.parent_id && t.id !== editModalTagId);
+    const body = document.getElementById('tag-edit-modal-body');
 
     if (!mergeSiblings.length) {
-        formContainer.innerHTML = `
-            <div class="tag-form-inner">
-                <div class="tag-name">No other subtags under this tag to merge "${subtag.name}" into.</div>
-                <div class="form-buttons">
-                    <button onclick="cancelForm()">Close</button>
-                </div>
-            </div>
+        body.innerHTML = `
+            <div class="tag-name">No other subtags under this tag to merge "${tag.name}" into.</div>
+            <div id="tag-edit-modal-error" class="form-error" style="display:none"></div>
+        `;
+        document.getElementById('tag-edit-modal-footer').innerHTML = `
+            <button onclick="closeTagEditModal()">Cancel</button>
         `;
         return;
     }
 
-    formContainer.innerHTML = `
-        <div class="tag-form-inner">
-            <div class="tag-name">Merge "${subtag.name}" into:</div>
-            <div class="merge-autocomplete">
-                <input id="merge-search-input" type="text" placeholder="Type to search subtags..."
-                    autocomplete="off"
-                    oninput="filterMergeOptions(this.value)"
-                    onfocus="showMergeDropdown()"
-                    onblur="hideMergeDropdown()" />
-                <div class="merge-dropdown" id="merge-dropdown"></div>
-            </div>
-            <div class="form-buttons">
-                <button onclick="cancelForm()">Cancel</button>
-                <button class="primary" onclick="submitMerge('${id}', '${parentId}')">Save</button>
-            </div>
+    body.innerHTML = `
+        <div class="tag-name">Merge "${tag.name}" into:</div>
+        <div class="merge-autocomplete">
+            <input id="merge-search-input" type="text" placeholder="Type to search subtags..."
+                autocomplete="off"
+                oninput="filterMergeOptions(this.value)"
+                onfocus="showMergeDropdown()"
+                onblur="hideMergeDropdown()" />
+            <div class="merge-dropdown" id="merge-dropdown"></div>
         </div>
+        <div id="tag-edit-modal-error" class="form-error" style="display:none"></div>
+    `;
+    document.getElementById('tag-edit-modal-footer').innerHTML = `
+        <button onclick="closeTagEditModal()">Cancel</button>
+        <button class="primary" onclick="submitMerge()">Save</button>
     `;
 
     renderMergeDropdown(mergeSiblings);
@@ -65,11 +61,11 @@ function hideMergeDropdown() {
     }, 150);
 }
 
-function submitMerge(sourceId, parentId) {
+function submitMerge() {
     if (!mergeTargetId) return;
-    const source = tags.find(t => t.id === sourceId);
+    const source = tags.find(t => t.id === editModalTagId);
     const target = tags.find(t => t.id === mergeTargetId);
-    renderMergeConfirm(source, target, parentId);
+    renderMergeConfirm(source, target);
 }
 
 // ===== Render Merge Dropdown =====
@@ -92,21 +88,22 @@ function selectMergeTarget(id) {
     hideMergeDropdown();
 }
 
-// ===== Render Merge Confirmation =====
+// ===== State: Merge confirmation =====
+// "Back" returns to the search step of this same action (not a full modal
+// close) since it's a second step within one flow, same as before.
 
-function renderMergeConfirm(source, target, parentId) {
-    const formContainer = document.getElementById('tag-form');
-    formContainer.innerHTML = `
-        <div class="tag-form-inner">
-            <div class="tag-name">
-                Move all phrases from "${source.name}" into "${target.name}" and delete "${source.name}"?
-                This cannot be undone.
-            </div>
-            <div class="form-buttons">
-                <button onclick="startMerge('${source.id}', '${parentId}')">Back</button>
-                <button class="primary" onclick="confirmMerge('${source.id}', '${target.id}')">Confirm merge</button>
-            </div>
+function renderMergeConfirm(source, target) {
+    const body = document.getElementById('tag-edit-modal-body');
+    body.innerHTML = `
+        <div class="tag-name">
+            Move all phrases from "${source.name}" into "${target.name}" and delete "${source.name}"?
+            This cannot be undone.
         </div>
+        <div id="tag-edit-modal-error" class="form-error" style="display:none"></div>
+    `;
+    document.getElementById('tag-edit-modal-footer').innerHTML = `
+        <button onclick="renderTagEditMerge()">Back</button>
+        <button class="primary" onclick="confirmMerge('${source.id}', '${target.id}')">Confirm merge</button>
     `;
 }
 
@@ -119,11 +116,11 @@ async function confirmMerge(sourceId, targetId) {
 
     if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        alert(data.error || 'Failed to merge subtags');
+        showTagEditError(data.error || 'Failed to merge subtags');
         return;
     }
 
-    cancelForm();
+    closeTagEditModal();
     await loadTags();
     if (typeof loadTable === 'function') loadTable();
 }

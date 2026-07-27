@@ -1,5 +1,4 @@
 #tag-sidebar {
-    width: 100%;
     flex: 1;
     box-sizing: border-box;
     background: #1a1a1a;
@@ -24,88 +23,32 @@
     letter-spacing: 0.05em;
 }
 
-.main-tag-item {
+.tag-chip.main-chip {
+    font-weight: 600;
+    padding: 8px 16px;
+}
+
+.subtag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 0 8px 12px;
+}
+
+/* ===== Tag edit modal: 3-button action list ===== */
+
+.tag-edit-actions {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-}
-
-.tag-row {
-    display: flex;
-    align-items: center;
     gap: 8px;
-    padding: 6px 0;
 }
 
-.subtag-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 4px 0 4px 20px;
+.tag-edit-actions button {
+    width: 100%;
+    text-align: left;
 }
 
-.tag-color-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
-.tag-name {
-    flex: 1;
-    font-size: 1rem;
-    color: #e8e8e8;
-}
-
-.tag-actions {
-    display: flex;
-    gap: 4px;
-    opacity: 0;
-    transition: opacity 0.15s;
-}
-
-.tag-row:hover .tag-actions,
-.subtag-row:hover .tag-actions {
-    opacity: 1;
-}
-
-.tag-actions button {
-    background: none;
-    border: none;
-    color: #666;
-    padding: 2px 4px;
-    font-size: 0.8125rem;
-    cursor: pointer;
-}
-
-.tag-actions button:hover {
-    color: #aaa;
-    background: none;
-}
-
-.add-subtag-btn {
-    background: #1e1e1e;
-    color: #ccc;
-    border: 1px solid #333;
-    border-radius: 6px;
-    font-size: 0.8125rem;
-    padding: 4px 10px;
-    margin-left: 20px;
-    cursor: pointer;
-    display: inline-block;
-    width: auto;
-    transition: background 0.15s;
-}
-
-.add-subtag-btn:hover {
-    background: #2a2a2a;
-    color: #ccc;
-}
-
-#tag-form {
-    border-top: 1px solid #2a2a2a;
-    padding-top: 12px;
-}
+/* ===== Shared form bits (edit / add-subtag / add-main-tag / merge) ===== */
 
 .tag-form-inner {
     display: flex;
@@ -128,6 +71,12 @@
     border-color: #2563eb;
 }
 
+.tag-name {
+    font-size: 1rem;
+    color: #e8e8e8;
+    line-height: 1.4;
+}
+
 .color-grid {
     display: grid;
     grid-template-columns: repeat(8, 1fr);
@@ -147,7 +96,6 @@
     transform: scale(1.2);
 }
 
-
 .color-circle.disabled {
     opacity: 0.2;
     cursor: not-allowed;
@@ -165,6 +113,8 @@
 
 .form-error {
     color: #f87171;
+    font-size: 0.875rem;
+    line-height: 1.5;
 }
 
 .merge-autocomplete {
@@ -220,16 +170,4 @@
     padding: 8px 10px;
     color: #666;
     font-size: 1rem;
-}
-
-.subtag-list.collapsed {
-    display: none;
-}
-
-.toggle-subtags {
-    cursor: pointer;
-}
-
-.toggle-subtags:hover {
-    color: #60a5fa;
 }

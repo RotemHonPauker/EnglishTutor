@@ -54,7 +54,8 @@
 
 #delete-modal-overlay,
 #tag-picker-modal-overlay,
-#tag-filter-modal-overlay {
+#tag-filter-modal-overlay,
+#tag-edit-modal-overlay {
     position: fixed;
     inset: 0;
     background: rgba(0,0,0,0.7);
