@@ -86,6 +86,13 @@
 </head>
 <body>
 
+<!-- APP LOADING OVERLAY: shown until initial data (tags + phrases) has
+     loaded, then faded out — covers the whole app regardless of which tab
+     is active, since the same brief load happens once at startup. -->
+<div id="app-loading-overlay">
+    <img src="icons/loading.svg" class="loading-logo" alt="Loading">
+</div>
+
 <main id="view-container">
 
     <!-- TABLE VIEW -->
@@ -222,6 +229,7 @@
     </div>
 </div>
 
+<script src="loadingOverlay.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="tagsState.js"></script>
 <script src="tagsSidebar.js"></script>

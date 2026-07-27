@@ -49,3 +49,32 @@ button.danger {
 }
 
 button.danger:hover { background: #b91c1c; }
+
+/* ===== App loading overlay (shown briefly on initial load, any tab) ===== */
+
+#app-loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: #0f0f0f;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.25s ease;
+}
+
+#app-loading-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.loading-logo {
+    width: 48px;
+    height: auto;
+    animation: pulse-scale 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-scale {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+}
