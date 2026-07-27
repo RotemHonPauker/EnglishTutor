@@ -3,7 +3,6 @@ const tableBody = document.getElementById('table-body');
 let currentFilter = null;
 let sortAsc = false;
 let allPhrases = [];
-let statusFilterIndex = 0;
 
 async function loadTable() {
     const url = currentFilter ? `/phrases?status=${currentFilter}` : '/phrases';
@@ -13,12 +12,6 @@ async function loadTable() {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-
-const STATUS_FILTERS = [
-    { key: null, label: 'All', cls: 'filter-all' },
-    { key: 'uncategorized', label: 'Todo', cls: 'filter-unapproved' },
-    { key: 'approved', label: 'Done', cls: 'filter-approved' }
-];
 
 // Coarse age bucket instead of an exact date — the exact date isn't useful
 // at a glance, and sorting still uses the real timestamp underneath, so
@@ -46,7 +39,7 @@ function renderTable() {
         const currentMainId = subtag ? subtag.parent_id : '';
         const mainColor = getTagColor(currentMainId);
         const cardTextColor = mainColor ? getContrastColor(mainColor) : null;
-        const cardStyle = mainColor ? `background:${mainColor}; border-color:${mainColor}; color:${cardTextColor};` : '';
+        const cardStyle = mainColor ? `background:${getTagGradient(mainColor)}; border-color:${mainColor}; color:${cardTextColor};` : '';
         const badgeStyle = mainColor
             ? `background:${cardTextColor === '#ffffff' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'}; color:${cardTextColor};`
             : '';
@@ -62,7 +55,7 @@ function renderTable() {
                 <span class="status-badge ${p.status} clickable" onclick="toggleStatus('${p.id}', '${p.status}')">${statusLabel(p.status)}</span>
                 <span class="phrase-date">${getAgeCategory(p.created_at)}</span>
                 <div class="phrase-card-icons">
-                    <button title="Review this phrase" onclick="selectPhraseForReview('${p.id}')">✏️</button>
+                    <button title="Review this phrase" onclick="selectPhraseForReview('${p.id}')">📝</button>
                     <button title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑</button>
                 </div>
             </div>
@@ -129,6 +122,13 @@ async function toggleStatus(id, currentStatus) {
         alert('Failed to update status');
     }
 }
+
+const STATUS_FILTERS = [
+    { key: null, label: 'All', cls: 'filter-all' },
+    { key: 'uncategorized', label: 'Todo', cls: 'filter-unapproved' },
+    { key: 'approved', label: 'Done', cls: 'filter-approved' }
+];
+let statusFilterIndex = 0;
 
 function cycleStatusFilter() {
     statusFilterIndex = (statusFilterIndex + 1) % STATUS_FILTERS.length;
