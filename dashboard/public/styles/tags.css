@@ -12,6 +12,21 @@
     padding: 16px;
 }
 
+#tag-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* This reuses .tag-filter-group from modal.css (also used by the tag-filter
+   modal), but here the vertical rhythm should be a single consistent value —
+   both between a main tag and its own subtags, and between one main tag and
+   the next — so it's overridden specifically inside the sidebar. */
+#tag-list .tag-filter-group {
+    gap: 12px;
+    margin-bottom: 0;
+}
+
 #sidebar-header {
     display: flex;
     justify-content: space-between;
@@ -32,7 +47,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    padding: 8px 0 8px 12px;
+    padding: 0 0 0 12px;
 }
 
 /* ===== Tag edit modal: 3-button action list ===== */
@@ -80,12 +95,13 @@
 .color-grid {
     display: grid;
     grid-template-columns: repeat(8, 1fr);
-    gap: 6px;
+    gap: 8px;
 }
 
 .color-circle {
-    width: 16px;
-    height: 16px;
+    width: 100%;
+    aspect-ratio: 1;
+    max-width: 32px;
     border-radius: 50%;
     cursor: pointer;
     border: 2px solid transparent;

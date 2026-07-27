@@ -18,13 +18,19 @@ function renderSidebar() {
         const subChips = subtags.map(sub => `
             <div class="tag-chip" style="background:${mainTag.color || '#333'}; color:${contrast}" onclick="openTagEditModal('${sub.id}')">${sub.name}</div>
         `).join('');
+        // Only render the subtag row at all when there's something in it —
+        // an empty <div class="subtag-list"> would still count as a second
+        // flex item in .tag-filter-group, and its own 12px gap would apply
+        // even though the div itself has zero height, roughly doubling the
+        // visible space below a main tag that has no subtags yet.
+        const subtagListHtml = subtags.length
+            ? `<div class="subtag-list">${subChips}</div>`
+            : '';
 
         return `
             <div class="tag-filter-group">
                 <div class="tag-chip main-chip" style="background:${mainTag.color || '#333'}; color:${contrast}" onclick="openTagEditModal('${mainTag.id}')">${mainTag.name}</div>
-                <div class="subtag-list">
-                    ${subChips}
-                </div>
+                ${subtagListHtml}
             </div>
         `;
     }).join('');
