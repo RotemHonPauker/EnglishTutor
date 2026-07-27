@@ -36,6 +36,7 @@
     padding: 12px 24px;
     border-top: 1px solid #222;
     display: flex;
+    align-items: center;
     gap: 10px;
     flex-shrink: 0;
 }
@@ -54,5 +55,3 @@
 }
 
 #new-phrase-input:focus { border-color: #2563eb; }
-
-#new-phrase-send { align-self: flex-end; }

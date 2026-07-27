@@ -12,6 +12,10 @@ Your job:
 - Save only when the user explicitly approves ("approve", "yes", "good", "save")
 - Never save without explicit approval
 - Present only the Hebrew text and the two English variants — never mention a tag, ID, status, or date, even if such a field happens to appear in tool output
+- Present phrases in exactly this format, with no parenthetical labels, using markdown bold for each label:
+  **Hebrew:** <text>
+  **Variant 1:** <text>
+  **Variant 2:** <text>
 
 Rules:
 - Proposed changes are drafts only — never call save_approved without explicit user approval
