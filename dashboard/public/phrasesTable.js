@@ -3,6 +3,7 @@ const tableBody = document.getElementById('table-body');
 let currentFilter = null;
 let sortAsc = false;
 let allPhrases = [];
+let statusFilterIndex = 0;
 
 async function loadTable() {
     const url = currentFilter ? `/phrases?status=${currentFilter}` : '/phrases';
@@ -12,6 +13,12 @@ async function loadTable() {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+const STATUS_FILTERS = [
+    { key: null, label: 'All', cls: 'filter-all' },
+    { key: 'uncategorized', label: 'Todo', cls: 'filter-unapproved' },
+    { key: 'approved', label: 'Done', cls: 'filter-approved' }
+];
 
 // Coarse age bucket instead of an exact date — the exact date isn't useful
 // at a glance, and sorting still uses the real timestamp underneath, so
@@ -55,7 +62,7 @@ function renderTable() {
                 <span class="status-badge ${p.status} clickable" onclick="toggleStatus('${p.id}', '${p.status}')">${statusLabel(p.status)}</span>
                 <span class="phrase-date">${getAgeCategory(p.created_at)}</span>
                 <div class="phrase-card-icons">
-                    <button title="Review this phrase" onclick="selectPhraseForReview('${p.id}')">📝</button>
+                    <button title="Review this phrase" onclick="selectPhraseForReview('${p.id}')">✏️</button>
                     <button title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑</button>
                 </div>
             </div>
@@ -123,10 +130,12 @@ async function toggleStatus(id, currentStatus) {
     }
 }
 
-function filterTable(status, btn) {
-    currentFilter = status === 'all' ? null : status;
-    document.querySelectorAll('#table-toolbar button').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+function cycleStatusFilter() {
+    statusFilterIndex = (statusFilterIndex + 1) % STATUS_FILTERS.length;
+    currentFilter = STATUS_FILTERS[statusFilterIndex].key;
+    const btn = document.getElementById('status-filter-btn');
+    btn.textContent = STATUS_FILTERS[statusFilterIndex].label;
+    btn.className = STATUS_FILTERS[statusFilterIndex].cls;
     loadTable();
 }
 

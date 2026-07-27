@@ -16,5 +16,5 @@ function getTagColor(tagId) {
 }
 
 function statusLabel(status) {
-    return status === 'approved' ? 'Approved' : 'Unapproved';
+    return status === 'approved' ? 'Done' : 'Todo';
 }

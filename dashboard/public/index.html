@@ -15,7 +15,6 @@
     <meta name="apple-mobile-web-app-title" content="Phrases">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link rel="stylesheet" href="styles/base.css">
-    <link rel="stylesheet" href="styles/header.css">
     <link rel="stylesheet" href="styles/table.css">
     <link rel="stylesheet" href="styles/editor.css">
     <link rel="stylesheet" href="styles/modal.css">
@@ -87,10 +86,6 @@
 </head>
 <body>
 
-<header>
-    <h1>Phrase Review</h1>
-</header>
-
 <main id="view-container">
 
     <!-- TABLE VIEW -->
@@ -99,9 +94,7 @@
             <div id="table-section">
                 <div id="table-toolbar">
                     <span id="phrase-count"></span>
-                    <button class="active" onclick="filterTable('all', this)">All</button>
-                    <button onclick="filterTable('uncategorized', this)">Unapproved</button>
-                    <button onclick="filterTable('approved', this)">Approved</button>
+                    <button id="status-filter-btn" class="filter-all" onclick="cycleStatusFilter()">All</button>
                     <button onclick="openTagFilterModal()">Tags</button>
                     <button id="sort-btn" onclick="toggleSort()">Date ↓</button>
                 </div>
@@ -151,21 +144,21 @@
 
 <!-- BOTTOM TAB BAR -->
 <nav id="tab-bar">
-    <button class="tab-btn active" data-view="table" onclick="showView('table', this)">
-        <span class="tab-icon">▤</span>
-        <span>Table</span>
-    </button>
-    <button class="tab-btn" data-view="editor" onclick="enterEditorTab(this)">
-        <span class="tab-icon">💬</span>
-        <span>Editor</span>
-    </button>
-    <button class="tab-btn" data-view="tags" onclick="showView('tags', this)">
-        <span class="tab-icon">🏷</span>
-        <span>Tags</span>
-    </button>
     <button class="tab-btn" data-view="new" onclick="showView('new', this)">
         <span class="tab-icon">➕</span>
         <span>New</span>
+    </button>
+    <button class="tab-btn active" data-view="table" onclick="showView('table', this)">
+        <span class="tab-icon">📋</span>
+        <span>Table</span>
+    </button>
+    <button class="tab-btn" data-view="editor" onclick="enterEditorTab(this)">
+        <span class="tab-icon">🗨️</span>
+        <span>Editor</span>
+    </button>
+    <button class="tab-btn" data-view="tags" onclick="showView('tags', this)">
+        <span class="tab-icon">#️⃣</span>
+        <span>Tags</span>
     </button>
 </nav>
 
