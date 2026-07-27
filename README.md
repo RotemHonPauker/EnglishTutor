@@ -57,6 +57,7 @@ EnglishTutor/
 │   |   ├── phraseTagPicker.js
 │   |   ├── sw.js
 │   |   ├── tagsMerge.js
+│   |   ├── tagsMigrate.js
 │   |   ├── tagsSidebar.js
 │   |   └── tagsState.js
 │   ├── routes/

@@ -104,10 +104,51 @@ export const createTag = async ({ name, color, parentId }) => {
     return result.rows[0];
 };
 
-export const updateTag = async ({ id, name, color }) => {
+export const updateTag = async ({ id, name, color, parentId }) => {
+    // Migrating a subtag: make sure the target actually exists and is itself
+    // a main tag — prevents accidentally nesting a subtag under another
+    // subtag, which the rest of the app (and the UI) assumes never happens.
+    if (parentId !== undefined && parentId !== null) {
+        const { rows } = await pool.query(
+            `SELECT parent_id FROM tags WHERE id = $1`,
+            [parentId]
+        );
+        if (!rows.length) {
+            throw new Error('Target main tag not found');
+        }
+        if (rows[0].parent_id) {
+            throw new Error('Can only migrate a subtag under a main tag, not another subtag');
+        }
+    }
+
+    // Only touch the columns actually passed in, so an ordinary name/color
+    // edit never overwrites parent_id (and vice versa for a migrate call).
+    const fields = [];
+    const values = [];
+    let i = 1;
+
+    if (name !== undefined) {
+        fields.push(`name = $${i++}`);
+        values.push(name);
+    }
+    if (color !== undefined) {
+        fields.push(`color = $${i++}`);
+        values.push(color || null);
+    }
+    if (parentId !== undefined) {
+        fields.push(`parent_id = $${i++}`);
+        values.push(parentId || null);
+    }
+
+    if (!fields.length) {
+        const { rows } = await pool.query(`SELECT * FROM tags WHERE id = $1`, [id]);
+        return rows[0];
+    }
+
+    values.push(id);
     const result = await pool.query(
-        `UPDATE tags SET name = $1, color = $2 WHERE id = $3 RETURNING *`,
-        [name, color || null, id]
+        `UPDATE tags SET ${fields.join(', ')} WHERE id = $${i} RETURNING *`,
+        values
     );
     return result.rows[0];
 };

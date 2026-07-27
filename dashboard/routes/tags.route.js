@@ -23,12 +23,12 @@ router.post('/tags', async (req, res) => {
 });
 
 router.put('/tags/:id', async (req, res) => {
-    const { name, color } = req.body;
+    const { name, color, parentId } = req.body;
     try {
-        const tag = await updateTag({ id: req.params.id, name, color });
+        const tag = await updateTag({ id: req.params.id, name, color, parentId });
         res.json(tag);
     } catch (err) {
-        res.status(500).json({ error: 'Failed to update tag' });
+        res.status(400).json({ error: err.message || 'Failed to update tag' });
     }
 });
 

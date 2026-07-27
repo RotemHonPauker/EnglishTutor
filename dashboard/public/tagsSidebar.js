@@ -76,10 +76,14 @@ function renderTagEditActions() {
     const thirdBtn = editModalIsMain
         ? `<button onclick="renderTagEditAddSubtag()">+ Add subtag</button>`
         : `<button onclick="renderTagEditMerge()">⇄ Merge into...</button>`;
+    const migrateBtn = editModalIsMain
+        ? ''
+        : `<button onclick="renderTagEditMigrate()">⇅ Migrate to main tag...</button>`;
     body.innerHTML = `
         <div class="tag-edit-actions">
             <button onclick="renderTagEditEdit()">✎ Edit</button>
             ${thirdBtn}
+            ${migrateBtn}
             <button class="danger" onclick="handleTagEditDelete()">🗑 Delete</button>
         </div>
         <div id="tag-edit-modal-error" class="form-error" style="display:none"></div>
