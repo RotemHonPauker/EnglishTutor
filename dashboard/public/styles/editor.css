@@ -27,6 +27,11 @@
     font-size: inherit;
 }
 
+.message ul,
+.message ol {
+    padding-left: 20px;
+}
+
 .message.assistant {
     background: #1a1a1a;
     border: 1px solid #2a2a2a;
@@ -71,7 +76,6 @@
     padding: 12px 24px;
     border-top: 1px solid #222;
     display: flex;
-    align-items: center;
     gap: 10px;
     flex-shrink: 0;
 }
@@ -90,3 +94,5 @@
 }
 
 #input:focus { border-color: #2563eb; }
+
+#send { align-self: flex-end; }
