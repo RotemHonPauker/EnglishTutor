@@ -63,15 +63,41 @@ function hslToHex(h, s, l) {
 
 // Same hue shift and lightness nudge every time a given hex comes in, so a
 // tag's gradient stays visually consistent across renders.
-function deriveSecondaryColor(hex, hueShift = 35, lightnessDelta = 0.06) {
+function deriveSecondaryColor(hex, hueShift = 25, lightnessDelta = 0.12) {
     if (!hex) return hex;
     const { h, s, l } = hexToHsl(hex);
+    const boostedS = Math.min(1, Math.max(s, 0.5));
     const newL = Math.min(0.85, Math.max(0.15, l + lightnessDelta));
-    return hslToHex(h + hueShift, s, newL);
+    return hslToHex(h + hueShift, boostedS, newL);
 }
+
+// Hand-picked second color for each of the 16 fixed tag colors (see COLORS
+// in tagsState.js). Since the palette is small and fixed, curating each
+// pair directly gives far more consistent, tasteful results than computing
+// one on the fly — and any single entry can be tweaked independently just
+// by editing its hex value here. deriveSecondaryColor above is kept only as
+// a fallback for a hex that somehow isn't in this table.
+const GRADIENT_PAIRS = {
+    '#AD1457': '#AD0E0A',
+    '#D81B60': '#D9271A',
+    '#E67C73': '#E69073',
+    '#F4511E': '#F5751D',
+    '#F09300': '#F0B100',
+    '#F6BF26': '#F5D625',
+    '#7CB342': '#4DB342',
+    '#0B8043': '#0B806B',
+    '#009688': '#007596',
+    '#33B679': '#33B5A4',
+    '#039BE5': '#0252E6',
+    '#3F51B5': '#543FB5',
+    '#B39DDB': '#C79EDB',
+    '#9E69AF': '#B06AA6',
+    '#8E24AA': '#AB248F',
+    '#795548': '#785C47'
+};
 
 function getTagGradient(hex, angle = 135) {
     if (!hex) return null;
-    const secondary = deriveSecondaryColor(hex);
+    const secondary = GRADIENT_PAIRS[hex.toUpperCase()] || deriveSecondaryColor(hex);
     return `linear-gradient(${angle}deg, ${hex}, ${secondary})`;
 }

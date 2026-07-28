@@ -43,18 +43,18 @@ function renderTable() {
             : '';
         return `
         <div class="phrase-card${mainColor ? ' has-color' : ''}" style="${cardStyle}">
-            <div class="phrase-card-main">
-                <div class="phrase-hebrew">${p.hebrew_text || ''}</div>
-                <div class="phrase-variant">${p.variant_1 || ''}</div>
-                <div class="phrase-variant">${p.variant_2 || ''}</div>
-            </div>
-            <div class="phrase-card-side">
+            <div class="phrase-card-header">
                 <div class="phrase-card-icons">
                     <button title="Review this phrase" onclick="selectPhraseForReview('${p.id}')">✏️</button>
                     <button title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑</button>
                 </div>
                 <button class="tag-badge" style="${badgeStyle}" onclick="openTagPicker('${p.id}')">${subtag ? subtag.name : '—'}</button>
                 <span class="phrase-date">${getAgeCategory(p.created_at)}</span>
+            </div>
+            <div class="phrase-card-main">
+                <div class="phrase-hebrew">${p.hebrew_text || ''}</div>
+                <div class="phrase-variant">${p.variant_1 || ''}</div>
+                <div class="phrase-variant">${p.variant_2 || ''}</div>
             </div>
         </div>
     `;
