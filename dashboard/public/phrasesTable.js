@@ -1,12 +1,10 @@
 const tableBody = document.getElementById('table-body');
 
-let currentFilter = null;
 let sortAsc = false;
 let allPhrases = [];
 
 async function loadTable() {
-    const url = currentFilter ? `/phrases?status=${currentFilter}` : '/phrases';
-    const res = await fetch(url);
+    const res = await fetch('/phrases');
     allPhrases = await res.json();
     renderTable();
 }
@@ -56,7 +54,6 @@ function renderTable() {
                     <button title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑</button>
                 </div>
                 <button class="tag-badge" style="${badgeStyle}" onclick="openTagPicker('${p.id}')">${subtag ? subtag.name : '—'}</button>
-                <span class="status-badge ${p.status} clickable" onclick="toggleStatus('${p.id}', '${p.status}')">${statusLabel(p.status)}</span>
                 <span class="phrase-date">${getAgeCategory(p.created_at)}</span>
             </div>
         </div>
@@ -106,37 +103,6 @@ async function updateSubtag(id, subtagId) {
     } catch (err) {
         alert('Failed to update tag');
     }
-}
-
-async function toggleStatus(id, currentStatus) {
-    const newStatus = currentStatus === 'approved' ? 'uncategorized' : 'approved';
-    try {
-        const res = await fetch(`/phrases/${id}/status`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: newStatus })
-        });
-        if (!res.ok) throw new Error('Failed to update status');
-        await loadTable();
-    } catch (err) {
-        alert('Failed to update status');
-    }
-}
-
-const STATUS_FILTERS = [
-    { key: null, label: 'All', cls: 'filter-all' },
-    { key: 'uncategorized', label: 'Todo', cls: 'filter-unapproved' },
-    { key: 'approved', label: 'Done', cls: 'filter-approved' }
-];
-let statusFilterIndex = 0;
-
-function cycleStatusFilter() {
-    statusFilterIndex = (statusFilterIndex + 1) % STATUS_FILTERS.length;
-    currentFilter = STATUS_FILTERS[statusFilterIndex].key;
-    const btn = document.getElementById('status-filter-btn');
-    btn.textContent = STATUS_FILTERS[statusFilterIndex].label;
-    btn.className = STATUS_FILTERS[statusFilterIndex].cls;
-    loadTable();
 }
 
 function toggleSort() {

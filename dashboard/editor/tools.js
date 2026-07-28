@@ -11,8 +11,8 @@ export const tools = [
         }
     },
     {
-        name: 'save_approved',
-        description: 'Save the approved phrase with final variants',
+        name: 'save_phrase',
+        description: 'Save the phrase with its final variant wording',
         input_schema: {
             type: 'object',
             properties: {

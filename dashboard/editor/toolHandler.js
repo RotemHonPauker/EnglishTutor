@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { getPhraseById, updatePhraseApproval } from '../../database.js';
+import { getPhraseById, updatePhrase } from '../../database.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const translationPromptPath = join(__dirname, '..', 'translation', 'translationPrompt.txt');
@@ -22,7 +22,7 @@ export const handleToolCall = async (toolName, toolInput) => {
         currentPhrase = await getPhraseById(toolInput.phraseId);
         if (!currentPhrase) return 'Phrase not found.';
         // Only pass along what the editor should ever see/discuss — never the
-        // raw row, which also contains subtag_id, status, id, and dates.
+        // raw row, which also contains subtag_id, id, and dates.
         return JSON.stringify({
             hebrewText: currentPhrase.hebrew_text,
             variant1: currentPhrase.variant_1,
@@ -30,8 +30,8 @@ export const handleToolCall = async (toolName, toolInput) => {
         });
     }
 
-    if (toolName === 'save_approved') {
-        await updatePhraseApproval({
+    if (toolName === 'save_phrase') {
+        await updatePhrase({
             id: currentPhrase.id,
             variant1: toolInput.variant1,
             variant2: toolInput.variant2

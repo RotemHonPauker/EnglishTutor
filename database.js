@@ -29,36 +29,23 @@ export const getPhraseById = async (id) => {
     return result.rows[0] || null;
 };
 
-// Editor-driven approval: sets the final variant wording and marks the phrase
-// approved, but never touches subtag_id — tagging stays entirely table-driven,
-// whether it happens before or after this approval.
-export const updatePhraseApproval = async ({ id, variant1, variant2 }) => {
+// Editor-driven save: sets the final variant wording. Tagging stays
+// entirely table-driven and untouched here, same as before.
+export const updatePhrase = async ({ id, variant1, variant2 }) => {
     const result = await pool.query(
         `UPDATE phrases 
-         SET variant_1 = $1, variant_2 = $2, status = 'approved', approved_at = NOW()
+         SET variant_1 = $1, variant_2 = $2
          WHERE id = $3 RETURNING *`,
         [variant1, variant2, id]
     );
     return result.rows[0];
 };
 
-// Table-driven edits: each touches exactly one column, so picking a tag can
-// never accidentally overwrite the status (or vice versa), and neither ever
-// touches variant_1 / variant_2.
+// Table-driven edit: touches only subtag_id, never variant_1 / variant_2.
 export const updatePhraseSubtag = async ({ id, subtagId }) => {
     const result = await pool.query(
         `UPDATE phrases SET subtag_id = $1 WHERE id = $2 RETURNING *`,
         [subtagId || null, id]
-    );
-    return result.rows[0];
-};
-
-export const updatePhraseStatus = async ({ id, status }) => {
-    const result = await pool.query(
-        `UPDATE phrases 
-         SET status = $1, approved_at = $2
-         WHERE id = $3 RETURNING *`,
-        [status, status === 'approved' ? new Date() : null, id]
     );
     return result.rows[0];
 };
@@ -71,21 +58,14 @@ export const deletePhrase = async (id) => {
     return result.rows[0] || null;
 };
 
-export const getPhrases = async (status = null) => {
-    const query = status
-        ? `SELECT p.*, t.name as subtag_name, pt.name as tag_name, pt.color as tag_color
-           FROM phrases p
-           LEFT JOIN tags t ON p.subtag_id = t.id
-           LEFT JOIN tags pt ON t.parent_id = pt.id
-           WHERE p.status = $1
-           ORDER BY p.created_at DESC`
-        : `SELECT p.*, t.name as subtag_name, pt.name as tag_name, pt.color as tag_color
-           FROM phrases p
-           LEFT JOIN tags t ON p.subtag_id = t.id
-           LEFT JOIN tags pt ON t.parent_id = pt.id
-           ORDER BY p.created_at DESC`;
-    const params = status ? [status] : [];
-    const result = await pool.query(query, params);
+export const getPhrases = async () => {
+    const result = await pool.query(
+        `SELECT p.*, t.name as subtag_name, pt.name as tag_name, pt.color as tag_color
+         FROM phrases p
+         LEFT JOIN tags t ON p.subtag_id = t.id
+         LEFT JOIN tags pt ON t.parent_id = pt.id
+         ORDER BY p.created_at DESC`
+    );
     return result.rows;
 };
 

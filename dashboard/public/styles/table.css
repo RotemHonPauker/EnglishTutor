@@ -41,24 +41,6 @@
     margin-right: 4px;
 }
 
-#status-filter-btn.filter-all {
-    background: #2563eb;
-    color: white;
-    border-color: #2563eb;
-}
-
-#status-filter-btn.filter-unapproved {
-    background: #eaeaea;
-    color: #1a1a1a;
-    border-color: #eaeaea;
-}
-
-#status-filter-btn.filter-approved {
-    background: #2a2a2a;
-    color: #888;
-    border-color: #2a2a2a;
-}
-
 #sort-btn {
     margin-left: auto;
 }
@@ -195,31 +177,4 @@
 
 .phrase-card-icons button:hover {
     opacity: 1;
-}
-
-.status-badge {
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 0.6875rem;
-    font-weight: 500;
-    display: inline-block;
-}
-
-.status-badge.approved {
-    background: #2a2a2a;
-    color: #888;
-}
-
-.status-badge.uncategorized {
-    background: #eaeaea;
-    color: #1a1a1a;
-}
-
-.status-badge.clickable {
-    cursor: pointer;
-    user-select: none;
-}
-
-.status-badge.clickable:hover {
-    filter: brightness(1.3);
 }

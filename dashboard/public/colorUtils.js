@@ -15,10 +15,6 @@ function getTagColor(tagId) {
     return (tag && tag.color) || null;
 }
 
-function statusLabel(status) {
-    return status === 'approved' ? 'Done' : 'Todo';
-}
-
 // --- Gradient derivation ---
 // Cards use a two-color diagonal gradient per tag, but only ONE color is
 // actually stored per tag. The second color is derived here by shifting the
