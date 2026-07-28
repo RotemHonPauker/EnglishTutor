@@ -29,14 +29,14 @@ export const getPhraseById = async (id) => {
     return result.rows[0] || null;
 };
 
-// Editor-driven save: sets the final variant wording. Tagging stays
-// entirely table-driven and untouched here, same as before.
-export const updatePhrase = async ({ id, variant1, variant2 }) => {
+// Editor-driven save: sets the final Hebrew text and variant wording.
+// Tagging stays entirely table-driven and untouched here, same as before.
+export const updatePhrase = async ({ id, hebrewText, variant1, variant2 }) => {
     const result = await pool.query(
         `UPDATE phrases 
-         SET variant_1 = $1, variant_2 = $2
-         WHERE id = $3 RETURNING *`,
-        [variant1, variant2, id]
+         SET hebrew_text = $1, variant_1 = $2, variant_2 = $3
+         WHERE id = $4 RETURNING *`,
+        [hebrewText, variant1, variant2, id]
     );
     return result.rows[0];
 };

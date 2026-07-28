@@ -12,14 +12,15 @@ export const tools = [
     },
     {
         name: 'save_phrase',
-        description: 'Save the phrase with its final variant wording',
+        description: 'Save the phrase with its final Hebrew text and variant wording',
         input_schema: {
             type: 'object',
             properties: {
+                hebrewText: { type: 'string', description: 'The Hebrew phrase text' },
                 variant1: { type: 'string', description: 'First English variant' },
                 variant2: { type: 'string', description: 'Second English variant' }
             },
-            required: ['variant1', 'variant2']
+            required: ['hebrewText', 'variant1', 'variant2']
         }
     },
     {

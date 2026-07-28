@@ -33,6 +33,7 @@ export const handleToolCall = async (toolName, toolInput) => {
     if (toolName === 'save_phrase') {
         await updatePhrase({
             id: currentPhrase.id,
+            hebrewText: toolInput.hebrewText,
             variant1: toolInput.variant1,
             variant2: toolInput.variant2
         });
