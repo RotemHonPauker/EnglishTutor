@@ -34,6 +34,7 @@ body {
     color: #e8e8e8;
     height: 100vh;
     height: 100dvh;
+    height: var(--app-height, 100dvh);
     display: flex;
     flex-direction: column;
     overflow: hidden;
