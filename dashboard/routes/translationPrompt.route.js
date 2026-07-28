@@ -1,27 +1,23 @@
 import express from 'express';
-import { readFileSync, writeFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import { execSync } from 'child_process';
+import { getPrompt, savePrompt } from '../../database.js';
 import { clearPendingTranslationPromptProposal } from '../editor/toolHandler.js';
 
 const router = express.Router();
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const translationPromptPath = join(__dirname, '..', 'translation', 'translationPrompt.txt');
 
-router.get('/translation-prompt', (req, res) => {
-    const content = readFileSync(translationPromptPath, 'utf-8');
-    res.json({ content });
+router.get('/translation-prompt', async (req, res) => {
+    try {
+        const content = await getPrompt('translation');
+        res.json({ content });
+    } catch (err) {
+        console.error('Translation prompt fetch error:', err);
+        res.status(500).json({ error: 'Failed to fetch translation prompt' });
+    }
 });
 
-router.post('/translation-prompt', (req, res) => {
+router.post('/translation-prompt', async (req, res) => {
     const { content } = req.body;
     try {
-        writeFileSync(translationPromptPath, content, 'utf-8');
-        execSync(
-            'git add dashboard/translation/translationPrompt.txt && git commit -m "update translation prompt from dashboard" && git push',
-            { cwd: join(__dirname, '..', '..') }
-        );
+        await savePrompt('translation', content);
         clearPendingTranslationPromptProposal();
         res.json({ ok: true });
     } catch (err) {

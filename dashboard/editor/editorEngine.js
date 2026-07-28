@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { tools } from './tools.js';
-import { getEditorPrompt } from './editorPrompt.js';
+import { getPrompt } from '../../database.js';
 import { handleToolCall } from './toolHandler.js';
 
 
@@ -22,10 +22,12 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 export const handleReviewMessage = async (userMessage, conversationHistory) => {
     conversationHistory.push({ role: 'user', content: userMessage });
 
+    const systemPrompt = await getPrompt('editor');
+
     let response = await anthropic.messages.create({
         model: 'claude-sonnet-4-6',
         max_tokens: 1024,
-        system: getEditorPrompt(),
+        system: systemPrompt,
         tools,
         messages: conversationHistory
     });
@@ -50,7 +52,7 @@ export const handleReviewMessage = async (userMessage, conversationHistory) => {
         response = await anthropic.messages.create({
             model: 'claude-sonnet-4-6',
             max_tokens: 1024,
-            system: getEditorPrompt(),
+            system: systemPrompt,
             tools,
             messages: conversationHistory
         });

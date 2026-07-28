@@ -1,27 +1,23 @@
 import express from 'express';
-import { readFileSync, writeFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import { execSync } from 'child_process';
+import { getPrompt, savePrompt } from '../../database.js';
 import { clearPendingEditorPromptProposal } from '../editor/toolHandler.js';
 
 const router = express.Router();
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const editorPromptPath = join(__dirname, '..', 'editor', 'editorPrompt.txt');
 
-router.get('/editor-prompt', (req, res) => {
-    const content = readFileSync(editorPromptPath, 'utf-8');
-    res.json({ content });
+router.get('/editor-prompt', async (req, res) => {
+    try {
+        const content = await getPrompt('editor');
+        res.json({ content });
+    } catch (err) {
+        console.error('Editor prompt fetch error:', err);
+        res.status(500).json({ error: 'Failed to fetch prompt' });
+    }
 });
 
-router.post('/editor-prompt', (req, res) => {
+router.post('/editor-prompt', async (req, res) => {
     const { content } = req.body;
     try {
-        writeFileSync(editorPromptPath, content, 'utf-8');
-        execSync(
-            'git add dashboard/editor/editorPrompt.txt && git commit -m "update editor prompt from review session" && git push',
-            { cwd: join(__dirname, '..', '..') }
-        );
+        await savePrompt('editor', content);
         clearPendingEditorPromptProposal();
         res.json({ ok: true });
     } catch (err) {

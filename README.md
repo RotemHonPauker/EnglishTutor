@@ -36,15 +36,14 @@ EnglishTutor/
 ├── dashboard/
 │   ├── editor/
 │   |   ├── editorEngine.js
-│   |   ├── editorPrompt.js
-│   |   ├── editorPrompt.txt
 │   |   ├── toolHandler.js
 │   |   └── tools.js
 │   ├── public/
 │   |   ├── icons/
 │   |   |   ├── icon-192.png
 │   |   |   ├── icon-512.png
-│   |   |   └── icon-512-maskable.png
+│   |   |   ├── icon-512-maskable.png
+│   |   |   └── loading.svg
 │   |   ├── styles/
 │   |   ├── app.js
 │   |   ├── colorUtils.js
@@ -68,8 +67,6 @@ EnglishTutor/
 │   |   └── translationPrompt.route.js
 │   ├── translation/
 │   |   ├── translationEngine.js
-│   |   ├── translationPrompt.js
-│   |   ├── translationPrompt.txt
 │   |   └── parseTranslationResponse.js
 │   └── server.js
 ├── .env

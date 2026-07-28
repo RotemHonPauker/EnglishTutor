@@ -69,6 +69,52 @@ export const getPhrases = async () => {
     return result.rows;
 };
 
+// --- Prompts (editor + translation), stored in the DB instead of files ---
+// so they stay in sync across every environment (local, external server,
+// etc.) without depending on git. Each save inserts a new row; only the 3
+// most recent rows per type are kept (current + 2 previous), older ones are
+// pruned automatically.
+
+export const getPrompt = async (promptType) => {
+    const { rows } = await pool.query(
+        `SELECT content FROM prompts WHERE prompt_type = $1 ORDER BY created_at DESC LIMIT 1`,
+        [promptType]
+    );
+    return rows[0]?.content ?? null;
+};
+
+export const savePrompt = async (promptType, content) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        await client.query(
+            `INSERT INTO prompts (prompt_type, content) VALUES ($1, $2)`,
+            [promptType, content]
+        );
+
+        // Keep only the 3 most recent rows for this type (current + 2 prior).
+        await client.query(
+            `DELETE FROM prompts
+             WHERE prompt_type = $1
+             AND id NOT IN (
+                 SELECT id FROM prompts
+                 WHERE prompt_type = $1
+                 ORDER BY created_at DESC
+                 LIMIT 3
+             )`,
+            [promptType]
+        );
+
+        await client.query('COMMIT');
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
+};
+
 export const getTags = async () => {
     const result = await pool.query(
         `SELECT * FROM tags ORDER BY parent_id NULLS FIRST, name ASC`
