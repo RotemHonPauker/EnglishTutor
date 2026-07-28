@@ -18,6 +18,14 @@ newPhraseInput.addEventListener('keydown', (e) => {
     }
 });
 
+// Entering the New tab always starts with a clean, empty log — any
+// previously translated phrases shown there this session are cleared, same
+// as how entering the Editor tab directly resets its own conversation.
+function enterNewPhraseTab(btnEl) {
+    showView('new', btnEl);
+    newPhraseLog.innerHTML = '';
+}
+
 async function submitNewPhrase() {
     const text = newPhraseInput.value.trim();
     if (!text) return;
