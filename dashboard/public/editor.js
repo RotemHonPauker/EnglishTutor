@@ -6,8 +6,14 @@ input.addEventListener('input', () => {
     input.style.height = input.scrollHeight + 'px';
 });
 
+// Mobile keyboards have no real Shift key, so !e.shiftKey is always true
+// there — Enter would always send, with no way to type a line break. On
+// touch devices, let Enter behave normally (newline); the Send button is
+// the only way to send.
+const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+
 input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !isTouchDevice) {
         e.preventDefault();
         sendMessage();
     }

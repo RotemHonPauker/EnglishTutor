@@ -6,8 +6,13 @@ newPhraseInput.addEventListener('input', () => {
     newPhraseInput.style.height = newPhraseInput.scrollHeight + 'px';
 });
 
+// See editor.js for why this check exists: mobile keyboards have no real
+// Shift key, so Enter would otherwise always send instead of ever inserting
+// a newline.
+const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+
 newPhraseInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !isTouchDevice) {
         e.preventDefault();
         submitNewPhrase();
     }
