@@ -1,7 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import { tools } from './tools.js';
-import { getPrompt } from '../../database.js';
 import { handleToolCall } from './toolHandler.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const editorPromptPath = join(__dirname, 'editorPrompt.txt');
 
 
 /*
@@ -22,7 +27,10 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 export const handleReviewMessage = async (userMessage, conversationHistory) => {
     conversationHistory.push({ role: 'user', content: userMessage });
 
-    const systemPrompt = await getPrompt('editor');
+    // This is the editor's own behavior — no longer per-space and no longer
+    // user-editable through the chat UI, so it's read as a plain file
+    // (fresh on every call, in case it's ever edited by hand).
+    const systemPrompt = readFileSync(editorPromptPath, 'utf-8');
 
     let response = await anthropic.messages.create({
         model: 'claude-sonnet-4-6',

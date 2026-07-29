@@ -4,7 +4,7 @@ let sortAsc = false;
 let allPhrases = [];
 
 async function loadTable() {
-    const res = await fetch('/phrases');
+    const res = await fetch(`/phrases?spaceId=${activeSpaceId}`);
     allPhrases = await res.json();
     renderTable();
 }

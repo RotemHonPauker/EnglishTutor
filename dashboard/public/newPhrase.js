@@ -6,11 +6,9 @@ newPhraseInput.addEventListener('input', () => {
     newPhraseInput.style.height = newPhraseInput.scrollHeight + 'px';
 });
 
-// See editor.js for why this check exists: mobile keyboards have no real
-// Shift key, so Enter would otherwise always send instead of ever inserting
-// a newline.
-const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
-
+// isTouchDevice is declared once in editor.js (loaded before this file) and
+// reused here as a shared global — declaring it again here would collide,
+// since separate <script> files share one global scope.
 newPhraseInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey && !isTouchDevice) {
         e.preventDefault();
@@ -41,7 +39,7 @@ async function submitNewPhrase() {
         const res = await fetch('/phrases', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ hebrewText: text })
+            body: JSON.stringify({ hebrewText: text, spaceId: activeSpaceId })
         });
         if (!res.ok) throw new Error('Failed to translate phrase');
         const phrase = await res.json();

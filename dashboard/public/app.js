@@ -32,6 +32,7 @@ if (window.visualViewport) {
 }
 
 window.onload = async () => {
+    await loadSpaces();
     await loadTags();
     await loadTable();
 };

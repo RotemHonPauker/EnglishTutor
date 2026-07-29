@@ -88,31 +88,15 @@ function renderDiffHtml(parts) {
     }).join('');
 }
 
-// --- PROMPT PROPOSAL ---
+// --- SPACE RULES PROPOSAL ---
 
-const PROMPT_KIND_CONFIG = {
-    translation: {
-        label: 'Suggested translation prompt change',
-        saveEndpoint: '/translation-prompt',
-        discardEndpoint: '/translation-prompt/discard',
-        failMessage: 'Failed to save translation prompt.'
-    },
-    editor: {
-        label: 'Suggested editor prompt change',
-        saveEndpoint: '/editor-prompt',
-        discardEndpoint: '/editor-prompt/discard',
-        failMessage: 'Failed to save editor prompt.'
-    }
-};
-
-function addPromptProposal(kind, proposal) {
-    const config = PROMPT_KIND_CONFIG[kind];
+function addSpaceRulesProposal(proposal) {
     const div = document.createElement('div');
     div.className = 'message assistant translation-prompt-proposal';
 
     const label = document.createElement('div');
     label.className = 'proposal-label';
-    label.textContent = config.label;
+    label.textContent = `Suggested rules for ${getActiveSpace()?.name || 'this space'}`;
 
     const diffBox = document.createElement('div');
     diffBox.className = 'diff-box';
@@ -126,7 +110,7 @@ function addPromptProposal(kind, proposal) {
     discardBtn.onclick = async () => {
         discardBtn.disabled = true;
         try {
-            await fetch(config.discardEndpoint, { method: 'POST' });
+            await fetch(`/spaces/${activeSpaceId}/prompt/discard`, { method: 'POST' });
         } finally {
             div.remove();
         }
@@ -140,7 +124,7 @@ function addPromptProposal(kind, proposal) {
         discardBtn.disabled = true;
         approveBtn.textContent = 'Saving...';
         try {
-            const res = await fetch(config.saveEndpoint, {
+            const res = await fetch(`/spaces/${activeSpaceId}/prompt`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ content: proposal.newContent })
@@ -151,7 +135,7 @@ function addPromptProposal(kind, proposal) {
             approveBtn.disabled = false;
             discardBtn.disabled = false;
             approveBtn.textContent = 'Approve & commit';
-            addMessage('system', config.failMessage);
+            addMessage('system', 'Failed to save space rules.');
         }
     };
 
@@ -167,13 +151,12 @@ function addPromptProposal(kind, proposal) {
 }
 
 // A single place to apply whatever an /editor response contains, reused by
-// every entry point (phrase review, free typing, and both prompt-edit flows)
-// so none of them can forget to render a proposal that came back alongside
-// the reply.
+// every entry point (phrase review, free typing, and the space-rules-edit
+// flow) so none of them can forget to render a proposal that came back
+// alongside the reply.
 function handleEditorReply(data) {
     addMessage('assistant', data.reply);
-    if (data.translationPromptProposal) addPromptProposal('translation', data.translationPromptProposal);
-    if (data.editorPromptProposal) addPromptProposal('editor', data.editorPromptProposal);
+    if (data.spaceRulesProposal) addSpaceRulesProposal(data.spaceRulesProposal);
 }
 
 // --- SENDING MESSAGES ---
@@ -199,7 +182,7 @@ async function selectPhraseForReview(id) {
         const res = await fetch('/editor', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: `SELECT_PHRASE:${id}` })
+            body: JSON.stringify({ message: `SELECT_PHRASE:${id}`, spaceId: activeSpaceId })
         });
         const data = await res.json();
         handleEditorReply(data);
@@ -221,7 +204,7 @@ async function sendMessage() {
         const res = await fetch('/editor', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: text })
+            body: JSON.stringify({ message: text, spaceId: activeSpaceId })
         });
         const data = await res.json();
         handleEditorReply(data);
@@ -258,17 +241,13 @@ function showEditorHome() {
     editPhraseBtn.textContent = 'Edit a phrase';
     editPhraseBtn.onclick = () => showView('table');
 
-    const editTranslationBtn = document.createElement('button');
-    editTranslationBtn.textContent = 'Edit translation prompt';
-    editTranslationBtn.onclick = () => startPromptEditFlow('EDIT_TRANSLATION_PROMPT', 'Edit translation prompt');
-
-    const editEditorPromptBtn = document.createElement('button');
-    editEditorPromptBtn.textContent = 'Edit editor prompt';
-    editEditorPromptBtn.onclick = () => startPromptEditFlow('EDIT_EDITOR_PROMPT', 'Edit editor prompt');
+    const editSpaceRulesBtn = document.createElement('button');
+    const spaceName = getActiveSpace()?.name || 'this space';
+    editSpaceRulesBtn.textContent = `Edit ${spaceName} rules`;
+    editSpaceRulesBtn.onclick = () => startPromptEditFlow('EDIT_SPACE_PROMPT', editSpaceRulesBtn.textContent);
 
     actions.appendChild(editPhraseBtn);
-    actions.appendChild(editTranslationBtn);
-    actions.appendChild(editEditorPromptBtn);
+    actions.appendChild(editSpaceRulesBtn);
 
     div.appendChild(text);
     div.appendChild(actions);
@@ -282,7 +261,7 @@ async function startPromptEditFlow(triggerMessage, userFacingLabel) {
         const res = await fetch('/editor', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: triggerMessage })
+            body: JSON.stringify({ message: triggerMessage, spaceId: activeSpaceId })
         });
         const data = await res.json();
         handleEditorReply(data);

@@ -253,7 +253,7 @@ async function submitAddMainTag() {
     const res = await fetch('/tags', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, color, parentId: null })
+        body: JSON.stringify({ name, color, parentId: null, spaceId: activeSpaceId })
     });
 
     if (!res.ok) {

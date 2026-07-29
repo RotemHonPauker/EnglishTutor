@@ -78,6 +78,32 @@ button.danger {
 
 button.danger:hover { background: #b91c1c; }
 
+/* ===== Space header (shown above every tab) ===== */
+
+#space-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid #1a1a1a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    flex-shrink: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #aaa;
+    transition: background 0.15s;
+}
+
+#space-header:hover {
+    background: #1a1a1a;
+}
+
+.space-header-chevron {
+    font-size: 0.7rem;
+    opacity: 0.6;
+}
+
 /* ===== App loading overlay (shown briefly on initial load, any tab) ===== */
 
 #app-loading-overlay {

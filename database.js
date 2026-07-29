@@ -12,11 +12,11 @@ export const connectDB = async () => {
     console.log('Connected to Postgres');
 };
 
-export const saveSentence = async ({ hebrewText, variant1, variant2 }) => {
+export const saveSentence = async ({ hebrewText, variant1, variant2, spaceId }) => {
     const result = await pool.query(
-        `INSERT INTO phrases (hebrew_text, variant_1, variant_2)
-         VALUES ($1, $2, $3) RETURNING *`,
-        [hebrewText, variant1, variant2]
+        `INSERT INTO phrases (hebrew_text, variant_1, variant_2, space_id)
+         VALUES ($1, $2, $3, $4) RETURNING *`,
+        [hebrewText, variant1, variant2, spaceId]
     );
     return result.rows[0];
 };
@@ -58,52 +58,85 @@ export const deletePhrase = async (id) => {
     return result.rows[0] || null;
 };
 
-export const getPhrases = async () => {
+export const getPhrases = async (spaceId) => {
     const result = await pool.query(
         `SELECT p.*, t.name as subtag_name, pt.name as tag_name, pt.color as tag_color
          FROM phrases p
          LEFT JOIN tags t ON p.subtag_id = t.id
          LEFT JOIN tags pt ON t.parent_id = pt.id
-         ORDER BY p.created_at DESC`
+         WHERE p.space_id = $1
+         ORDER BY p.created_at DESC`,
+        [spaceId]
     );
     return result.rows;
 };
 
-// --- Prompts (editor + translation), stored in the DB instead of files ---
-// so they stay in sync across every environment (local, external server,
-// etc.) without depending on git. Each save inserts a new row; only the 3
-// most recent rows per type are kept (current + 2 previous), older ones are
-// pruned automatically.
+// --- Spaces ---
+// A space is a self contained world: its own tags, its own phrases, and its
+// own translation-guidance prompt. Nothing is shared or filterable across
+// spaces — the app always shows exactly one active space at a time.
 
-export const getPrompt = async (promptType) => {
+export const getSpaces = async () => {
+    const result = await pool.query(
+        `SELECT * FROM spaces ORDER BY created_at ASC`
+    );
+    return result.rows;
+};
+
+export const createSpace = async ({ name }) => {
+    const result = await pool.query(
+        `INSERT INTO spaces (name) VALUES ($1) RETURNING *`,
+        [name]
+    );
+    return result.rows[0];
+};
+
+export const updateSpace = async ({ id, name }) => {
+    const result = await pool.query(
+        `UPDATE spaces SET name = $1 WHERE id = $2 RETURNING *`,
+        [name, id]
+    );
+    return result.rows[0];
+};
+
+// --- Space rules ---
+// Each space's own ADDITIONAL translation rules — not a full prompt by
+// itself. At translation time these are combined with the fixed base
+// template (dashboard/translation/translationPrompt.txt) into one prompt.
+// A space with no rules yet is a normal, valid state — translation still
+// works fine using just the base template. Stored in the space_prompts
+// table; each save inserts a new row and only the 3 most recent rows per
+// space are kept (current + 2 previous), older ones pruned automatically.
+
+export const getSpaceRules = async (spaceId) => {
     const { rows } = await pool.query(
-        `SELECT content FROM prompts WHERE prompt_type = $1 ORDER BY created_at DESC LIMIT 1`,
-        [promptType]
+        `SELECT content FROM space_prompts WHERE space_id = $1 ORDER BY created_at DESC LIMIT 1`,
+        [spaceId]
     );
     return rows[0]?.content ?? null;
 };
 
-export const savePrompt = async (promptType, content) => {
+export const saveSpaceRules = async (spaceId, content) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
 
         await client.query(
-            `INSERT INTO prompts (prompt_type, content) VALUES ($1, $2)`,
-            [promptType, content]
+            `INSERT INTO space_prompts (space_id, content) VALUES ($1, $2)`,
+            [spaceId, content]
         );
 
-        // Keep only the 3 most recent rows for this type (current + 2 prior).
+        // Keep only the 3 most recent rows for this space (current + 2 prior).
         await client.query(
-            `DELETE FROM prompts
-             WHERE prompt_type = $1
+            `DELETE FROM space_prompts
+             WHERE space_id = $1
              AND id NOT IN (
-                 SELECT id FROM prompts
-                 WHERE prompt_type = $1
+                 SELECT id FROM space_prompts
+                 WHERE space_id = $1
                  ORDER BY created_at DESC
                  LIMIT 3
              )`,
-            [promptType]
+            [spaceId]
         );
 
         await client.query('COMMIT');
@@ -115,17 +148,23 @@ export const savePrompt = async (promptType, content) => {
     }
 };
 
-export const getTags = async () => {
+export const getTags = async (spaceId) => {
     const result = await pool.query(
-        `SELECT * FROM tags ORDER BY parent_id NULLS FIRST, name ASC`
+        `SELECT * FROM tags
+         WHERE space_id = $1
+         OR parent_id IN (SELECT id FROM tags WHERE space_id = $1)
+         ORDER BY parent_id NULLS FIRST, name ASC`,
+        [spaceId]
     );
     return result.rows;
 };
 
-export const createTag = async ({ name, color, parentId }) => {
+export const createTag = async ({ name, color, parentId, spaceId }) => {
+    // Main tags (no parent) belong directly to a space. Subtags don't store
+    // their own space_id — they inherit it via parent_id.
     const result = await pool.query(
-        `INSERT INTO tags (name, color, parent_id) VALUES ($1, $2, $3) RETURNING *`,
-        [name, color || null, parentId || null]
+        `INSERT INTO tags (name, color, parent_id, space_id) VALUES ($1, $2, $3, $4) RETURNING *`,
+        [name, color || null, parentId || null, parentId ? null : spaceId]
     );
     return result.rows[0];
 };

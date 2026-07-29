@@ -8,7 +8,7 @@ const COLORS = [
 ];
 
 async function loadTags() {
-    const res = await fetch('/tags');
+    const res = await fetch(`/tags?spaceId=${activeSpaceId}`);
     tags = await res.json();
     if (typeof renderTable === 'function') renderTable();
     renderSidebar();

@@ -5,8 +5,12 @@ import { translatePhrase } from '../translation/translationEngine.js';
 const router = express.Router();
 
 router.get('/phrases', async (req, res) => {
+    const { spaceId } = req.query;
+    if (!spaceId) {
+        return res.status(400).json({ error: 'spaceId is required' });
+    }
     try {
-        const phrases = await getPhrases();
+        const phrases = await getPhrases(spaceId);
         res.json(phrases);
     } catch (err) {
         console.error('Error fetching phrases:', err);
@@ -14,19 +18,24 @@ router.get('/phrases', async (req, res) => {
     }
 });
 
-// New-phrase capture: takes raw Hebrew, corrects transcription, produces two English variants,
-// and saves it immediately as uncategorized — no confirmation step, by design.
+// New-phrase capture: takes raw Hebrew, corrects transcription, produces two English variants
+// using the active space's own translation prompt, and saves it immediately as uncategorized —
+// no confirmation step, by design.
 router.post('/phrases', async (req, res) => {
-    const { hebrewText } = req.body;
+    const { hebrewText, spaceId } = req.body;
     if (!hebrewText || !hebrewText.trim()) {
         return res.status(400).json({ error: 'Hebrew text is required' });
     }
+    if (!spaceId) {
+        return res.status(400).json({ error: 'spaceId is required' });
+    }
     try {
-        const result = await translatePhrase(hebrewText.trim());
+        const result = await translatePhrase(hebrewText.trim(), spaceId);
         const phrase = await saveSentence({
             hebrewText: result.correctedHebrew,
             variant1: result.variant1,
-            variant2: result.variant2
+            variant2: result.variant2,
+            spaceId
         });
         res.json(phrase);
     } catch (err) {

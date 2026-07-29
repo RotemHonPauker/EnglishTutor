@@ -7,8 +7,7 @@ import { connectDB } from '../database.js';
 import { editorRouter } from  './routes/editor.route.js';
 import { phrasesRouter } from './routes/phrases.route.js';
 import { tagsRouter } from './routes/tags.route.js';
-import { editorPromptRouter } from './routes/editorPrompt.route.js';
-import translationPromptRouter from './routes/translationPrompt.route.js';
+import { spacesRouter } from './routes/spaces.route.js';
 
 const app = express();
 const PORT = 3000;
@@ -19,8 +18,7 @@ app.use(express.json());
 app.use(editorRouter);
 app.use(phrasesRouter);
 app.use(tagsRouter);
-app.use(editorPromptRouter);
-app.use(translationPromptRouter);
+app.use(spacesRouter);
 
 app.listen(PORT, async () => {
     await connectDB();

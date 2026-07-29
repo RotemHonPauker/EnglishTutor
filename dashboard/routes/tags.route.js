@@ -4,8 +4,12 @@ import { getTags, createTag, updateTag, deleteTag, mergeSubtags } from '../../da
 const router = express.Router();
 
 router.get('/tags', async (req, res) => {
+    const { spaceId } = req.query;
+    if (!spaceId) {
+        return res.status(400).json({ error: 'spaceId is required' });
+    }
     try {
-        const tags = await getTags();
+        const tags = await getTags(spaceId);
         res.json(tags);
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch tags' });
@@ -13,9 +17,12 @@ router.get('/tags', async (req, res) => {
 });
 
 router.post('/tags', async (req, res) => {
-    const { name, color, parentId } = req.body;
+    const { name, color, parentId, spaceId } = req.body;
+    if (!parentId && !spaceId) {
+        return res.status(400).json({ error: 'spaceId is required for a main tag' });
+    }
     try {
-        const tag = await createTag({ name, color, parentId });
+        const tag = await createTag({ name, color, parentId, spaceId });
         res.json(tag);
     } catch (err) {
         res.status(500).json({ error: 'Failed to create tag' });

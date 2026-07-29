@@ -1,14 +1,17 @@
-import { getPhraseById, updatePhrase, getPrompt } from '../../database.js';
+import { getPhraseById, updatePhrase, getSpaceRules } from '../../database.js';
 
 let currentPhrase = null;
-let pendingTranslationPromptProposal = null;
-let pendingEditorPromptProposal = null;
+let currentSpaceId = null;
+let pendingSpaceRulesProposal = null;
 
-export const getPendingTranslationPromptProposal = () => pendingTranslationPromptProposal;
-export const clearPendingTranslationPromptProposal = () => { pendingTranslationPromptProposal = null; };
+// Set on every /editor request (see editor.route.js) from the space the
+// frontend currently has active — so fetch/propose tools below always work
+// against the right space's rules, without needing to thread an argument
+// through the whole Claude tool-call loop.
+export const setCurrentSpace = (spaceId) => { currentSpaceId = spaceId; };
 
-export const getPendingEditorPromptProposal = () => pendingEditorPromptProposal;
-export const clearPendingEditorPromptProposal = () => { pendingEditorPromptProposal = null; };
+export const getPendingSpaceRulesProposal = () => pendingSpaceRulesProposal;
+export const clearPendingSpaceRulesProposal = () => { pendingSpaceRulesProposal = null; };
 
 export const handleToolCall = async (toolName, toolInput) => {
     if (toolName === 'fetch_phrase_by_id') {
@@ -39,36 +42,26 @@ export const handleToolCall = async (toolName, toolInput) => {
         return 'Skipped.';
     }
 
-    // Read-only: lets Claude see the current translation prompt so it can
-    // propose an accurate edit. The matching write/commit only ever happens
-    // through propose_translation_prompt_update below plus the user's explicit approval
+    // Read-only: lets Claude see the active space's current ADDITIONAL
+    // translation rules (not the full prompt — that's a fixed base file,
+    // never edited here) so it can propose an accurate edit. Returns null
+    // if this space has no rules yet, which is a normal state, not an
+    // error — translation still works fine off the base template alone.
+    // The matching write/commit only ever happens through
+    // propose_space_rules_update below plus the user's explicit approval
     // in the dashboard — never directly from this tool.
-    if (toolName === 'fetch_translation_prompt') {
-        return await getPrompt('translation');
+    if (toolName === 'fetch_space_rules') {
+        return await getSpaceRules(currentSpaceId);
     }
 
-    // Records a proposed replacement for the translation prompt. Never writes to
-    // the DB — it just stakes out the old/new pair so the frontend can render
-    // a diff and let the user approve or discard it explicitly.
-    if (toolName === 'propose_translation_prompt_update') {
-        const oldContent = await getPrompt('translation');
-        pendingTranslationPromptProposal = { oldContent, newContent: toolInput.newContent };
-        return 'Proposal recorded and will be shown to the user as a diff. Do not repeat the wording in your text reply — just briefly say the draft is ready for review.';
-    }
-
-    // Read-only: lets Claude see its own current instructions before proposing
-    // an edit. Only ever called after the user explicitly triggers editor-prompt
-    // editing (an "EDIT_EDITOR_PROMPT" message) — never on Claude's own initiative.
-    if (toolName === 'fetch_editor_prompt') {
-        return await getPrompt('editor');
-    }
-
-    // Same pattern as propose_translation_prompt_update: stakes out an old/new pair for
-    // the dashboard to diff and the user to approve or discard — never writes
-    // to the DB by itself.
-    if (toolName === 'propose_editor_prompt_update') {
-        const oldContent = await getPrompt('editor');
-        pendingEditorPromptProposal = { oldContent, newContent: toolInput.newContent };
+    // Records a proposed replacement for the active space's additional
+    // rules. Never writes to the DB — it just stakes out the old/new pair
+    // so the frontend can render a diff and let the user approve or
+    // discard it explicitly. oldContent may be null/empty for a space with
+    // no rules yet — that's fine, the diff just shows everything as added.
+    if (toolName === 'propose_space_rules_update') {
+        const oldContent = await getSpaceRules(currentSpaceId);
+        pendingSpaceRulesProposal = { oldContent: oldContent || '', newContent: toolInput.newContent };
         return 'Proposal recorded and will be shown to the user as a diff. Do not repeat the wording in your text reply — just briefly say the draft is ready for review.';
     }
 };

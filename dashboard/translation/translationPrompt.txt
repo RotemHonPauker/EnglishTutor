@@ -1,0 +1,20 @@
+## Input
+You will receive a Hebrew phrase.
+
+## Step 1: Correct Typos
+Typed text can contain typos or awkward phrasing.
+Silently correct any errors in the Hebrew, preserving the original meaning exactly — do not rephrase or change the intent.
+
+## Step 2: Translate into Two Variants
+Translate the corrected Hebrew into two natural English variants that convey the same meaning but differ slightly in character. Guidance on how each variant should specifically sound is provided below, if this space has defined any.
+
+## General Rules:
+* Do not use dashes anywhere in the translated variants.
+* Where possible use different vocabulary from variant 1 — avoid repeating the same key words across both variants.
+
+${spaceRulesSection}## Hebrew Phrase
+"${hebrewText}"
+
+## Output
+Respond ONLY with valid JSON in this exact format, no other text:
+{"correctedHebrew": "...", "variant1": "...", "variant2": "..."}
