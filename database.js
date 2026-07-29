@@ -41,11 +41,56 @@ export const updatePhrase = async ({ id, hebrewText, variant1, variant2 }) => {
     return result.rows[0];
 };
 
-// Table-driven edit: touches only subtag_id, never variant_1 / variant_2.
+// Table-driven edit: touches only subtag_id (and sequence_order, but only
+// as an automatic side effect — see below), never variant_1 / variant_2.
 export const updatePhraseSubtag = async ({ id, subtagId }) => {
+    if (subtagId) {
+        // Order only matters in spaces that opted into it at creation —
+        // check via this phrase's own space, not the subtag directly.
+        const { rows: phraseRows } = await pool.query(
+            `SELECT space_id FROM phrases WHERE id = $1`,
+            [id]
+        );
+        const spaceId = phraseRows[0]?.space_id;
+
+        const { rows: spaceRows } = await pool.query(
+            `SELECT has_order FROM spaces WHERE id = $1`,
+            [spaceId]
+        );
+        const hasOrder = spaceRows[0]?.has_order;
+
+        if (hasOrder) {
+            // New tagging inherits "last in this subtag" by default — the
+            // user can edit it to any specific number afterward (duplicates
+            // across phrases are allowed, not an error).
+            const { rows: maxRows } = await pool.query(
+                `SELECT COALESCE(MAX(sequence_order), 0) + 1 AS next_order FROM phrases WHERE subtag_id = $1`,
+                [subtagId]
+            );
+            const result = await pool.query(
+                `UPDATE phrases SET subtag_id = $1, sequence_order = $2 WHERE id = $3 RETURNING *`,
+                [subtagId, maxRows[0].next_order, id]
+            );
+            return result.rows[0];
+        }
+    }
+
+    // Untagging, or a space that doesn't use ordering: no meaningful order
+    // to keep.
     const result = await pool.query(
-        `UPDATE phrases SET subtag_id = $1 WHERE id = $2 RETURNING *`,
+        `UPDATE phrases SET subtag_id = $1, sequence_order = NULL WHERE id = $2 RETURNING *`,
         [subtagId || null, id]
+    );
+    return result.rows[0];
+};
+
+// Manual override of a phrase's order number (see updatePhraseSubtag for
+// how it's first assigned). Duplicates across phrases in the same subtag
+// are allowed — this is a deliberate, user-set value, not a unique index.
+export const updatePhraseSequenceOrder = async ({ id, sequenceOrder }) => {
+    const result = await pool.query(
+        `UPDATE phrases SET sequence_order = $1 WHERE id = $2 RETURNING *`,
+        [sequenceOrder, id]
     );
     return result.rows[0];
 };
@@ -83,10 +128,10 @@ export const getSpaces = async () => {
     return result.rows;
 };
 
-export const createSpace = async ({ name }) => {
+export const createSpace = async ({ name, hasOrder }) => {
     const result = await pool.query(
-        `INSERT INTO spaces (name) VALUES ($1) RETURNING *`,
-        [name]
+        `INSERT INTO spaces (name, has_order) VALUES ($1, $2) RETURNING *`,
+        [name, hasOrder]
     );
     return result.rows[0];
 };

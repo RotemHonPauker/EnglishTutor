@@ -177,3 +177,19 @@
 #space-picker-new-form input[type="text"]:focus {
     border-color: #2563eb;
 }
+
+.new-space-order-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.875rem;
+    color: #ccc;
+    margin-bottom: 4px;
+    cursor: pointer;
+}
+
+.new-space-order-note {
+    font-size: 0.75rem;
+    color: #666;
+    margin-bottom: 10px;
+}

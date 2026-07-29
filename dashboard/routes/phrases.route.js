@@ -1,5 +1,5 @@
 import express from 'express';
-import { getPhrases, saveSentence, updatePhraseSubtag, deletePhrase } from '../../database.js';
+import { getPhrases, saveSentence, updatePhraseSubtag, updatePhraseSequenceOrder, deletePhrase } from '../../database.js';
 import { translatePhrase } from '../translation/translationEngine.js';
 
 const router = express.Router();
@@ -53,6 +53,25 @@ router.patch('/phrases/:id/subtag', async (req, res) => {
     } catch (err) {
         console.error('Error updating phrase subtag:', err);
         res.status(500).json({ error: 'Failed to update tag' });
+    }
+});
+
+// Manual override of a phrase's order number — only meaningful in spaces
+// that opted into ordering, but not restricted here; the frontend only
+// exposes this control for such spaces.
+router.patch('/phrases/:id/sequence-order', async (req, res) => {
+    const { id } = req.params;
+    const { sequenceOrder } = req.body;
+    const parsed = Number(sequenceOrder);
+    if (!Number.isInteger(parsed)) {
+        return res.status(400).json({ error: 'sequenceOrder must be an integer' });
+    }
+    try {
+        const phrase = await updatePhraseSequenceOrder({ id, sequenceOrder: parsed });
+        res.json(phrase);
+    } catch (err) {
+        console.error('Error updating sequence order:', err);
+        res.status(500).json({ error: 'Failed to update order' });
     }
 });
 

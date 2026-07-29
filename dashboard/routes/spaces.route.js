@@ -15,12 +15,15 @@ router.get('/spaces', async (req, res) => {
 });
 
 router.post('/spaces', async (req, res) => {
-    const { name } = req.body;
+    const { name, hasOrder } = req.body;
     if (!name || !name.trim()) {
         return res.status(400).json({ error: 'Name is required' });
     }
+    if (typeof hasOrder !== 'boolean') {
+        return res.status(400).json({ error: 'hasOrder (true/false) is required' });
+    }
     try {
-        const space = await createSpace({ name: name.trim() });
+        const space = await createSpace({ name: name.trim(), hasOrder });
         res.json(space);
     } catch (err) {
         console.error('Error creating space:', err);

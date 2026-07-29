@@ -179,3 +179,34 @@
 .phrase-card-icons button:hover {
     opacity: 1;
 }
+
+.sequence-order-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    background: #2a2a2a;
+    color: #888;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.sequence-order-badge:hover {
+    filter: brightness(1.3);
+}
+
+.sequence-order-input {
+    width: 40px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: #0f0f0f;
+    border: 1px solid #2563eb;
+    border-radius: 4px;
+    color: #e8e8e8;
+    padding: 2px 4px;
+    outline: none;
+}

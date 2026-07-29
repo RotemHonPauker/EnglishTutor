@@ -6,9 +6,9 @@ A personal, mobile-first app for capturing Hebrew phrases, translating them into
 
 ## How it works
 
-1. **Spaces** — the app always shows exactly one active space, named in the header at the top of every tab. Tap the name to switch to another space or create a new one. Each space is fully self contained: its own phrases, its own tag hierarchy, and its own additional translation rules — nothing is shared or filterable across spaces.
+1. **Spaces** — the app always shows exactly one active space, named in the header at the top of every tab. Tap the name to switch to another space or create a new one. Each space is fully self contained: its own phrases, its own tag hierarchy, and its own additional translation rules — nothing is shared or filterable across spaces. At creation, a space is set to either use ordering or not (e.g. for translating a book's chunks in sequence) — this can't be changed afterward
 2. **New tab** — type or paste a Hebrew phrase, hit send. It's translated instantly (typos corrected, two English variants) and saved right away, untagged — no confirmation step, by design, so capturing a phrase stays as fast as it used to be over WhatsApp
-3. **Table tab** — your full phrase list as cards, and also your practice screen: filter by tag, sort by date, browse
+3. **Table tab** — your full phrase list as cards, and also your practice screen: filter by tag, browse. Sorts by date, or — in a space that uses ordering — by each phrase's order number instead, shown right on the card and editable by tapping it (a phrase inherits "last in its tag" by default when tagged)
 4. Tapping ✎ on a card jumps into the **Editor tab**, which resets and loads that phrase — refine the wording (Hebrew or either English variant) conversationally, save when it's ready
 5. Opening the Editor tab directly (not via a card) shows a home screen with 2 things you can do from there: edit a phrase (back to the table), or edit the active space's additional translation rules — a deliberate, user-started flow, never something the LLM offers on its own, and every proposed change is shown as a diff you approve or discard before anything is committed
 6. **Tags tab** — manage the main-tag / subtag hierarchy and colors for the active space
@@ -16,7 +16,6 @@ A personal, mobile-first app for capturing Hebrew phrases, translating them into
 ### Translation prompts: base + per-space rules
 
 Every translation combines two things:
-
 - A fixed base prompt (`dashboard/translation/translationPrompt.txt`) — the core instructions (correct typos, produce two variants, output JSON). Plain file, not editable through the app.
 - The active space's own additional rules (stored in the database, edited through the Editor tab's "Edit `<space name>` rules" flow) — things like who's speaking, the tone each variant should have, or how to resolve a recurring ambiguity for that space specifically. A space with no additional rules yet is a normal state; translation still works fine off the base prompt alone.
 
@@ -43,44 +42,13 @@ The editor's own behavior (`dashboard/editor/editorPrompt.txt`) is a separate, f
 
 Postgres via Supabase. Five tables:
 
-**`spaces`**
-| Column | Type | Notes |
-| --- | --- | --- |
-| `id` | uuid (PK) | |
-| `name` | text | |
-| `created_at` | timestamptz | |
+- **`spaces`** — `id` (PK), `name`, `has_order` (boolean, set once at creation and never changed afterward — enforced by the app, not the DB; spaces created before this feature existed default to `false`), `created_at`
+- **`space_prompts`** — each space's own additional translation rules, combined with the fixed base prompt at translation time. `id` (PK), `space_id` (FK → `spaces.id`, `ON DELETE CASCADE`), `content`, `created_at`. Every save inserts a new row; only the 3 most recent rows per space are kept (current + 2 previous), older ones pruned automatically
+- **`tags`** — main tags and subtags in one table, distinguished by `parent_id`. `id` (PK), `name`, `color` (only set on main tags; subtags render using their parent's color), `parent_id` (FK → `tags.id`, self-referencing — `NULL` for a main tag, set for a subtag), `space_id` (FK → `spaces.id`, required only on main tags via a `CHECK` constraint; subtags inherit their space through `parent_id` and leave this `NULL`), `created_at`
+- **`phrases`** — `id` (PK), `hebrew_text`, `variant_1` (Simple phrasing), `variant_2` (Adult-Level phrasing), `subtag_id` (FK → `tags.id`, `NULL` when untagged), `sequence_order` (int4 — only meaningful in a `has_order` space; auto-assigned to "last in this subtag" when a phrase is tagged, freely editable afterward, duplicates allowed), `sequence_id` (uuid, unused — kept in place but no longer read or written by the app), `embedding` (vector, pgvector, not currently used), `space_id` (FK → `spaces.id`, required on every row), `created_at`
+- **`prompts`** — legacy table from before the Spaces feature (used to hold a single global translation prompt and the editor's own prompt, keyed by `prompt_type`). No longer read or written by the app — both prompts it used to hold are now either a per-space row in `space_prompts` or a plain file (`editorPrompt.txt`, `translationPrompt.txt`). Safe to `DROP TABLE prompts` if you don't need the history
 
-**`space_prompts`** — each space's own additional translation rules (combined with the fixed base prompt at translation time). Every save inserts a new row; only the 3 most recent rows per space are kept (current + 2 previous), older ones pruned automatically.
-| Column | Type | Notes |
-| --- | --- | --- |
-| `id` | uuid (PK) | |
-| `space_id` | uuid (FK → `spaces.id`, `ON DELETE CASCADE`) | |
-| `content` | text | |
-| `created_at` | timestamptz | |
 
-**`tags`** — main tags and subtags in one table, distinguished by `parent_id`.
-| Column | Type | Notes |
-| --- | --- | --- |
-| `id` | uuid (PK) | |
-| `name` | text | |
-| `color` | text | only set on main tags; subtags render using their parent's color |
-| `parent_id` | uuid (FK → `tags.id`, self-referencing) | `NULL` for a main tag, set for a subtag |
-| `space_id` | uuid (FK → `spaces.id`) | required only on main tags (`parent_id IS NULL`) — enforced by a `CHECK` constraint. Subtags inherit their space via `parent_id`, so this stays `NULL` on them |
-| `created_at` | timestamptz | |
-
-**`phrases`**
-| Column | Type | Notes |
-| --- | --- | --- |
-| `id` | uuid (PK) | |
-| `hebrew_text` | text | |
-| `variant_1` | text | Simple phrasing |
-| `variant_2` | text | Adult-Level phrasing |
-| `subtag_id` | uuid (FK → `tags.id`) | `NULL` when untagged |
-| `sequence_id` | uuid | |
-| `sequence_order` | int4 | |
-| `embedding` | vector | pgvector, not currently used by the app |
-| `space_id` | uuid (FK → `spaces.id`) | required on every row |
-| `created_at` | timestamptz | |
 
 ```
 EnglishTutor/

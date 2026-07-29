@@ -22,15 +22,33 @@ function getAgeCategory(createdAt) {
 }
 
 function renderTable() {
+    const activeSpace = getActiveSpace();
+    const showOrder = !!(activeSpace && activeSpace.has_order);
+
     const sorted = allPhrases
         .filter(phraseMatchesTagFilter)
         .sort((a, b) => {
+            if (showOrder) {
+                // Reading order (1, 2, 3...) is the natural default here, so
+                // the un-toggled state (sortAsc false) maps to ascending —
+                // opposite of the date default, which starts newest-first.
+                const oa = a.sequence_order ?? Infinity;
+                const ob = b.sequence_order ?? Infinity;
+                return sortAsc ? ob - oa : oa - ob;
+            }
             const da = new Date(a.created_at);
             const db = new Date(b.created_at);
             return sortAsc ? da - db : db - da;
         });
 
     document.getElementById('phrase-count').textContent = sorted.length;
+
+    const sortBtn = document.getElementById('sort-btn');
+    if (sortBtn) {
+        sortBtn.textContent = showOrder
+            ? `Order ${sortAsc ? '↓' : '↑'}`
+            : `Date ${sortAsc ? '↑' : '↓'}`;
+    }
 
     tableBody.innerHTML = sorted.map(p => {
         const subtag = tags.find(t => t.id === p.subtag_id);
@@ -41,6 +59,9 @@ function renderTable() {
         const badgeStyle = mainColor
             ? `background:${cardTextColor === '#ffffff' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'}; color:${cardTextColor};`
             : '';
+        const orderHtml = showOrder
+            ? `<span class="sequence-order-badge" style="${badgeStyle}" onclick="editSequenceOrder(this, '${p.id}')">${p.sequence_order ?? '—'}</span>`
+            : '';
         return `
         <div class="phrase-card${mainColor ? ' has-color' : ''}" style="${cardStyle}">
             <div class="phrase-card-header">
@@ -48,6 +69,7 @@ function renderTable() {
                     <button title="Review this phrase" onclick="selectPhraseForReview('${p.id}')">✏️</button>
                     <button title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑</button>
                 </div>
+                ${orderHtml}
                 <button class="tag-badge" style="${badgeStyle}" onclick="openTagPicker('${p.id}')">${subtag ? subtag.name : '—'}</button>
                 <span class="phrase-date">${getAgeCategory(p.created_at)}</span>
             </div>
@@ -59,6 +81,51 @@ function renderTable() {
         </div>
     `;
     }).join('');
+}
+
+// Click-to-edit for the sequence-order number: swaps the badge for a small
+// number input; Enter or blur submits, Escape cancels without saving.
+function editSequenceOrder(badgeEl, phraseId) {
+    const phrase = allPhrases.find(p => p.id === phraseId);
+    const currentValue = phrase?.sequence_order ?? '';
+
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.className = 'sequence-order-input';
+    input.value = currentValue;
+
+    let settled = false;
+    const commit = async () => {
+        if (settled) return;
+        settled = true;
+        const parsed = parseInt(input.value, 10);
+        if (!Number.isInteger(parsed)) {
+            renderTable();
+            return;
+        }
+        try {
+            const res = await fetch(`/phrases/${phraseId}/sequence-order`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sequenceOrder: parsed })
+            });
+            if (!res.ok) throw new Error('Failed to update order');
+            await loadTable();
+        } catch (err) {
+            alert('Failed to update order');
+            renderTable();
+        }
+    };
+
+    input.addEventListener('blur', commit);
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') input.blur();
+        if (e.key === 'Escape') { settled = true; renderTable(); }
+    });
+
+    badgeEl.replaceWith(input);
+    input.focus();
+    input.select();
 }
 
 let pendingDeleteId = null;
@@ -107,6 +174,5 @@ async function updateSubtag(id, subtagId) {
 
 function toggleSort() {
     sortAsc = !sortAsc;
-    document.getElementById('sort-btn').textContent = `Date ${sortAsc ? '↑' : '↓'}`;
     renderTable();
 }
