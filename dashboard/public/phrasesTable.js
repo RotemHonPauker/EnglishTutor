@@ -37,7 +37,7 @@ function renderTable() {
         const currentMainId = subtag ? subtag.parent_id : '';
         const mainColor = getTagColor(currentMainId);
         const cardTextColor = mainColor ? getContrastColor(mainColor) : null;
-        const cardStyle = mainColor ? `background:${getTagGradient(mainColor)}; border-color:${mainColor}; color:${cardTextColor};` : '';
+        const cardStyle = mainColor ? `background:${mainColor}; border-color:${mainColor}; color:${cardTextColor};` : '';
         const badgeStyle = mainColor
             ? `background:${cardTextColor === '#ffffff' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'}; color:${cardTextColor};`
             : '';
