@@ -156,10 +156,16 @@
     white-space: nowrap;
 }
 
+.phrase-card-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+}
+
 .phrase-date {
     font-size: 0.75rem;
     color: #555;
-    margin-left: auto;
 }
 
 .phrase-card-icons {
@@ -181,14 +187,11 @@
 }
 
 .sequence-order-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    font-size: 0.6875rem;
-    font-weight: 600;
+    display: inline-block;
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 0.75rem;
+    font-weight: 500;
     background: #2a2a2a;
     color: #888;
     cursor: pointer;

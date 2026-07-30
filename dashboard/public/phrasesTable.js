@@ -61,7 +61,7 @@ function renderTable() {
             ? `background:${cardTextColor === '#ffffff' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'}; color:${cardTextColor};`
             : '';
         const orderHtml = showOrder
-            ? `<span class="sequence-order-badge" style="${badgeStyle}" onclick="editSequenceOrder(this, '${p.id}')">${p.sequence_order ?? '—'}</span>`
+            ? `<span class="sequence-order-badge" style="${badgeStyle}" onclick="editSequenceOrder(this, '${p.id}')"># ${p.sequence_order ?? '—'}</span>`
             : '';
         return `
         <div class="phrase-card${mainColor ? ' has-color' : ''}" style="${cardStyle}">
@@ -70,9 +70,11 @@ function renderTable() {
                     <button title="Review this phrase" onclick="selectPhraseForReview('${p.id}')">✏️</button>
                     <button title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑</button>
                 </div>
-                ${orderHtml}
                 <button class="tag-badge" style="${badgeStyle}" onclick="openTagPicker('${p.id}')">${subtag ? subtag.name : '—'}</button>
-                <span class="phrase-date">${getAgeCategory(p.created_at)}</span>
+                <div class="phrase-card-right">
+                    ${orderHtml}
+                    <span class="phrase-date">${getAgeCategory(p.created_at)}</span>
+                </div>
             </div>
             <div class="phrase-card-main">
                 <div class="phrase-hebrew">${p.hebrew_text || ''}</div>
