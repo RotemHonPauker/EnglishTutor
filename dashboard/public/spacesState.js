@@ -44,6 +44,7 @@ async function setActiveSpace(id) {
     persistActiveSpace();
     renderSpaceHeader();
     closeSpacePicker();
+    if (typeof resetTagFilter === 'function') resetTagFilter();
     await loadTags();
     await loadTable();
 }

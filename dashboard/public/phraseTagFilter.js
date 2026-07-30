@@ -42,12 +42,28 @@ function renderTagFilterModal() {
 }
 
 function toggleFilterMain(id) {
-    if (filterMainIds.has(id)) filterMainIds.delete(id); else filterMainIds.add(id);
+    if (filterMainIds.has(id)) {
+        filterMainIds.delete(id);
+    } else {
+        filterMainIds.add(id);
+        // Selecting the whole main tag supersedes any of its own subtags
+        // already picked individually.
+        tags.filter(t => t.parent_id === id).forEach(sub => filterSubtagIds.delete(sub.id));
+    }
     renderTagFilterModal();
 }
 
 function toggleFilterSubtag(id) {
-    if (filterSubtagIds.has(id)) filterSubtagIds.delete(id); else filterSubtagIds.add(id);
+    if (filterSubtagIds.has(id)) {
+        filterSubtagIds.delete(id);
+    } else {
+        filterSubtagIds.add(id);
+        // Picking a specific subtag supersedes its whole main tag being
+        // selected — but other subtags of that same main tag can still
+        // be added alongside this one.
+        const sub = tags.find(t => t.id === id);
+        if (sub) filterMainIds.delete(sub.parent_id);
+    }
     renderTagFilterModal();
 }
 
@@ -55,6 +71,15 @@ function clearTagFilter() {
     filterMainIds.clear();
     filterSubtagIds.clear();
     renderTagFilterModal();
+}
+
+// Full reset for contexts outside the filter modal itself (e.g. switching
+// spaces) — clears the filter AND updates what's actually visible in the
+// table toolbar, not just the modal's own internal state.
+function resetTagFilter() {
+    filterMainIds.clear();
+    filterSubtagIds.clear();
+    renderActiveFilterChips();
 }
 
 function applyTagFilter() {
