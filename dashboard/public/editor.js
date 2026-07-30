@@ -1,3 +1,9 @@
+// Without this, a single newline (no blank line) between lines is treated
+// as a soft space by standard markdown, not an actual line break — which
+// silently merges the Hebrew/Variant 1/Variant 2 lines the editor prompt
+// intentionally sends without blank lines between them.
+marked.setOptions({ breaks: true });
+
 const editorLog = document.getElementById('editor-log');
 const input = document.getElementById('input');
 
