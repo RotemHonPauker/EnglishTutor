@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { tools } from './tools.js';
 import { handleToolCall } from './toolHandler.js';
+import { MAX_TOOL_ROUNDS } from '../limitsConfig.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const editorPromptPath = join(__dirname, 'editorPrompt.txt');
@@ -40,7 +41,16 @@ export const handleReviewMessage = async (userMessage, conversationHistory) => {
         messages: conversationHistory
     });
 
+    let toolRounds = 0;
+
     while (response.stop_reason === 'tool_use') {
+        toolRounds++;
+        if (toolRounds > MAX_TOOL_ROUNDS) {
+            const fallback = "Something went wrong on this turn — let's try again.";
+            conversationHistory.push({ role: 'assistant', content: fallback });
+            return { reply: fallback, history: conversationHistory };
+        }
+
         conversationHistory.push({ role: 'assistant', content: response.content });
 
         const toolResults = [];
