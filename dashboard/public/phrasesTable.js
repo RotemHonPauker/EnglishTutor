@@ -7,6 +7,7 @@ async function loadTable() {
     const res = await fetch(`/phrases?spaceId=${activeSpaceId}`);
     allPhrases = await res.json();
     renderTable();
+    if (typeof renderSidebar === 'function') renderSidebar();
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;

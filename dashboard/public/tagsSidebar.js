@@ -16,7 +16,7 @@ function renderSidebar() {
         const contrast = getContrastColor(mainTag.color);
         const subtags = tags.filter(t => t.parent_id === mainTag.id);
         const subChips = subtags.map(sub => `
-            <div class="tag-chip" style="background:${mainTag.color || '#333'}; color:${contrast}" onclick="openTagEditModal('${sub.id}')">${sub.name}</div>
+            <div class="tag-chip" style="background:${mainTag.color || '#333'}; color:${contrast}" onclick="openTagEditModal('${sub.id}')">${sub.name} <span class="tag-phrase-count">${getPhraseCountForTag(sub)}</span></div>
         `).join('');
         // Only render the subtag row at all when there's something in it —
         // an empty <div class="subtag-list"> would still count as a second
@@ -29,11 +29,24 @@ function renderSidebar() {
 
         return `
             <div class="tag-filter-group">
-                <div class="tag-chip main-chip" style="background:${mainTag.color || '#333'}; color:${contrast}" onclick="openTagEditModal('${mainTag.id}')">${mainTag.name}</div>
+                <div class="tag-chip main-chip" style="background:${mainTag.color || '#333'}; color:${contrast}" onclick="openTagEditModal('${mainTag.id}')">${mainTag.name} <span class="tag-phrase-count">${getPhraseCountForTag(mainTag)}</span></div>
                 ${subtagListHtml}
             </div>
         `;
     }).join('');
+}
+
+// A main tag's count is every phrase tagged under any of its subtags; a
+// subtag's count is just its own direct phrases. Relies on allPhrases
+// (from phrasesTable.js) already being loaded — loadTable() re-renders the
+// sidebar after refreshing it, so counts stay in sync.
+function getPhraseCountForTag(tag) {
+    if (typeof allPhrases === 'undefined') return 0;
+    if (!tag.parent_id) {
+        const subtagIds = tags.filter(t => t.parent_id === tag.id).map(t => t.id);
+        return allPhrases.filter(p => subtagIds.includes(p.subtag_id)).length;
+    }
+    return allPhrases.filter(p => p.subtag_id === tag.id).length;
 }
 
 // ===== Tag Edit Modal: open/close =====
