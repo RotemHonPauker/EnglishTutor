@@ -103,6 +103,18 @@ export const deletePhrase = async (id) => {
     return result.rows[0] || null;
 };
 
+// Saves the cached-audio URL for one variant. deletePhrase above already
+// returns the full row (including these URLs) on delete, so the route
+// layer can clean up the matching files from disk without a separate fetch.
+export const updatePhraseTtsUrl = async ({ id, variant, url }) => {
+    const column = variant === 1 ? 'tts_url_variant1' : 'tts_url_variant2';
+    const result = await pool.query(
+        `UPDATE phrases SET ${column} = $1 WHERE id = $2 RETURNING *`,
+        [url, id]
+    );
+    return result.rows[0];
+};
+
 export const getPhrases = async (spaceId) => {
     const result = await pool.query(
         `SELECT p.*, t.name as subtag_name, pt.name as tag_name, pt.color as tag_color

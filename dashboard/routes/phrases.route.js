@@ -1,7 +1,8 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
-import { getPhrases, saveSentence, updatePhraseSubtag, updatePhraseSequenceOrder, deletePhrase } from '../../database.js';
+import { getPhrases, getPhraseById, saveSentence, updatePhraseSubtag, updatePhraseSequenceOrder, updatePhraseTtsUrl, deletePhrase } from '../../database.js';
 import { translatePhrase } from '../translation/translationEngine.js';
+import { generateSpeech, deleteSpeechFile } from '../tts/ttsEngine.js';
 import { RATE_LIMIT_WINDOW_MS, TRANSLATE_RATE_LIMIT_MAX } from '../limitsConfig.js';
 
 const router = express.Router();
@@ -88,6 +89,43 @@ router.patch('/phrases/:id/sequence-order', async (req, res) => {
     }
 });
 
+// Lazy audio generation: returns the already-cached URL if this variant
+// was played before, and only calls the Gemini TTS API (and saves a new
+// file) the first time. Reuses the same translate rate limiter, since this
+// also calls an external AI API and should be protected the same way.
+router.post('/phrases/:id/tts', translateLimiter, async (req, res) => {
+    const { id } = req.params;
+    const variant = Number(req.body.variant);
+    if (![1, 2].includes(variant)) {
+        return res.status(400).json({ error: 'variant must be 1 or 2' });
+    }
+    try {
+        const phrase = await getPhraseById(id);
+        if (!phrase) {
+            return res.status(404).json({ error: 'Phrase not found' });
+        }
+
+        const existingUrl = variant === 1 ? phrase.tts_url_variant1 : phrase.tts_url_variant2;
+        if (existingUrl) {
+            return res.json({ url: existingUrl });
+        }
+
+        const text = variant === 1 ? phrase.variant_1 : phrase.variant_2;
+        if (!text) {
+            return res.status(400).json({ error: 'This variant has no text yet' });
+        }
+
+        const filename = `${id}-v${variant}.wav`;
+        const url = await generateSpeech(text, filename);
+        await updatePhraseTtsUrl({ id, variant, url });
+
+        res.json({ url });
+    } catch (err) {
+        console.error('TTS generation error:', err);
+        res.status(500).json({ error: 'Failed to generate audio' });
+    }
+});
+
 router.delete('/phrases/:id', async (req, res) => {
     const { id } = req.params;
     try {
@@ -95,6 +133,10 @@ router.delete('/phrases/:id', async (req, res) => {
         if (!phrase) {
             return res.status(404).json({ error: 'Phrase not found' });
         }
+        // Best-effort — clears cached audio files for this phrase so they
+        // don't linger on disk with nothing pointing to them anymore.
+        await deleteSpeechFile(phrase.tts_url_variant1);
+        await deleteSpeechFile(phrase.tts_url_variant2);
         res.json({ ok: true });
     } catch (err) {
         console.error('Error deleting phrase:', err);

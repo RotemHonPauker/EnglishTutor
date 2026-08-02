@@ -8,7 +8,7 @@ A personal, mobile-first app for capturing Hebrew phrases, translating them into
 
 1. **Spaces** — the app always shows exactly one active space, named in the header at the top of every tab. Tap the name to switch to another space or create a new one. Each space is fully self contained: its own phrases, its own tag hierarchy, and its own additional translation rules — nothing is shared or filterable across spaces. At creation, a space is set to either use ordering or not (e.g. for translating a book's chunks in sequence) — this can't be changed afterward
 2. **New tab** — type or paste a Hebrew phrase, hit send. It's translated instantly (typos corrected, two English variants) and saved right away, untagged — no confirmation step, by design, so capturing a phrase stays as fast as it used to be over WhatsApp
-3. **Table tab** — your full phrase list as cards, and also your practice screen: filter by tag, browse. Sorts by date, or — in a space that uses ordering — by each phrase's order number instead, shown right on the card and editable by tapping it (a phrase inherits "last in its tag" by default when tagged)
+3. **Table tab** — your full phrase list as cards, and also your practice screen: filter by tag, browse. Sorts by date, or — in a space that uses ordering — by each phrase's order number instead, shown right on the card and editable by tapping it (a phrase inherits "last in its tag" by default when tagged). Tap the 🔊 next to either English variant to hear it spoken aloud — generated once on first play and cached from then on, so repeat listens never call the API again
 4. Tapping ✎ on a card jumps into the **Editor tab**, which resets and loads that phrase — refine the wording (Hebrew or either English variant) conversationally, save when it's ready
 5. Opening the Editor tab directly (not via a card) shows a home screen with 2 things you can do from there: edit a phrase (back to the table), or edit the active space's additional translation rules — a deliberate, user-started flow, never something the LLM offers on its own, and every proposed change is shown as a diff you approve or discard before anything is committed
 6. **Tags tab** — manage the main-tag / subtag hierarchy and colors for the active space
@@ -28,6 +28,7 @@ The editor's own behavior (`dashboard/editor/editorPrompt.txt`) is a separate, f
 | Piece           | Technology                                    |
 | --------------- | --------------------------------------------- |
 | LLM             | Anthropic Claude (claude-sonnet-4-6)          |
+| Text-to-speech  | Google Gemini TTS (`gemini-3.1-flash-tts-preview`) |
 | Database        | Postgres via Supabase (pgvector enabled)      |
 | Server          | VPS (DigitalOcean)                            |
 | Process manager | PM2 (keeps the app alive, restarts on reboot) |
@@ -42,11 +43,59 @@ The editor's own behavior (`dashboard/editor/editorPrompt.txt`) is a separate, f
 
 Postgres via Supabase. Five tables:
 
-- **`spaces`** — `id` (PK), `name`, `has_order` (boolean, set once at creation and never changed afterward — enforced by the app, not the DB; spaces created before this feature existed default to `false`), `created_at`
-- **`space_prompts`** — each space's own additional translation rules, combined with the fixed base prompt at translation time. `id` (PK), `space_id` (FK → `spaces.id`, `ON DELETE CASCADE`), `content`, `created_at`. Every save inserts a new row; only the 3 most recent rows per space are kept (current + 2 previous), older ones pruned automatically
-- **`tags`** — main tags and subtags in one table, distinguished by `parent_id`. `id` (PK), `name`, `color` (only set on main tags; subtags render using their parent's color), `parent_id` (FK → `tags.id`, self-referencing — `NULL` for a main tag, set for a subtag), `space_id` (FK → `spaces.id`, required only on main tags via a `CHECK` constraint; subtags inherit their space through `parent_id` and leave this `NULL`), `created_at`
-- **`phrases`** — `id` (PK), `hebrew_text`, `variant_1` (Simple phrasing), `variant_2` (Adult-Level phrasing), `subtag_id` (FK → `tags.id`, `NULL` when untagged), `sequence_order` (int4 — only meaningful in a `has_order` space; auto-assigned to "last in this subtag" when a phrase is tagged, freely editable afterward, duplicates allowed), `sequence_id` (uuid, unused — kept in place but no longer read or written by the app), `embedding` (vector, pgvector, not currently used), `space_id` (FK → `spaces.id`, required on every row), `created_at`
-- **`prompts`** — legacy table from before the Spaces feature (used to hold a single global translation prompt and the editor's own prompt, keyed by `prompt_type`). No longer read or written by the app — both prompts it used to hold are now either a per-space row in `space_prompts` or a plain file (`editorPrompt.txt`, `translationPrompt.txt`). Safe to `DROP TABLE prompts` if you don't need the history
+- **`spaces`**
+  - `id` (PK)
+  - `name`
+  - `has_order` — boolean, set once at creation and never changed afterward (enforced by the app, not the DB); spaces created before this feature existed default to `false`
+  - `created_at`
+
+- **`space_prompts`** — each space's own additional translation rules, combined with the fixed base prompt at translation time. Every save inserts a new row; only the 3 most recent rows per space are kept (current + 2 previous), older ones pruned automatically
+  - `id` (PK)
+  - `space_id` (FK → `spaces.id`, `ON DELETE CASCADE`)
+  - `content`
+  - `created_at`
+
+- **`tags`** — main tags and subtags in one table, distinguished by `parent_id`
+  - `id` (PK)
+  - `name`
+  - `color` — only set on main tags; subtags render using their parent's color
+  - `parent_id` (FK → `tags.id`, self-referencing) — `NULL` for a main tag, set for a subtag
+  - `space_id` (FK → `spaces.id`) — required only on main tags via a `CHECK` constraint; subtags inherit their space through `parent_id` and leave this `NULL`
+  - `created_at`
+
+- **`phrases`**
+  - `id` (PK)
+  - `hebrew_text`
+  - `variant_1` — Simple phrasing
+  - `variant_2` — Adult-Level phrasing
+  - `subtag_id` (FK → `tags.id`) — `NULL` when untagged
+  - `sequence_order` — int4, only meaningful in a `has_order` space; auto-assigned to "last in this subtag" when a phrase is tagged, freely editable afterward, duplicates allowed
+  - `sequence_id` — uuid, unused, kept in place but no longer read or written by the app
+  - `tts_url_variant1` / `tts_url_variant2` — text, `NULL` until first played; path to a cached audio file on disk, not the audio itself
+  - `embedding` — vector, pgvector, not currently used
+  - `space_id` (FK → `spaces.id`) — required on every row
+  - `created_at`
+
+---
+
+## Text-to-speech audio
+
+Tapping 🔊 next to a variant generates spoken audio via Gemini TTS (voice: **Achernar**) the first time only — the file is saved to `dashboard/public/audio-cache/` on whichever machine's server handled the request, and its path is stored in `phrases.tts_url_variant1`/`tts_url_variant2`. Every play after that just serves the cached file, no API call.
+
+A few things worth knowing:
+- **The audio lives on disk, not in the database** — a raw audio column would count against Supabase's free-tier storage limit and get pulled along with every ordinary phrase-list query. A text path costs almost nothing either way.
+- **`audio-cache/` is gitignored** — it's generated at runtime, not synced via `git push`/`pull`. Local dev and production each build up their own cache independently, on their own disk.
+- **Deleting a phrase deletes its cached audio files too**, so nothing lingers with no phrase pointing to it.
+
+---
+
+## Rate limiting & usage caps
+
+A few layers protect the Claude/Gemini API usage from runaway cost (abuse, a bug, or an abandoned browser tab):
+
+- **Per-route rate limits** (`express-rate-limit`) on `/editor` and the AI-calling parts of `/phrases` — capped requests per IP per time window.
+- **Tool-loop cap** — a single `/editor` request can chain several tool-use rounds (fetch a phrase, propose a rule update, etc.); `editorEngine.js` caps how many rounds one request can trigger before giving up gracefully.
+- **Conversation history trimming** — `/editor`'s history is trimmed to the most recent N real user messages once a session runs long, cut only at safe boundaries (never splitting a `tool_use`/`tool_result` pair).
 
 
 
@@ -59,6 +108,7 @@ EnglishTutor/
 │   |   ├── toolHandler.js
 │   |   └── tools.js
 │   ├── public/
+│   |   ├── audio-cache/        (gitignored — generated at runtime)
 │   |   ├── icons/
 │   |   |   ├── icon-192.png
 │   |   |   ├── icon-512.png
@@ -89,6 +139,9 @@ EnglishTutor/
 │   ├── translation/
 │   |   ├── translationEngine.js
 │   |   └── translationPrompt.txt
+│   ├── tts/
+│   |   └── ttsEngine.js
+│   ├── limitsConfig.js
 │   └── server.js
 ├── .env
 ├── database.js
@@ -108,7 +161,17 @@ Create a `.env` file:
 
 ```
 ANTHROPIC_API_KEY=your_key
-DATABASE_URL=postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres
+GEMINI_API_KEY=your_key
+DATABASE_URI_SESSION=postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres
+```
+
+Optional overrides (see [Rate limiting & usage caps](#rate-limiting--usage-caps) — sensible defaults are used if omitted):
+```
+RATE_LIMIT_WINDOW_MINUTES=
+TRANSLATE_RATE_LIMIT_MAX=
+EDITOR_RATE_LIMIT_MAX=
+MAX_TOOL_ROUNDS=
+MAX_CONVERSATION_TURNS=
 ```
 
 Run the dashboard locally:

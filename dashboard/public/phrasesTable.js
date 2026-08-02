@@ -78,12 +78,47 @@ function renderTable() {
             </div>
             <div class="phrase-card-main">
                 <div class="phrase-hebrew">${p.hebrew_text || ''}</div>
-                <div class="phrase-variant">${p.variant_1 || ''}</div>
-                <div class="phrase-variant">${p.variant_2 || ''}</div>
+                <div class="phrase-variant"><button class="tts-btn" title="Play" onclick="playPhraseAudio('${p.id}', 1, this)">🔊</button> ${p.variant_1 || ''}</div>
+                <div class="phrase-variant"><button class="tts-btn" title="Play" onclick="playPhraseAudio('${p.id}', 2, this)">🔊</button> ${p.variant_2 || ''}</div>
             </div>
         </div>
     `;
     }).join('');
+}
+
+// Lazy playback: uses the already-cached URL (loaded with the phrase) if
+// there is one, otherwise asks the server to generate it once, then plays.
+// Subsequent plays of the same variant never call the server again.
+async function playPhraseAudio(phraseId, variant, btnEl) {
+    const phrase = allPhrases.find(p => p.id === phraseId);
+    if (!phrase) return;
+
+    const existingUrl = variant === 1 ? phrase.tts_url_variant1 : phrase.tts_url_variant2;
+    if (existingUrl) {
+        new Audio(existingUrl).play();
+        return;
+    }
+
+    const originalContent = btnEl.textContent;
+    btnEl.disabled = true;
+    btnEl.textContent = '⏳';
+    try {
+        const res = await fetch(`/phrases/${phraseId}/tts`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ variant })
+        });
+        if (!res.ok) throw new Error('Failed to generate audio');
+        const data = await res.json();
+        if (variant === 1) phrase.tts_url_variant1 = data.url;
+        else phrase.tts_url_variant2 = data.url;
+        new Audio(data.url).play();
+    } catch (err) {
+        alert('Failed to play audio');
+    } finally {
+        btnEl.disabled = false;
+        btnEl.textContent = originalContent;
+    }
 }
 
 // Click-to-edit for the sequence-order number: swaps the badge for a small
