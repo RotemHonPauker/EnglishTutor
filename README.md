@@ -37,7 +37,7 @@ This app is deliberately not built for use in the moment itself — not while yo
 | LLM             | Anthropic Claude (claude-sonnet-4-6)               |
 | Text-to-speech  | Google Gemini TTS (`gemini-3.1-flash-tts-preview`) |
 | Database        | Postgres via Supabase (pgvector enabled)           |
-| Server          | VPS (DigitalOcean)                                 |
+| Server          | DigitalOcean VPS                                   |
 | Process manager | PM2 (keeps the app alive, restarts on reboot)      |
 | Reverse proxy   | Nginx                                              |
 | HTTPS           | Let's Encrypt via Certbot                          |
@@ -127,7 +127,7 @@ EnglishTutor/
 │   |   ├── toolHandler.js
 │   |   └── tools.js
 │   ├── public/
-│   |   ├── audio-cache/        (gitignored — generated at runtime)
+│   |   ├── audio-cache/         (gitignored — generated at runtime)
 │   |   ├── icons/
 │   |   |   ├── icon-192.png
 │   |   |   ├── icon-512.png
@@ -139,13 +139,13 @@ EnglishTutor/
 │   |   ├── editor.js
 │   |   ├── index.html
 │   |   ├── loadingOverlay.js
-│   |   ├── manifest.json
+│   |   ├── manifest.json        (PWA — app name, icons, install behavior)
 │   |   ├── newPhrase.js
 │   |   ├── phrasesTable.js
 │   |   ├── phraseTagFilter.js
 │   |   ├── phraseTagPicker.js
 │   |   ├── spacesState.js
-│   |   ├── sw.js
+│   |   ├── sw.js                (PWA — service worker, required for installability)
 │   |   ├── tagsMerge.js
 │   |   ├── tagsMigrate.js
 │   |   ├── tagsSidebar.js
@@ -377,6 +377,20 @@ Inside the **HTTPS** `server` block (the one with `listen 443 ssl;`, not the HTT
     }
 ```
 
+**Don't stop there — `manifest.json` and `sw.js` need to stay exempt.** The browser fetches these two files automatically in the background (not through user navigation) to check PWA installability. If they're behind the same Basic Auth as everything else, that background fetch gets a silent `401` and "Add to Home Screen" quietly stops working — the rest of the app still works fine, so this is easy to miss until you specifically try to (re)install it. Add these **above** `location / { }`, inside the same `server` block:
+```nginx
+    location = /manifest.json {
+        proxy_pass http://localhost:3000;
+        proxy_set_header Host $host;
+    }
+
+    location = /sw.js {
+        proxy_pass http://localhost:3000;
+        proxy_set_header Host $host;
+    }
+```
+(`location =` is an exact match and always wins over the general `location /` block, regardless of the order they appear in the file.)
+
 Save, exit, then:
 
 ```bash
@@ -422,6 +436,21 @@ The app is installable to your phone's home screen, where it opens full-screen w
    npm install    # only if package.json changed
    pm2 restart phrase-app
    ```
+
+**`.env` is NOT part of this flow.** It's gitignored on purpose (see Notes below), so `git pull` never touches it. Any new key a feature needs (like `GEMINI_API_KEY` when text-to-speech was added) has to be added to the server's `.env` **by hand**:
+```bash
+nano .env
+# add the new line, save (Ctrl+O, Enter), exit (Ctrl+X)
+pm2 restart phrase-app   # required — a running process doesn't pick up .env changes on its own
+```
+If something that depends on a new key works locally but fails only in production, check `.env` on the server before assuming the code is wrong — `pm2 logs phrase-app` will usually show the actual error (e.g. a missing-credentials error) right away.
+
+**Nginx config changes never go through PM2.** If you edit `/etc/nginx/sites-available/phrase-app` (e.g. adding another auth-exempt path the way `manifest.json`/`sw.js` were), reload Nginx itself instead:
+```bash
+nginx -t                   # check syntax before reloading — a bad config
+                           # here can take the whole site down
+systemctl reload nginx
+```
 
 ## Useful PM2 commands
 
