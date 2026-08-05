@@ -228,6 +228,14 @@ async function sendMessage() {
 // duplicated when it calls showView('editor') internally.
 async function enterEditorTab(btnEl) {
     showView('editor', btnEl);
+    await resetEditorConversation();
+}
+
+// Shared by enterEditorTab (fires when the tab is clicked) and space
+// switching (spacesState.js calls this directly, since enterEditorTab
+// won't fire if the user is already sitting on the Editor tab when they
+// switch spaces from the header).
+async function resetEditorConversation() {
     await fetch('/reset');
     editorLog.innerHTML = '';
     showEditorHome();

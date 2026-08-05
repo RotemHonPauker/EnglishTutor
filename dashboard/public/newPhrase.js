@@ -21,6 +21,14 @@ newPhraseInput.addEventListener('keydown', (e) => {
 // as how entering the Editor tab directly resets its own conversation.
 function enterNewPhraseTab(btnEl) {
     showView('new', btnEl);
+    resetNewPhraseLog();
+}
+
+// Shared by enterNewPhraseTab (fires when the tab is clicked) and space
+// switching (spacesState.js calls this directly, since enterNewPhraseTab
+// won't fire if the user is already sitting on the New tab when they
+// switch spaces from the header).
+function resetNewPhraseLog() {
     newPhraseLog.innerHTML = '';
 }
 
