@@ -1,6 +1,6 @@
 {
-  "name": "Phrase Review",
-  "short_name": "Phrases",
+  "name": "Fraza",
+  "short_name": "Fraza",
   "description": "Hebrew-English phrase capture and practice",
   "start_url": "/",
   "scope": "/",
