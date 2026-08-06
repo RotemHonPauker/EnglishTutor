@@ -54,12 +54,14 @@ function renderTable() {
     tableBody.innerHTML = sorted.map(p => {
         const subtag = tags.find(t => t.id === p.subtag_id);
         const currentMainId = subtag ? subtag.parent_id : '';
+        const mainTag = tags.find(t => t.id === currentMainId);
         const mainColor = getTagColor(currentMainId);
         const cardTextColor = mainColor ? getContrastColor(mainColor) : null;
         const cardStyle = mainColor ? `background:${mainColor}; border-color:${mainColor}; color:${cardTextColor};` : '';
         const badgeStyle = mainColor
             ? `background:${cardTextColor === '#ffffff' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'}; color:${cardTextColor};`
             : '';
+        const badgeLabel = subtag ? `${mainTag ? mainTag.name : ''}: ${subtag.name}` : '—';
         const orderHtml = showOrder
             ? `<span class="sequence-order-badge" style="${badgeStyle}" onclick="editSequenceOrder(this, '${p.id}')"># ${p.sequence_order ?? '—'}</span>`
             : '';
@@ -70,7 +72,7 @@ function renderTable() {
                     <button title="Review this phrase" onclick="selectPhraseForReview('${p.id}')">✏️</button>
                     <button title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑</button>
                 </div>
-                <button class="tag-badge" style="${badgeStyle}" onclick="openTagPicker('${p.id}')">${subtag ? subtag.name : '—'}</button>
+                <button class="tag-badge" style="${badgeStyle}" onclick="openTagPicker('${p.id}')">${badgeLabel}</button>
                 <div class="phrase-card-right">
                     ${orderHtml}
                     <span class="phrase-date">${getAgeCategory(p.created_at)}</span>
