@@ -51,6 +51,8 @@ async function setActiveSpace(id) {
     // enter-tab reset won't fire without an actual tab click.
     if (typeof resetEditorConversation === 'function') await resetEditorConversation();
     if (typeof resetNewPhraseLog === 'function') resetNewPhraseLog();
+    if (typeof recordingLog !== 'undefined') recordingLog.innerHTML = '';
+    if (typeof loadTranscripts === 'function') await loadTranscripts();
     await loadTags();
     await loadTable();
 }

@@ -7,6 +7,7 @@ import { getSpaceRules } from '../../database.js';
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const basePromptPath = join(__dirname, 'translationPrompt.txt');
+const variantGuidancePath = join(__dirname, 'variantGuidance.txt');
 
 // Strips a ```json fence if Claude wraps the response in one, then parses.
 const parseTranslationResponse = (rawText) => {
@@ -21,6 +22,7 @@ export const translatePhrase = async (hebrewText, spaceId) => {
     // through the chat UI and are read fresh from the DB on every call so a
     // save takes effect on the very next translation, no restart needed.
     const baseTemplate = readFileSync(basePromptPath, 'utf-8');
+    const variantGuidance = readFileSync(variantGuidancePath, 'utf-8');
     const spaceRules = await getSpaceRules(spaceId);
 
     // A space with no additional rules yet is a normal state — the section
@@ -30,6 +32,7 @@ export const translatePhrase = async (hebrewText, spaceId) => {
         : '';
 
     const content = baseTemplate
+        .replace('${variantGuidance}', variantGuidance)
         .replace('${spaceRulesSection}', spaceRulesSection)
         .replace('${hebrewText}', hebrewText);
 

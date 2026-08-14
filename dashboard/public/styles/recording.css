@@ -1,0 +1,33 @@
+#recording-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#recording-log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#recording-input-area {
+    padding: 12px 24px;
+    border-top: 1px solid #222;
+    display: flex;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+#recording-upload-btn {
+    width: 100%;
+    padding: 12px 14px;
+}
+
+#recording-upload-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+}

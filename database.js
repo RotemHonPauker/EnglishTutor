@@ -332,3 +332,31 @@ export const mergeSubtags = async ({ sourceId, targetId }) => {
         client.release();
     }
 };
+
+// --- Transcripts ---
+// A backup of the cleaned transcript produced when processing a recording,
+// scoped per space. Only the text is kept — never the original audio.
+
+export const getTranscripts = async (spaceId) => {
+    const result = await pool.query(
+        `SELECT * FROM transcripts WHERE space_id = $1 ORDER BY created_at DESC`,
+        [spaceId]
+    );
+    return result.rows;
+};
+
+export const createTranscript = async ({ spaceId, content }) => {
+    const result = await pool.query(
+        `INSERT INTO transcripts (space_id, content) VALUES ($1, $2) RETURNING *`,
+        [spaceId, content]
+    );
+    return result.rows[0];
+};
+
+export const deleteTranscript = async (id) => {
+    const result = await pool.query(
+        `DELETE FROM transcripts WHERE id = $1 RETURNING *`,
+        [id]
+    );
+    return result.rows[0] || null;
+};

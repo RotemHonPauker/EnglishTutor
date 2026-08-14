@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Phrase Review</title>
+    <title>Fraza</title>
 
     <!-- PWA: makes the app installable and gives it an icon/name on the home screen -->
     <link rel="manifest" href="manifest.json">
@@ -23,6 +23,8 @@
     <link rel="stylesheet" href="styles/tags.css">
     <link rel="stylesheet" href="styles/tabs.css">
     <link rel="stylesheet" href="styles/newPhrase.css">
+    <link rel="stylesheet" href="styles/recording.css">
+    <link rel="stylesheet" href="styles/transcripts.css">
     <style>
         .translation-prompt-proposal {
             background: #1a1a1a;
@@ -154,13 +156,36 @@
         </div>
     </div>
 
+    <!-- RECORDING VIEW -->
+    <div id="view-recording" class="view">
+        <div id="recording-section">
+            <div id="recording-log"></div>
+            <div id="recording-input-area">
+                <input type="file" id="recording-file-input" accept="audio/*,video/mp4,.mp4,.m4a,.aac,.wav,.mp3,.ogg" style="display:none" onchange="handleRecordingFileSelected(this)">
+                <button class="primary" id="recording-upload-btn" onclick="document.getElementById('recording-file-input').click()">Choose recording</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TRANSCRIPTS VIEW -->
+    <div id="view-transcripts" class="view">
+        <div id="transcripts-section">
+            <div id="transcripts-warning" style="display:none"></div>
+            <div id="transcripts-list"></div>
+        </div>
+    </div>
+
 </main>
 
 <!-- BOTTOM TAB BAR -->
 <nav id="tab-bar">
     <button class="tab-btn" data-view="new" onclick="enterNewPhraseTab(this)">
-        <span class="tab-icon">➕</span>
-        <span>New</span>
+        <span class="tab-icon">✏️</span>
+        <span>Type</span>
+    </button>
+    <button class="tab-btn" data-view="recording" onclick="enterRecordingTab(this)">
+        <span class="tab-icon">🎙️</span>
+        <span>Record</span>
     </button>
     <button class="tab-btn active" data-view="table" onclick="showView('table', this)">
         <span class="tab-icon">📋</span>
@@ -173,6 +198,10 @@
     <button class="tab-btn" data-view="tags" onclick="showView('tags', this)">
         <span class="tab-icon">#️⃣</span>
         <span>Tags</span>
+    </button>
+    <button class="tab-btn" data-view="transcripts" onclick="enterTranscriptsTab(this)">
+        <span class="tab-icon">📄</span>
+        <span>Logs</span>
     </button>
 </nav>
 
@@ -266,6 +295,8 @@
 <script src="phraseTagFilter.js"></script>
 <script src="editor.js"></script>
 <script src="newPhrase.js"></script>
+<script src="recordingTab.js"></script>
+<script src="transcriptsTab.js"></script>
 <script src="app.js"></script>
 
 </body>

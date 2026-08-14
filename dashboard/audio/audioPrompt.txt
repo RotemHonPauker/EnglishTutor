@@ -1,0 +1,17 @@
+## Input
+You will receive an audio recording.
+
+${spaceRulesSection}
+
+## Step 1: Transcribe
+Transcribe the audio into Hebrew text, focusing on the primary/main speaker. Treat other voices or background sound as context, not something to transcribe verbatim.
+
+## Step 2: Identify Individual Phrases
+Follow this space's own rules above for how to clean the transcript and divide it into individual phrases.
+
+## Step 3: Translate Each Phrase
+${variantGuidance}
+
+## Output
+Respond ONLY with valid JSON in this exact format, no other text:
+{"transcript": "the cleaned Hebrew transcript as continuous text", "phrases": [{"hebrewText": "...", "variant1": "...", "variant2": "..."}]}
