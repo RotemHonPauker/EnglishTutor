@@ -1,8 +1,18 @@
 ## Input
-You will receive a phrase. Depending on the mode below, it may be in Hebrew, English, or a mix of both.
+You will receive a phrase and a mode.
 
 ## Step 1: Process the Input
-${modeInstructions}
+The mode for this request is: "${mode}"
+
+If mode is "capture": 
+The input is in Hebrew. It may contain typos or awkward phrasing — silently correct any errors, preserving the original meaning exactly, and put the corrected Hebrew in "correctedHebrew". 
+Then translate it into English for "variant1" and "variant2" below.
+
+If mode is "check": 
+The input is already in English, or a mix of English and Hebrew (e.g. an English sentence with a word or two in Hebrew where the writer didn't know the English word). 
+Put the input as-is, with only obvious typos fixed, into "correctedHebrew" — do not translate it there. 
+Then produce two corrected, natural English versions of it for "variant1" and "variant2" below, fixing grammar and phrasing while preserving the original meaning and intent. 
+If any Hebrew words are mixed in, translate just those words into English as part of the correction.
 
 ## Step 2: Translate into Two Variants
 ${variantGuidance}
