@@ -36,7 +36,7 @@ router.get('/phrases', async (req, res) => {
 // using the active space's own translation prompt, and saves it immediately as uncategorized —
 // no confirmation step, by design.
 router.post('/phrases', translateLimiter, async (req, res) => {
-    const { hebrewText, spaceId } = req.body;
+    const { hebrewText, spaceId, mode } = req.body;
     if (!hebrewText || !hebrewText.trim()) {
         return res.status(400).json({ error: 'Hebrew text is required' });
     }
@@ -44,7 +44,7 @@ router.post('/phrases', translateLimiter, async (req, res) => {
         return res.status(400).json({ error: 'spaceId is required' });
     }
     try {
-        const result = await translatePhrase(hebrewText.trim(), spaceId);
+        const result = await translatePhrase(hebrewText.trim(), spaceId, mode);
         const phrase = await saveSentence({
             hebrewText: result.correctedHebrew,
             variant1: result.variant1,

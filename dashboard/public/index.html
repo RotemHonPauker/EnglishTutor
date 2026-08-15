@@ -74,6 +74,10 @@
     <!-- NEW PHRASE VIEW -->
     <div id="view-new" class="view">
         <div id="new-phrase-section">
+            <div class="mode-toggle" id="new-phrase-mode-toggle">
+                <button class="mode-toggle-btn active" data-mode="capture" onclick="setNewPhraseMode('capture', this)">Hebrew phrase</button>
+                <button class="mode-toggle-btn" data-mode="check" onclick="setNewPhraseMode('check', this)">Check my English</button>
+            </div>
             <div id="new-phrase-log"></div>
             <div id="new-phrase-input-area">
                 <textarea id="new-phrase-input" rows="1" placeholder="Type a Hebrew phrase..."></textarea>
@@ -85,6 +89,10 @@
     <!-- RECORDING VIEW -->
     <div id="view-recording" class="view">
         <div id="recording-section">
+            <div class="mode-toggle" id="recording-mode-toggle">
+                <button class="mode-toggle-btn active" data-mode="capture" onclick="setRecordingMode('capture', this)">Hebrew phrase</button>
+                <button class="mode-toggle-btn" data-mode="check" onclick="setRecordingMode('check', this)">Check my English</button>
+            </div>
             <div id="recording-log"></div>
             <div id="recording-input-area">
                 <input type="file" id="recording-file-input" accept="audio/*,video/mp4,.mp4,.m4a,.aac,.wav,.mp3,.ogg" style="display:none" onchange="handleRecordingFileSelected(this)">

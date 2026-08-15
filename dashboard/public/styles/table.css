@@ -116,8 +116,8 @@
     font-size: 0.9rem;
     color: #e8e8e8;
     line-height: 1.4;
-    direction: rtl;
-    text-align: right;
+    direction: auto;
+    text-align: start;
 }
 
 .phrase-variant {

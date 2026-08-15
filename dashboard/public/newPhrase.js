@@ -1,14 +1,16 @@
 const newPhraseLog = document.getElementById('new-phrase-log');
 const newPhraseInput = document.getElementById('new-phrase-input');
+let newPhraseMode = 'capture';
+
+// Was previously declared in editor.js and shared as a global from there —
+// now self-contained here since editor.js no longer exists.
+const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
 
 newPhraseInput.addEventListener('input', () => {
     newPhraseInput.style.height = 'auto';
     newPhraseInput.style.height = newPhraseInput.scrollHeight + 'px';
 });
 
-// isTouchDevice is declared once in editor.js (loaded before this file) and
-// reused here as a shared global — declaring it again here would collide,
-// since separate <script> files share one global scope.
 newPhraseInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey && !isTouchDevice) {
         e.preventDefault();
@@ -16,9 +18,17 @@ newPhraseInput.addEventListener('keydown', (e) => {
     }
 });
 
+function setNewPhraseMode(mode, btnEl) {
+    newPhraseMode = mode;
+    document.querySelectorAll('#new-phrase-mode-toggle .mode-toggle-btn').forEach(b => b.classList.remove('active'));
+    btnEl.classList.add('active');
+    newPhraseInput.placeholder = mode === 'check'
+        ? 'Type a phrase in English (or mixed English/Hebrew)...'
+        : 'Type a Hebrew phrase...';
+}
+
 // Entering the New tab always starts with a clean, empty log — any
-// previously translated phrases shown there this session are cleared, same
-// as how entering the Editor tab directly resets its own conversation.
+// previously translated phrases shown there this session are cleared.
 function enterNewPhraseTab(btnEl) {
     showView('new', btnEl);
     resetNewPhraseLog();
@@ -30,6 +40,8 @@ function enterNewPhraseTab(btnEl) {
 // switch spaces from the header).
 function resetNewPhraseLog() {
     newPhraseLog.innerHTML = '';
+    const captureBtn = document.querySelector('#new-phrase-mode-toggle .mode-toggle-btn[data-mode="capture"]');
+    if (captureBtn) setNewPhraseMode('capture', captureBtn);
 }
 
 async function submitNewPhrase() {
@@ -47,7 +59,7 @@ async function submitNewPhrase() {
         const res = await fetch('/phrases', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ hebrewText: text, spaceId: activeSpaceId })
+            body: JSON.stringify({ hebrewText: text, spaceId: activeSpaceId, mode: newPhraseMode })
         });
         if (!res.ok) throw new Error('Failed to translate phrase');
         const phrase = await res.json();

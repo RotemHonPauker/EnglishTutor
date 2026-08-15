@@ -1,8 +1,17 @@
 const recordingLog = document.getElementById('recording-log');
+let recordingMode = 'capture';
+
+function setRecordingMode(mode, btnEl) {
+    recordingMode = mode;
+    document.querySelectorAll('#recording-mode-toggle .mode-toggle-btn').forEach(b => b.classList.remove('active'));
+    btnEl.classList.add('active');
+}
 
 function enterRecordingTab(btnEl) {
     showView('recording', btnEl);
     recordingLog.innerHTML = '';
+    const captureBtn = document.querySelector('#recording-mode-toggle .mode-toggle-btn[data-mode="capture"]');
+    if (captureBtn) setRecordingMode('capture', captureBtn);
 }
 
 async function handleRecordingFileSelected(inputEl) {
@@ -26,7 +35,8 @@ async function handleRecordingFileSelected(inputEl) {
             body: JSON.stringify({
                 audioBase64,
                 mimeType: file.type || 'audio/mp4',
-                spaceId: activeSpaceId
+                spaceId: activeSpaceId,
+                mode: recordingMode
             })
         });
 

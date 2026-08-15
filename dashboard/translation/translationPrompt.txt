@@ -1,16 +1,15 @@
 ## Input
-You will receive a Hebrew phrase.
+You will receive a phrase. Depending on the mode below, it may be in Hebrew, English, or a mix of both.
 
-## Step 1: Correct Typos
-Typed text can contain typos or awkward phrasing.
-Silently correct any errors in the Hebrew, preserving the original meaning exactly — do not rephrase or change the intent.
+## Step 1: Process the Input
+${modeInstructions}
 
 ## Step 2: Translate into Two Variants
-${spaceRulesSection}
 ${variantGuidance}
+${spaceRulesSection}
 
-## Hebrew Phrase
-"${hebrewText}"
+## Phrase
+"${phrase}"
 
 ## Output
 Respond ONLY with valid JSON in this exact format, no other text:

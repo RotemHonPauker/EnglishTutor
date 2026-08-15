@@ -132,3 +132,29 @@ button.danger:hover { background: #b91c1c; }
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.15); }
 }
+
+/* Shared mode toggle (Capture a phrase / Check my English) — used on both
+   the Type and Record tabs. */
+.mode-toggle {
+    display: flex;
+    gap: 6px;
+    padding: 10px 24px 0;
+    flex-shrink: 0;
+}
+
+.mode-toggle-btn {
+    flex: 1;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #2a2a2a;
+    background: #1a1a1a;
+    color: #888;
+    font-size: 0.8125rem;
+    cursor: pointer;
+}
+
+.mode-toggle-btn.active {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #fff;
+}

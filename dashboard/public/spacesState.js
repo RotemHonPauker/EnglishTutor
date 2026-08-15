@@ -51,6 +51,10 @@ async function setActiveSpace(id) {
     // enter-tab reset won't fire without an actual tab click.
     if (typeof resetNewPhraseLog === 'function') resetNewPhraseLog();
     if (typeof recordingLog !== 'undefined') recordingLog.innerHTML = '';
+    if (typeof setRecordingMode === 'function') {
+        const captureBtn = document.querySelector('#recording-mode-toggle .mode-toggle-btn[data-mode="capture"]');
+        if (captureBtn) setRecordingMode('capture', captureBtn);
+    }
     if (typeof loadTranscripts === 'function') await loadTranscripts();
     await loadTags();
     await loadTable();

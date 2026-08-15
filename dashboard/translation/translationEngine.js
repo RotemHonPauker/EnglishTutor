@@ -16,12 +16,16 @@ const parseTranslationResponse = (rawText) => {
     return JSON.parse(cleaned);
 };
 
-export const translatePhrase = async (hebrewText, spaceId) => {
-    // The base template is fixed, plain-file config 
-    // — read fresh each time in case it's ever edited by hand.
-    // The space's own rules ARE meant to be edited (manually, in the
-    // database) and are read fresh on every call so a change takes effect
-    // on the very next translation, no restart needed.
+// Two alternative instructions for Step 1 — which one applies is a choice
+// made per-request (the toggle), not a space-level setting, so this stays
+// local to the engine rather than living in any space's own rules.
+const captureModeInstructions = `The input is in Hebrew. It may contain typos or awkward phrasing — silently correct any errors, preserving the original meaning exactly, and put the corrected Hebrew in "correctedHebrew". Then translate it into English for "variant1" and "variant2" below.`;
+
+const checkModeInstructions = `The input is already in English, or a mix of English and Hebrew (e.g. an English sentence with a word or two in Hebrew where the writer didn't know the English word). Put the input as-is, with only obvious typos fixed, into "correctedHebrew" — do not translate it there. Then produce two corrected, natural English versions of it for "variant1" and "variant2" below, fixing grammar and phrasing while preserving the original meaning and intent. If any Hebrew words are mixed in, translate just those words into English as part of the correction.`;
+
+// mode is 'capture' (default, Hebrew input) or 'check' (English/mixed
+// input — grammar and phrasing correction instead of translation).
+export const translatePhrase = async (hebrewText, spaceId, mode = 'capture') => {
     const baseTemplate = readFileSync(basePromptPath, 'utf-8');
     const variantGuidance = readFileSync(variantGuidancePath, 'utf-8');
     const spaceRules = await getSpaceRules(spaceId);
@@ -33,9 +37,10 @@ export const translatePhrase = async (hebrewText, spaceId) => {
         : '';
 
     const content = baseTemplate
+        .replace('${modeInstructions}', mode === 'check' ? checkModeInstructions : captureModeInstructions)
         .replace('${variantGuidance}', variantGuidance)
         .replace('${spaceRulesSection}', spaceRulesSection)
-        .replace('${hebrewText}', hebrewText);
+        .replace('${phrase}', hebrewText);
 
     const response = await ai.models.generateContent({
         model: 'gemini-3.6-flash',

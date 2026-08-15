@@ -20,7 +20,7 @@ const recordingLimiter = rateLimit({
 // recording, saves the cleaned transcript as a backup, then saves each
 // extracted phrase the same way a typed phrase gets saved.
 router.post('/recordings', recordingLimiter, async (req, res) => {
-    const { audioBase64, mimeType, spaceId } = req.body;
+    const { audioBase64, mimeType, spaceId, mode } = req.body;
     if (!audioBase64 || !spaceId) {
         return res.status(400).json({ error: 'audioBase64 and spaceId are required' });
     }
@@ -29,7 +29,8 @@ router.post('/recordings', recordingLimiter, async (req, res) => {
         const { transcript, phrases } = await processRecording(
             audioBuffer,
             mimeType || 'audio/mp4',
-            spaceId
+            spaceId,
+            mode
         );
 
         await createTranscript({ spaceId, content: transcript });
