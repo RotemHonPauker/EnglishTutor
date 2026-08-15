@@ -18,8 +18,15 @@
     padding: 12px 24px;
     border-top: 1px solid #222;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    gap: 8px;
     flex-shrink: 0;
+}
+
+#recording-limit-note {
+    font-size: 0.75rem;
+    color: #666;
+    text-align: center;
 }
 
 #recording-upload-btn {

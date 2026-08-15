@@ -162,6 +162,7 @@
             <div id="recording-log"></div>
             <div id="recording-input-area">
                 <input type="file" id="recording-file-input" accept="audio/*,video/mp4,.mp4,.m4a,.aac,.wav,.mp3,.ogg" style="display:none" onchange="handleRecordingFileSelected(this)">
+                <div id="recording-limit-note">Recordings are limited to about 30 minutes.</div>
                 <button class="primary" id="recording-upload-btn" onclick="document.getElementById('recording-file-input').click()">Choose recording</button>
             </div>
         </div>
