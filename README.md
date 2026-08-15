@@ -23,43 +23,39 @@ This app is deliberately not built for use in the moment itself — not while yo
 ## How it works
 
 1. **Spaces** — the app always shows exactly one active space, named in the header at the top of every tab. Tap the name to switch to another space or create a new one. Each space is fully self contained: its own phrases, its own tag hierarchy, and its own additional translation rules — nothing is shared or filterable across spaces. At creation, a space is set to either use ordering or not (e.g. for translating a book's chunks in sequence) — this can't be changed afterward
-2. **New tab** — type or paste a Hebrew phrase, hit send. It's translated instantly (typos corrected, two English variants) and saved right away, untagged — no confirmation step, by design, so capturing a phrase stays as fast as it used to be over WhatsApp
-3. **Table tab** — your full phrase list as cards, and also your practice screen: filter by tag, browse. Sorts by date, or — in a space that uses ordering — by each phrase's order number instead, shown right on the card and editable by tapping it (a phrase inherits "last in its tag" by default when tagged). Tap the 🔊 next to either English variant to hear it spoken aloud — generated once on first play and cached from then on, so repeat listens never call the API again
-4. **Editor tab** — tapping ✎ on a card jumps into the , which resets and loads that phrase — refine the wording (Hebrew or either English variant) conversationally, save when it's ready. Opening the Editor tab directly (not via a card) shows a home screen with 2 things you can do from there: edit a phrase (back to the table), or edit the active space's additional translation rules — a deliberate, user-started flow, never something the LLM offers on its own, and every proposed change is shown as a diff you approve or discard before anything is committed
+2. **Type tab** — type or paste a Hebrew phrase, hit send. It's translated instantly (typos corrected, two English variants) and saved right away, untagged — no confirmation step, by design, so capturing a phrase stays as fast as it used to be over WhatsApp
+3. **Record tab** — pick an audio recording from your phone (up to ~30 minutes). One AI call transcribes it, cleans it, identifies individual phrases (or sequential chunks, in an ordered space), and translates each one — several phrase cards appear from a single recording, the same way one appears from typing
+4. **Table tab** — your full phrase list as cards, and also your practice screen: filter by tag, browse. Sorts by date, or — in a space that uses ordering — by each phrase's order number instead, shown right on the card and editable by tapping it (a phrase inherits "last in its tag" by default when tagged). Tap the 🔊 next to either English variant to hear it spoken aloud — generated once on first play and cached from then on, so repeat listens never call the API again
 5. **Tags tab** — manage the main-tag / subtag hierarchy and colors for the active space
+6. **Logs tab** — every recording processed leaves behind its cleaned transcript here, as a passive backup — a flat list per space, collapsed to just the date/time, tap to expand and read the full text, delete once you've confirmed the extraction looks right. A banner appears once more than 3 are saved, as a nudge to clean up old ones
 
 ---
 
 ## Stack
 
-| Piece           | Technology                                         |
-| --------------- | -------------------------------------------------- |
-| LLM             | Anthropic Claude (claude-sonnet-4-6)               |
-| Text-to-speech  | Google Gemini TTS (`gemini-3.1-flash-tts-preview`) |
-| Database        | Postgres via Supabase (pgvector enabled)           |
-| Server          | DigitalOcean VPS                                   |
-| Process manager | PM2 (keeps the app alive, restarts on reboot)      |
-| Reverse proxy   | Nginx                                              |
-| HTTPS           | Let's Encrypt via Certbot                          |
-| Domain          | DuckDNS (free dynamic DNS)                         |
-| App install     | PWA (manifest + service worker)                    |
+| Piece                          | Technology                                                  |
+| ------------------------------ | ------------------------------------------------------------ |
+| Translation & audio processing | Google Gemini (`gemini-3.6-flash`)                          |
+| Text-to-speech                 | Google Gemini TTS (`gemini-3.1-flash-tts-preview`)          |
+| Database                       | Postgres via Supabase (pgvector enabled)                    |
+| Server                         | DigitalOcean VPS                                             |
+| Process manager                | PM2 (keeps the app alive, restarts on reboot)                |
+| Reverse proxy                  | Nginx                                                        |
+| HTTPS                          | Let's Encrypt via Certbot                                    |
+| Domain                         | DuckDNS (free dynamic DNS)                                   |
+| App install                    | PWA (manifest + service worker)                              |
 
 ---
 
 ## Database
 
-Postgres via Supabase. Five tables:
+Postgres via Supabase. Four tables:
 
 - **`spaces`**
   - `id` (PK)
   - `name`
   - `has_order` — boolean, set once at creation and never changed afterward (enforced by the app, not the DB)
-  - `created_at`
-
-- **`space_prompts`** — each space's own additional translation rules, combined with the fixed base prompt at translation time. Every save inserts a new row; only the 3 most recent rows per space are kept (current + 2 previous), older ones pruned automatically
-  - `id` (PK)
-  - `space_id` (FK → `spaces.id`, `ON DELETE CASCADE`)
-  - `content`
+  - `rules` — text, `NULL` until set. Each space's own additional translation rules, combined with the fixed base prompt at translation/audio-processing time. Edited directly in the database (manually) — there's no in-app editing flow
   - `created_at`
 
 - **`tags`** — main tags and subtags in one table, distinguished by `parent_id`
@@ -83,16 +79,22 @@ Postgres via Supabase. Five tables:
   - `space_id` (FK → `spaces.id`) — required on every row
   - `created_at`
 
+- **`transcripts`** — a backup of the cleaned transcript produced when processing a recording (see [Recording & audio processing](#recording--audio-processing)). Only the text is kept, never the original audio
+  - `id` (PK)
+  - `space_id` (FK → `spaces.id`, `ON DELETE CASCADE`)
+  - `content`
+  - `created_at`
+
 ---
 
-## Translation prompts: base + per-space rules
+## Prompts: base files + per-space rules
 
-Every translation combines two things:
+Both translation (typed phrases) and audio processing (recordings) share the same underlying approach — a fixed base prompt, combined with the active space's own rules at request time:
 
-- A fixed base prompt (`dashboard/translation/translationPrompt.txt`) — the core instructions (correct typos, produce two variants, output JSON). Plain file, not editable through the app.
-- The active space's own additional rules (stored in the database, edited through the Editor tab's "Edit `<space name>` rules" flow) — things like who's speaking, the tone each variant should have, or how to resolve a recurring ambiguity for that space specifically. A space with no additional rules yet is a normal state; translation still works fine off the base prompt alone.
-
-The editor's own behavior (`dashboard/editor/editorPrompt.txt`) is a separate, fixed file — not per-space, and not editable through the app.
+- **`dashboard/translation/translationPrompt.txt`** — the base prompt for typed phrases (correct typos, translate, output JSON). Plain file, not editable through the app.
+- **`dashboard/audio/audioPrompt.txt`** — the base prompt for recordings (transcribe, identify/chunk phrases per the space's own rules, translate, output JSON). Also a plain file.
+- **`dashboard/translation/variantGuidance.txt`** — the instructions for how each of the two English variants should sound. Shared by both prompts above (referenced via a `${variantGuidance}` placeholder each substitutes at request time) so the translation style never drifts between the typed-phrase and audio pipelines.
+- **The active space's own rules** (`spaces.rules` in the database) — things like who's speaking, the tone each variant should have, how to resolve a recurring ambiguity, or (for audio) how to identify/clean/chunk that space's recordings specifically. A space with no rules yet is a normal state; both pipelines still work off the base prompts alone. Edited directly in the database — there's no in-app editing flow.
 
 ---
 
@@ -108,24 +110,28 @@ A few things worth knowing:
 
 ---
 
+## Recording & audio processing
+
+The Record tab takes a whole audio recording and turns it into several phrase cards at once — one AI call handles transcription, cleaning, splitting into individual phrases (or sequential chunks, in a `has_order` space), and translation together, using the active space's own rules to know how.
+
+- **~30 minute limit.** Requests are sent inline (embedded directly in the API call) rather than through a separate upload step, which is simpler but size-capped — 60MB of raw audio is the ceiling, comfortably under Gemini's 100MB inline request limit once base64 overhead is factored in. Based on this app's actual recording weight (~1.5MB/minute), that's roughly half an hour. Oversized files are rejected with a clear message rather than silently failing.
+- **No audio is ever stored.** Only the resulting text — the cleaned transcript (saved to `transcripts`) and the extracted phrases (saved to `phrases`, same as if typed) — survives past the request.
+- **The file picker deliberately accepts more than `audio/*`.** Some phones (Samsung in particular) save voice recordings as `.mp4` but report it as a video MIME type — with a strict `audio/*` filter, the browser's file picker would hide those files entirely, not just refuse them.
+
+---
+
 ## Rate limiting & usage caps
 
-A few layers protect the Claude/Gemini API usage from runaway cost (abuse, a bug, or an abandoned browser tab):
-
-- **Per-route rate limits** (`express-rate-limit`) on `/editor` and the AI-calling parts of `/phrases` — capped requests per IP per time window.
-- **Tool-loop cap** — a single `/editor` request can chain several tool-use rounds (fetch a phrase, propose a rule update, etc.); `editorEngine.js` caps how many rounds one request can trigger before giving up gracefully.
-- **Conversation history trimming** — `/editor`'s history is trimmed to the most recent N real user messages once a session runs long, cut only at safe boundaries (never splitting a `tool_use`/`tool_result` pair).
+A layer protects the Gemini API usage from runaway cost (abuse, a bug, or an abandoned browser tab): **per-route rate limits** (`express-rate-limit`) on `/phrases` (translation) and `/recordings` (audio processing) — capped requests per IP per time window.
 
 ---
 
 ```
 EnglishTutor/
 ├── dashboard/
-│   ├── editor/
-│   |   ├── editorEngine.js
-│   |   ├── editorPrompt.txt
-│   |   ├── toolHandler.js
-│   |   └── tools.js
+│   ├── audio/
+│   |   ├── audioEngine.js
+│   |   └── audioPrompt.txt
 │   ├── public/
 │   |   ├── audio-cache/         (gitignored — generated at runtime)
 │   |   ├── icons/
@@ -136,7 +142,6 @@ EnglishTutor/
 │   |   ├── styles/
 │   |   ├── app.js
 │   |   ├── colorUtils.js
-│   |   ├── editor.js
 │   |   ├── index.html
 │   |   ├── loadingOverlay.js
 │   |   ├── manifest.json        (PWA — app name, icons, install behavior)
@@ -144,20 +149,23 @@ EnglishTutor/
 │   |   ├── phrasesTable.js
 │   |   ├── phraseTagFilter.js
 │   |   ├── phraseTagPicker.js
+│   |   ├── recordingTab.js
 │   |   ├── spacesState.js
 │   |   ├── sw.js                (PWA — service worker, required for installability)
 │   |   ├── tagsMerge.js
 │   |   ├── tagsMigrate.js
 │   |   ├── tagsSidebar.js
-│   |   └── tagsState.js
+│   |   ├── tagsState.js
+│   |   └── transcriptsTab.js
 │   ├── routes/
-│   |   ├── editor.route.js
 │   |   ├── phrases.route.js
+│   |   ├── recordings.route.js
 │   |   ├── spaces.route.js
 │   |   └── tags.route.js
 │   ├── translation/
 │   |   ├── translationEngine.js
-│   |   └── translationPrompt.txt
+│   |   ├── translationPrompt.txt
+│   |   └── variantGuidance.txt
 │   ├── tts/
 │   |   └── ttsEngine.js
 │   ├── limitsConfig.js
@@ -179,7 +187,6 @@ npm install
 Create a `.env` file:
 
 ```
-ANTHROPIC_API_KEY=your_key
 GEMINI_API_KEY=
 DATABASE_PASSWORD=
 DATABASE_URI_SESSION=
@@ -190,9 +197,6 @@ Optional overrides (see [Rate limiting & usage caps](#rate-limiting--usage-caps)
 ```
 RATE_LIMIT_WINDOW_MINUTES=
 TRANSLATE_RATE_LIMIT_MAX=
-EDITOR_RATE_LIMIT_MAX=
-MAX_TOOL_ROUNDS=
-MAX_CONVERSATION_TURNS=
 ```
 
 Run the dashboard locally:
@@ -280,14 +284,11 @@ nano .env
 Paste in (real values, never commit this file):
 
 ```
-ANTHROPIC_API_KEY=your_key
 GEMINI_API_KEY=...
 DATABASE_PASSWORD=...
 DATABASE_URI_SESSION=...
 RATE_LIMIT_WINDOW_MINUTES=...
 TRANSLATE_RATE_LIMIT_MAX=...
-EDITOR_RATE_LIMIT_MAX=...
-MAX_TOOL_ROUNDS=...
 ```
 
 Save (`Ctrl+O`, Enter) and exit (`Ctrl+X`).
