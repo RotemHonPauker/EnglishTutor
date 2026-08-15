@@ -69,7 +69,6 @@ function renderTable() {
         <div class="phrase-card${mainColor ? ' has-color' : ''}" style="${cardStyle}">
             <div class="phrase-card-header">
                 <div class="phrase-card-icons">
-                    <button title="Review this phrase" onclick="selectPhraseForReview('${p.id}')">✏️</button>
                     <button title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑</button>
                 </div>
                 <button class="tag-badge" style="${badgeStyle}" onclick="openTagPicker('${p.id}')">${badgeLabel}</button>

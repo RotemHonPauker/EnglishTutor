@@ -157,52 +157,17 @@ export const updateSpace = async ({ id, name }) => {
 };
 
 // --- Space rules ---
-// Each space's own ADDITIONAL translation rules — not a full prompt by
-// itself. At translation time these are combined with the fixed base
-// template (dashboard/translation/translationPrompt.txt) into one prompt.
-// A space with no rules yet is a normal, valid state — translation still
-// works fine using just the base template. Stored in the space_prompts
-// table; each save inserts a new row and only the 3 most recent rows per
-// space are kept (current + 2 previous), older ones pruned automatically.
+// Each space's own translation rules, stored directly as a column on
+// spaces. Edited manually in the database, not through the app.
+// A space with no rules yet is a normal, valid state —
+// translation still works fine using just the base template.
 
 export const getSpaceRules = async (spaceId) => {
     const { rows } = await pool.query(
-        `SELECT content FROM space_prompts WHERE space_id = $1 ORDER BY created_at DESC LIMIT 1`,
+        `SELECT rules FROM spaces WHERE id = $1`,
         [spaceId]
     );
-    return rows[0]?.content ?? null;
-};
-
-export const saveSpaceRules = async (spaceId, content) => {
-    const client = await pool.connect();
-    try {
-        await client.query('BEGIN');
-
-        await client.query(
-            `INSERT INTO space_prompts (space_id, content) VALUES ($1, $2)`,
-            [spaceId, content]
-        );
-
-        // Keep only the 3 most recent rows for this space (current + 2 prior).
-        await client.query(
-            `DELETE FROM space_prompts
-             WHERE space_id = $1
-             AND id NOT IN (
-                 SELECT id FROM space_prompts
-                 WHERE space_id = $1
-                 ORDER BY created_at DESC
-                 LIMIT 3
-             )`,
-            [spaceId]
-        );
-
-        await client.query('COMMIT');
-    } catch (err) {
-        await client.query('ROLLBACK');
-        throw err;
-    } finally {
-        client.release();
-    }
+    return rows[0]?.rules ?? null;
 };
 
 export const getTags = async (spaceId) => {

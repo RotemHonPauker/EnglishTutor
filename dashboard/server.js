@@ -4,7 +4,6 @@ dotenv.config({ path: '../.env' });
 import express from 'express';
 import { connectDB } from '../database.js';
 
-import { editorRouter } from  './routes/editor.route.js';
 import { phrasesRouter } from './routes/phrases.route.js';
 import { tagsRouter } from './routes/tags.route.js';
 import { spacesRouter } from './routes/spaces.route.js';
@@ -19,7 +18,6 @@ app.use(express.static('dashboard/public'));
 // (60MB raw audio ≈ 80MB base64-encoded, plus some headroom).
 app.use(express.json({ limit: '100mb' }));
 
-app.use(editorRouter);
 app.use(phrasesRouter);
 app.use(tagsRouter);
 app.use(spacesRouter);
