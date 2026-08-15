@@ -16,9 +16,19 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // at a glance, and sorting still uses the real timestamp underneath, so
 // nothing is lost, only what's displayed changes.
 function getAgeCategory(createdAt) {
-    const ageDays = (Date.now() - new Date(createdAt).getTime()) / DAY_MS;
-    if (ageDays <= 14) return '2 weeks';
-    if (ageDays <= 60) return '2 months';
+    const created = new Date(createdAt);
+    const now = new Date();
+
+    // Compared by calendar date (local time), not raw elapsed hours — a
+    // phrase from 8pm yesterday should say "Yesterday", not "Today" just
+    // because it's under 24 hours old.
+    const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const daysSince = Math.round((startOfDay(now) - startOfDay(created)) / DAY_MS);
+
+    if (daysSince <= 0) return 'Today';
+    if (daysSince === 1) return 'Yesterday';
+    if (daysSince <= 7) return 'This week';
+    if (daysSince <= 30) return 'This month';
     return 'Old';
 }
 
@@ -61,7 +71,7 @@ function renderTable() {
         const badgeStyle = mainColor
             ? `background:${cardTextColor === '#ffffff' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'}; color:${cardTextColor};`
             : '';
-        const badgeLabel = subtag ? `${mainTag ? mainTag.name : ''}: ${subtag.name}` : '—';
+        const badgeLabel = subtag ? `${mainTag ? mainTag.name : ''} : ${subtag.name}` : '—';
         const orderHtml = showOrder
             ? `<span class="sequence-order-badge" style="${badgeStyle}" onclick="editSequenceOrder(this, '${p.id}')"># ${p.sequence_order ?? '—'}</span>`
             : '';
