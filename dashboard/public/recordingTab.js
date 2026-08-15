@@ -30,7 +30,10 @@ async function handleRecordingFileSelected(inputEl) {
             })
         });
 
-        if (!res.ok) throw new Error('Failed to process recording');
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || 'Failed to process recording');
+        }
         const data = await res.json();
 
         recordingLog.innerHTML = '';
@@ -43,7 +46,7 @@ async function handleRecordingFileSelected(inputEl) {
         await loadTable(); // the new phrases are already saved — refresh the table too
     } catch (err) {
         recordingLog.innerHTML = '';
-        addRecordingStatus("Something went wrong processing that recording — try again.");
+        addRecordingStatus(err.message || "Something went wrong processing that recording — try again.");
     } finally {
         uploadBtn.disabled = false;
         uploadBtn.textContent = originalText;

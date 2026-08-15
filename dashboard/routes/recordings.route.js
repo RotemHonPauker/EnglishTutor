@@ -48,7 +48,7 @@ router.post('/recordings', recordingLimiter, async (req, res) => {
         res.json({ phrases: savedPhrases });
     } catch (err) {
         console.error('Recording processing error:', err);
-        res.status(500).json({ error: 'Failed to process recording' });
+        res.status(400).json({ error: err.message || 'Failed to process recording' });
     }
 });
 

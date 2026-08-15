@@ -15,8 +15,9 @@ const PORT = 3000;
 
 app.use(express.static('dashboard/public'));
 // Default JSON body limit (~100kb) is far too small for base64-encoded
-// audio uploads — raised specifically to accommodate those.
-app.use(express.json({ limit: '50mb' }));
+// audio uploads — raised to accommodate audioEngine.js's inline threshold
+// (60MB raw audio ≈ 80MB base64-encoded, plus some headroom).
+app.use(express.json({ limit: '100mb' }));
 
 app.use(editorRouter);
 app.use(phrasesRouter);

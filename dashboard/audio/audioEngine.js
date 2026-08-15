@@ -15,12 +15,19 @@ const parseResponse = (rawText) => {
     return JSON.parse(cleaned);
 };
 
-// Inline requests have a real size ceiling — stay safely under it and use
-// the Files API (upload, then reference by URI) only when actually needed.
-const INLINE_SIZE_LIMIT_BYTES = 15 * 1024 * 1024; // 15MB
+// Gemini's inline request limit is 100MB total (prompt text + audio,
+// base64-encoded). 60MB of raw audio keeps the base64-encoded size (~33%
+// larger) comfortably under that — roughly half an hour of recording,
+// based on this app's actual observed recording weight (~1.5MB/minute).
+
+const INLINE_SIZE_LIMIT_BYTES = 60 * 1024 * 1024; // 60MB
 
 // Returns { transcript, phrases: [{ hebrewText, variant1, variant2 }] }.
 export const processRecording = async (audioBuffer, mimeType, spaceId) => {
+    if (audioBuffer.length > INLINE_SIZE_LIMIT_BYTES) {
+        throw new Error('Recording is too large (over ~30 minutes). Please use a shorter recording for now.');
+    }
+
     const baseTemplate = readFileSync(basePromptPath, 'utf-8');
     const variantGuidance = readFileSync(variantGuidancePath, 'utf-8');
     const spaceRules = await getSpaceRules(spaceId);
@@ -32,24 +39,12 @@ export const processRecording = async (audioBuffer, mimeType, spaceId) => {
         .replace('${variantGuidance}', variantGuidance)
         .replace('${spaceRulesSection}', spaceRulesSection);
 
-    let audioPart;
-    if (audioBuffer.length <= INLINE_SIZE_LIMIT_BYTES) {
-        // Small file: send the bytes directly in the request. Simpler, and
-        // avoids the separate upload step entirely.
-        audioPart = {
-            inlineData: {
-                data: audioBuffer.toString('base64'),
-                mimeType
-            }
-        };
-    } else {
-        // Large file: upload through the Files API first, then reference
-        // it by URI, since it won't fit in the request body directly.
-        const uploadedFile = await ai.files.upload({
-            file: new Blob([audioBuffer], { type: mimeType })
-        });
-        audioPart = { fileData: { fileUri: uploadedFile.uri, mimeType } };
-    }
+    const audioPart = {
+        inlineData: {
+            data: audioBuffer.toString('base64'),
+            mimeType
+        }
+    };
 
     const response = await ai.models.generateContent({
         model: 'gemini-3.6-flash',
