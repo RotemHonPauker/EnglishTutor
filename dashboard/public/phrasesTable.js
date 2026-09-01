@@ -33,20 +33,9 @@ function getAgeCategory(createdAt) {
 }
 
 function renderTable() {
-    const activeSpace = getActiveSpace();
-    const showOrder = !!(activeSpace && activeSpace.has_order);
-
     const sorted = allPhrases
         .filter(phraseMatchesTagFilter)
         .sort((a, b) => {
-            if (showOrder) {
-                // Reading order (1, 2, 3...) is the natural default here, so
-                // the un-toggled state (sortAsc false) maps to ascending —
-                // opposite of the date default, which starts newest-first.
-                const oa = a.sequence_order ?? Infinity;
-                const ob = b.sequence_order ?? Infinity;
-                return sortAsc ? ob - oa : oa - ob;
-            }
             const da = new Date(a.created_at);
             const db = new Date(b.created_at);
             return sortAsc ? da - db : db - da;
@@ -56,34 +45,26 @@ function renderTable() {
 
     const sortBtn = document.getElementById('sort-btn');
     if (sortBtn) {
-        sortBtn.textContent = showOrder
-            ? `Order ${sortAsc ? '↓' : '↑'}`
-            : `Date ${sortAsc ? '↑' : '↓'}`;
+        sortBtn.textContent = `Date ${sortAsc ? '↑' : '↓'}`;
     }
 
     tableBody.innerHTML = sorted.map(p => {
-        const subtag = tags.find(t => t.id === p.subtag_id);
-        const currentMainId = subtag ? subtag.parent_id : '';
-        const mainTag = tags.find(t => t.id === currentMainId);
-        const mainColor = getTagColor(currentMainId);
-        const cardTextColor = mainColor ? getContrastColor(mainColor) : null;
-        const cardStyle = mainColor ? `background:${mainColor}; border-color:${mainColor}; color:${cardTextColor};` : '';
-        const badgeStyle = mainColor
+        const tag = tags.find(t => t.id === p.tag_id);
+        const tagColor = tag ? tag.color : null;
+        const cardTextColor = tagColor ? getContrastColor(tagColor) : null;
+        const cardStyle = tagColor ? `background:${tagColor}; border-color:${tagColor}; color:${cardTextColor};` : '';
+        const badgeStyle = tagColor
             ? `background:${cardTextColor === '#ffffff' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'}; color:${cardTextColor};`
             : '';
-        const badgeLabel = subtag ? `${mainTag ? mainTag.name : ''} : ${subtag.name}` : '—';
-        const orderHtml = showOrder
-            ? `<span class="sequence-order-badge" style="${badgeStyle}" onclick="editSequenceOrder(this, '${p.id}')"># ${p.sequence_order ?? '—'}</span>`
-            : '';
+        const badgeLabel = tag ? tag.name : '—';
         return `
-        <div class="phrase-card${mainColor ? ' has-color' : ''}" style="${cardStyle}">
+        <div class="phrase-card${tagColor ? ' has-color' : ''}" style="${cardStyle}">
             <div class="phrase-card-header">
                 <div class="phrase-card-icons">
                     <button title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑</button>
                 </div>
                 <button class="tag-badge" style="${badgeStyle}" onclick="openTagPicker('${p.id}')">${badgeLabel}</button>
                 <div class="phrase-card-right">
-                    ${orderHtml}
                     <span class="phrase-date">${getAgeCategory(p.created_at)}</span>
                 </div>
             </div>
@@ -132,51 +113,6 @@ async function playPhraseAudio(phraseId, variant, btnEl) {
     }
 }
 
-// Click-to-edit for the sequence-order number: swaps the badge for a small
-// number input; Enter or blur submits, Escape cancels without saving.
-function editSequenceOrder(badgeEl, phraseId) {
-    const phrase = allPhrases.find(p => p.id === phraseId);
-    const currentValue = phrase?.sequence_order ?? '';
-
-    const input = document.createElement('input');
-    input.type = 'number';
-    input.className = 'sequence-order-input';
-    input.value = currentValue;
-
-    let settled = false;
-    const commit = async () => {
-        if (settled) return;
-        settled = true;
-        const parsed = parseInt(input.value, 10);
-        if (!Number.isInteger(parsed)) {
-            renderTable();
-            return;
-        }
-        try {
-            const res = await fetch(`/phrases/${phraseId}/sequence-order`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sequenceOrder: parsed })
-            });
-            if (!res.ok) throw new Error('Failed to update order');
-            await loadTable();
-        } catch (err) {
-            alert('Failed to update order');
-            renderTable();
-        }
-    };
-
-    input.addEventListener('blur', commit);
-    input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') input.blur();
-        if (e.key === 'Escape') { settled = true; renderTable(); }
-    });
-
-    badgeEl.replaceWith(input);
-    input.focus();
-    input.select();
-}
-
 let pendingDeleteId = null;
 
 function deletePhraseRow(id) {
@@ -207,12 +143,12 @@ async function confirmDeletePhrase() {
     }
 }
 
-async function updateSubtag(id, subtagId) {
+async function updatePhraseTagAssignment(id, tagId) {
     try {
-        const res = await fetch(`/phrases/${id}/subtag`, {
+        const res = await fetch(`/phrases/${id}/tag`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ subtagId: subtagId || null })
+            body: JSON.stringify({ tagId: tagId || null })
         });
         if (!res.ok) throw new Error('Failed to update tag');
         await loadTable();

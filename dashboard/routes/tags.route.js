@@ -1,5 +1,5 @@
 import express from 'express';
-import { getTags, createTag, updateTag, deleteTag, mergeSubtags } from '../../database.js';
+import { getTags, createTag, updateTag, deleteTag, mergeTags } from '../../database.js';
 
 const router = express.Router();
 
@@ -17,12 +17,15 @@ router.get('/tags', async (req, res) => {
 });
 
 router.post('/tags', async (req, res) => {
-    const { name, color, parentId, spaceId } = req.body;
-    if (!parentId && !spaceId) {
-        return res.status(400).json({ error: 'spaceId is required for a main tag' });
+    const { name, color, spaceId } = req.body;
+    if (!spaceId) {
+        return res.status(400).json({ error: 'spaceId is required' });
+    }
+    if (!name || !name.trim()) {
+        return res.status(400).json({ error: 'Name is required' });
     }
     try {
-        const tag = await createTag({ name, color, parentId, spaceId });
+        const tag = await createTag({ name: name.trim(), color, spaceId });
         res.json(tag);
     } catch (err) {
         res.status(500).json({ error: 'Failed to create tag' });
@@ -30,9 +33,9 @@ router.post('/tags', async (req, res) => {
 });
 
 router.put('/tags/:id', async (req, res) => {
-    const { name, color, parentId } = req.body;
+    const { name, color } = req.body;
     try {
-        const tag = await updateTag({ id: req.params.id, name, color, parentId });
+        const tag = await updateTag({ id: req.params.id, name, color });
         res.json(tag);
     } catch (err) {
         res.status(400).json({ error: err.message || 'Failed to update tag' });
@@ -51,7 +54,7 @@ router.delete('/tags/:id', async (req, res) => {
 router.post('/tags/merge', async (req, res) => {
     const { sourceId, targetId } = req.body;
     try {
-        await mergeSubtags({ sourceId, targetId });
+        await mergeTags({ sourceId, targetId });
         res.json({ ok: true });
     } catch (err) {
         res.status(400).json({ error: err.message || 'Failed to merge tags' });

@@ -125,11 +125,6 @@ function showNewSpaceForm() {
     const form = document.getElementById('space-picker-new-form');
     form.innerHTML = `
         <input id="new-space-name-input" type="text" placeholder="Space name" autocomplete="off" />
-        <label class="new-space-order-toggle">
-            <input type="checkbox" id="new-space-has-order" />
-            This space cares about order (e.g. chapters or parts of a longer text)
-        </label>
-        <div class="new-space-order-note">This can't be changed after the space is created.</div>
         <div class="form-buttons">
             <button onclick="document.getElementById('space-picker-new-form').innerHTML = ''">Cancel</button>
             <button class="primary" onclick="submitNewSpace()">Create</button>
@@ -140,12 +135,11 @@ function showNewSpaceForm() {
 async function submitNewSpace() {
     const name = document.getElementById('new-space-name-input').value.trim();
     if (!name) return;
-    const hasOrder = document.getElementById('new-space-has-order').checked;
 
     const res = await fetch('/spaces', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, hasOrder })
+        body: JSON.stringify({ name })
     });
 
     if (!res.ok) {

@@ -65,7 +65,7 @@
         <div id="tag-sidebar">
             <div id="sidebar-header">
                 <span>Tags</span>
-                <button onclick="openAddMainTagModal()">+ main tag</button>
+                <button onclick="openAddTagModal()">+ tag</button>
             </div>
             <div id="tag-list"></div>
         </div>
@@ -160,12 +160,7 @@
             <button onclick="closeTagPicker()">✕</button>
         </div>
         <div class="tag-picker-section">
-            <div class="tag-picker-label">Main tag</div>
-            <div id="tag-picker-main-list" class="tag-picker-chip-list"></div>
-        </div>
-        <div class="tag-picker-section" id="tag-picker-sub-section" style="display:none">
-            <div class="tag-picker-label">Subtag</div>
-            <div id="tag-picker-sub-list" class="tag-picker-chip-list"></div>
+            <div id="tag-picker-list" class="tag-picker-chip-list"></div>
         </div>
         <div class="modal-footer">
             <button onclick="closeTagPicker()">Cancel</button>
@@ -174,7 +169,7 @@
     </div>
 </div>
 
-<!-- TAG EDIT MODAL (delete / edit / merge or add-subtag for a tag, and add-main-tag) -->
+<!-- TAG EDIT MODAL (delete / edit, and add-tag) -->
 <div id="tag-edit-modal-overlay" style="display:none">
     <div id="tag-edit-modal" class="confirm-modal">
         <div class="modal-header">
@@ -218,7 +213,6 @@
 <script src="tagsState.js"></script>
 <script src="tagsSidebar.js"></script>
 <script src="tagsMerge.js"></script>
-<script src="tagsMigrate.js"></script>
 <script src="colorUtils.js"></script>
 <script src="phrasesTable.js"></script>
 <script src="phraseTagPicker.js"></script>

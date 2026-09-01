@@ -41,56 +41,11 @@ export const updatePhrase = async ({ id, hebrewText, variant1, variant2 }) => {
     return result.rows[0];
 };
 
-// Table-driven edit: touches only subtag_id (and sequence_order, but only
-// as an automatic side effect — see below), never variant_1 / variant_2.
-export const updatePhraseSubtag = async ({ id, subtagId }) => {
-    if (subtagId) {
-        // Order only matters in spaces that opted into it at creation —
-        // check via this phrase's own space, not the subtag directly.
-        const { rows: phraseRows } = await pool.query(
-            `SELECT space_id FROM phrases WHERE id = $1`,
-            [id]
-        );
-        const spaceId = phraseRows[0]?.space_id;
-
-        const { rows: spaceRows } = await pool.query(
-            `SELECT has_order FROM spaces WHERE id = $1`,
-            [spaceId]
-        );
-        const hasOrder = spaceRows[0]?.has_order;
-
-        if (hasOrder) {
-            // New tagging inherits "last in this subtag" by default — the
-            // user can edit it to any specific number afterward (duplicates
-            // across phrases are allowed, not an error).
-            const { rows: maxRows } = await pool.query(
-                `SELECT COALESCE(MAX(sequence_order), 0) + 1 AS next_order FROM phrases WHERE subtag_id = $1`,
-                [subtagId]
-            );
-            const result = await pool.query(
-                `UPDATE phrases SET subtag_id = $1, sequence_order = $2 WHERE id = $3 RETURNING *`,
-                [subtagId, maxRows[0].next_order, id]
-            );
-            return result.rows[0];
-        }
-    }
-
-    // Untagging, or a space that doesn't use ordering: no meaningful order
-    // to keep.
+// Table-driven edit: sets a phrase's tag directly 
+export const updatePhraseTag = async ({ id, tagId }) => {
     const result = await pool.query(
-        `UPDATE phrases SET subtag_id = $1, sequence_order = NULL WHERE id = $2 RETURNING *`,
-        [subtagId || null, id]
-    );
-    return result.rows[0];
-};
-
-// Manual override of a phrase's order number (see updatePhraseSubtag for
-// how it's first assigned). Duplicates across phrases in the same subtag
-// are allowed — this is a deliberate, user-set value, not a unique index.
-export const updatePhraseSequenceOrder = async ({ id, sequenceOrder }) => {
-    const result = await pool.query(
-        `UPDATE phrases SET sequence_order = $1 WHERE id = $2 RETURNING *`,
-        [sequenceOrder, id]
+        `UPDATE phrases SET tag_id = $1 WHERE id = $2 RETURNING *`,
+        [tagId || null, id]
     );
     return result.rows[0];
 };
@@ -117,10 +72,9 @@ export const updatePhraseTtsUrl = async ({ id, variant, url }) => {
 
 export const getPhrases = async (spaceId) => {
     const result = await pool.query(
-        `SELECT p.*, t.name as subtag_name, pt.name as tag_name, pt.color as tag_color
+        `SELECT p.*, t.name as tag_name, t.color as tag_color
          FROM phrases p
-         LEFT JOIN tags t ON p.subtag_id = t.id
-         LEFT JOIN tags pt ON t.parent_id = pt.id
+         LEFT JOIN tags t ON p.tag_id = t.id
          WHERE p.space_id = $1
          ORDER BY p.created_at DESC`,
         [spaceId]
@@ -140,10 +94,10 @@ export const getSpaces = async () => {
     return result.rows;
 };
 
-export const createSpace = async ({ name, hasOrder }) => {
+export const createSpace = async ({ name }) => {
     const result = await pool.query(
-        `INSERT INTO spaces (name, has_order) VALUES ($1, $2) RETURNING *`,
-        [name, hasOrder]
+        `INSERT INTO spaces (name) VALUES ($1) RETURNING *`,
+        [name]
     );
     return result.rows[0];
 };
@@ -170,46 +124,26 @@ export const getSpaceRules = async (spaceId) => {
     return rows[0]?.rules ?? null;
 };
 
+// --- Tags ---
+
 export const getTags = async (spaceId) => {
     const result = await pool.query(
-        `SELECT * FROM tags
-         WHERE space_id = $1
-         OR parent_id IN (SELECT id FROM tags WHERE space_id = $1)
-         ORDER BY parent_id NULLS FIRST, name ASC`,
+        `SELECT * FROM tags WHERE space_id = $1 ORDER BY name ASC`,
         [spaceId]
     );
     return result.rows;
 };
 
-export const createTag = async ({ name, color, parentId, spaceId }) => {
-    // Main tags (no parent) belong directly to a space. Subtags don't store
-    // their own space_id — they inherit it via parent_id.
+export const createTag = async ({ name, color, spaceId }) => {
     const result = await pool.query(
-        `INSERT INTO tags (name, color, parent_id, space_id) VALUES ($1, $2, $3, $4) RETURNING *`,
-        [name, color || null, parentId || null, parentId ? null : spaceId]
+        `INSERT INTO tags (name, color, space_id) VALUES ($1, $2, $3) RETURNING *`,
+        [name, color || null, spaceId]
     );
     return result.rows[0];
 };
 
-export const updateTag = async ({ id, name, color, parentId }) => {
-    // Migrating a subtag: make sure the target actually exists and is itself
-    // a main tag — prevents accidentally nesting a subtag under another
-    // subtag, which the rest of the app (and the UI) assumes never happens.
-    if (parentId !== undefined && parentId !== null) {
-        const { rows } = await pool.query(
-            `SELECT parent_id FROM tags WHERE id = $1`,
-            [parentId]
-        );
-        if (!rows.length) {
-            throw new Error('Target main tag not found');
-        }
-        if (rows[0].parent_id) {
-            throw new Error('Can only migrate a subtag under a main tag, not another subtag');
-        }
-    }
-
-    // Only touch the columns actually passed in, so an ordinary name/color
-    // edit never overwrites parent_id (and vice versa for a migrate call).
+export const updateTag = async ({ id, name, color }) => {
+    // Only touch the columns actually passed in.
     const fields = [];
     const values = [];
     let i = 1;
@@ -221,10 +155,6 @@ export const updateTag = async ({ id, name, color, parentId }) => {
     if (color !== undefined) {
         fields.push(`color = $${i++}`);
         values.push(color || null);
-    }
-    if (parentId !== undefined) {
-        fields.push(`parent_id = $${i++}`);
-        values.push(parentId || null);
     }
 
     if (!fields.length) {
@@ -241,28 +171,21 @@ export const updateTag = async ({ id, name, color, parentId }) => {
 };
 
 export const deleteTag = async (id) => {
-    const { rows: childRows } = await pool.query(
-        `SELECT COUNT(*)::int AS count FROM tags WHERE parent_id = $1`,
-        [id]
-    );
-    if (childRows[0].count > 0) {
-        throw new Error(`This tag still has ${childRows[0].count} subtag(s). Delete or merge them first.`);
-    }
-
     const { rows: phraseRows } = await pool.query(
-        `SELECT COUNT(*)::int AS count FROM phrases WHERE subtag_id = $1`,
+        `SELECT COUNT(*)::int AS count FROM phrases WHERE tag_id = $1`,
         [id]
     );
     if (phraseRows[0].count > 0) {
-        throw new Error(`This subtag has ${phraseRows[0].count} phrase(s) linked to it. Migrate or merge them into another subtag first.`);
+        throw new Error(`This tag has ${phraseRows[0].count} phrase(s) linked to it. Merge or retag them first.`);
     }
 
     await pool.query(`DELETE FROM tags WHERE id = $1`, [id]);
 };
 
-export const mergeSubtags = async ({ sourceId, targetId }) => {
+// Moves every phrase from sourceId onto targetId, then deletes the source tag. 
+export const mergeTags = async ({ sourceId, targetId }) => {
     if (sourceId === targetId) {
-        throw new Error('Cannot merge a subtag into itself');
+        throw new Error('Cannot merge a tag into itself');
     }
 
     const client = await pool.connect();
@@ -270,21 +193,15 @@ export const mergeSubtags = async ({ sourceId, targetId }) => {
         await client.query('BEGIN');
 
         const { rows } = await client.query(
-            `SELECT id, parent_id FROM tags WHERE id IN ($1, $2)`,
+            `SELECT id FROM tags WHERE id IN ($1, $2)`,
             [sourceId, targetId]
         );
-        const source = rows.find(t => t.id === sourceId);
-        const target = rows.find(t => t.id === targetId);
-
-        if (!source || !target || !source.parent_id || !target.parent_id) {
-            throw new Error('Both tags must be subtags');
-        }
-        if (source.parent_id !== target.parent_id) {
-            throw new Error('Subtags must share the same parent tag');
+        if (rows.length !== 2) {
+            throw new Error('Both tags must exist');
         }
 
         await client.query(
-            `UPDATE phrases SET subtag_id = $1 WHERE subtag_id = $2`,
+            `UPDATE phrases SET tag_id = $1 WHERE tag_id = $2`,
             [targetId, sourceId]
         );
         await client.query(`DELETE FROM tags WHERE id = $1`, [sourceId]);

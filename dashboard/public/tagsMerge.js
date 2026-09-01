@@ -1,19 +1,17 @@
 let mergeTargetId = null;
-let mergeSiblings = [];
+let mergeCandidates = [];
 
 // ===== State: Merge search =====
-// Uses editModalTagId (the subtag being merged away) and its parent, found
-// via tags[], to list sibling subtags it could be merged into.
 
 function renderTagEditMerge() {
     mergeTargetId = null;
     const tag = tags.find(t => t.id === editModalTagId);
-    mergeSiblings = tags.filter(t => t.parent_id === tag.parent_id && t.id !== editModalTagId);
+    mergeCandidates = tags.filter(t => t.id !== editModalTagId);
     const body = document.getElementById('tag-edit-modal-body');
 
-    if (!mergeSiblings.length) {
+    if (!mergeCandidates.length) {
         body.innerHTML = `
-            <div class="tag-name">No other subtags under this tag to merge "${tag.name}" into.</div>
+            <div class="tag-name">No other tags to merge "${tag.name}" into.</div>
             <div id="tag-edit-modal-error" class="form-error" style="display:none"></div>
         `;
         document.getElementById('tag-edit-modal-footer').innerHTML = `
@@ -25,7 +23,7 @@ function renderTagEditMerge() {
     body.innerHTML = `
         <div class="tag-name">Merge "${tag.name}" into:</div>
         <div class="merge-autocomplete">
-            <input id="merge-search-input" type="text" placeholder="Type to search subtags..."
+            <input id="merge-search-input" type="text" placeholder="Type to search tags..."
                 autocomplete="off"
                 oninput="filterMergeOptions(this.value)"
                 onfocus="showMergeDropdown()"
@@ -39,13 +37,13 @@ function renderTagEditMerge() {
         <button class="primary" onclick="submitMerge()">Save</button>
     `;
 
-    renderMergeDropdown(mergeSiblings);
+    renderMergeDropdown(mergeCandidates);
 }
 
 function filterMergeOptions(query) {
     mergeTargetId = null;
-    const filtered = mergeSiblings.filter(s =>
-        s.name.toLowerCase().includes(query.trim().toLowerCase())
+    const filtered = mergeCandidates.filter(t =>
+        t.name.toLowerCase().includes(query.trim().toLowerCase())
     );
     renderMergeDropdown(filtered);
     showMergeDropdown();
@@ -73,9 +71,9 @@ function submitMerge() {
 function renderMergeDropdown(options) {
     const dropdown = document.getElementById('merge-dropdown');
     dropdown.innerHTML = options.length
-        ? options.map(s => `
-            <div class="merge-dropdown-item" data-id="${s.id}" onmousedown="selectMergeTarget('${s.id}')">
-                ${s.name}
+        ? options.map(t => `
+            <div class="merge-dropdown-item" data-id="${t.id}" onmousedown="selectMergeTarget('${t.id}')">
+                ${t.name}
             </div>
         `).join('')
         : `<div class="merge-dropdown-empty">No matches</div>`;
@@ -83,14 +81,14 @@ function renderMergeDropdown(options) {
 
 function selectMergeTarget(id) {
     mergeTargetId = id;
-    const target = mergeSiblings.find(s => s.id === id);
+    const target = mergeCandidates.find(t => t.id === id);
     document.getElementById('merge-search-input').value = target.name;
     hideMergeDropdown();
 }
 
 // ===== State: Merge confirmation =====
 // "Back" returns to the search step of this same action (not a full modal
-// close) since it's a second step within one flow, same as before.
+// close) since it's a second step within one flow.
 
 function renderMergeConfirm(source, target) {
     const body = document.getElementById('tag-edit-modal-body');
@@ -116,7 +114,7 @@ async function confirmMerge(sourceId, targetId) {
 
     if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        showTagEditError(data.error || 'Failed to merge subtags');
+        showTagEditError(data.error || 'Failed to merge tags');
         return;
     }
 

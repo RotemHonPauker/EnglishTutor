@@ -1,15 +1,8 @@
-let filterMainIds = new Set();
-let filterSubtagIds = new Set();
+let filterTagIds = new Set();
 
-// A phrase matches the tag filter if no tag filter is active, if its own
-// subtag was picked individually, or if its subtag's parent (main tag) was
-// picked as a whole group — multiple selections combine with OR, same as
-// picking several statuses would.
 function phraseMatchesTagFilter(phrase) {
-    if (filterMainIds.size === 0 && filterSubtagIds.size === 0) return true;
-    if (filterSubtagIds.has(phrase.subtag_id)) return true;
-    const subtag = tags.find(t => t.id === phrase.subtag_id);
-    return !!(subtag && filterMainIds.has(subtag.parent_id));
+    if (filterTagIds.size === 0) return true;
+    return filterTagIds.has(phrase.tag_id);
 }
 
 function openTagFilterModal() {
@@ -22,54 +15,25 @@ function closeTagFilterModal() {
 }
 
 function renderTagFilterModal() {
-    const mainTags = tags.filter(t => !t.parent_id);
-    document.getElementById('tag-filter-groups').innerHTML = mainTags.map(mt => {
-        const contrast = getContrastColor(mt.color);
-        const mainSelected = filterMainIds.has(mt.id);
-        const subtags = tags.filter(t => t.parent_id === mt.id);
-        const mainChip = `<div class="tag-chip ${mainSelected ? 'selected' : ''}" style="background:${mt.color || '#333'}; color:${contrast}" onclick="toggleFilterMain('${mt.id}')">${mt.name}</div>`;
-        const subChips = subtags.map(s => {
-            const subSelected = filterSubtagIds.has(s.id);
-            return `<div class="tag-chip ${subSelected ? 'selected' : ''}" style="background:${mt.color || '#333'}; color:${contrast}" onclick="toggleFilterSubtag('${s.id}')">${s.name}</div>`;
-        }).join('');
-        return `
-        <div class="tag-filter-group">
-            ${mainChip}
-            <div class="tag-picker-chip-list">${subChips}</div>
-        </div>
-    `;
+    const chips = tags.map(t => {
+        const contrast = getContrastColor(t.color);
+        const selected = filterTagIds.has(t.id);
+        return `<div class="tag-chip ${selected ? 'selected' : ''}" style="background:${t.color || '#333'}; color:${contrast}" onclick="toggleFilterTag('${t.id}')">${t.name}</div>`;
     }).join('');
+    document.getElementById('tag-filter-groups').innerHTML = `<div class="tag-picker-chip-list">${chips}</div>`;
 }
 
-function toggleFilterMain(id) {
-    if (filterMainIds.has(id)) {
-        filterMainIds.delete(id);
+function toggleFilterTag(id) {
+    if (filterTagIds.has(id)) {
+        filterTagIds.delete(id);
     } else {
-        filterMainIds.add(id);
-        // Selecting the whole main tag supersedes any of its own subtags
-        // already picked individually.
-        tags.filter(t => t.parent_id === id).forEach(sub => filterSubtagIds.delete(sub.id));
-    }
-    renderTagFilterModal();
-}
-
-function toggleFilterSubtag(id) {
-    if (filterSubtagIds.has(id)) {
-        filterSubtagIds.delete(id);
-    } else {
-        filterSubtagIds.add(id);
-        // Picking a specific subtag supersedes its whole main tag being
-        // selected — but other subtags of that same main tag can still
-        // be added alongside this one.
-        const sub = tags.find(t => t.id === id);
-        if (sub) filterMainIds.delete(sub.parent_id);
+        filterTagIds.add(id);
     }
     renderTagFilterModal();
 }
 
 function clearTagFilter() {
-    filterMainIds.clear();
-    filterSubtagIds.clear();
+    filterTagIds.clear();
     renderTagFilterModal();
 }
 
@@ -77,8 +41,7 @@ function clearTagFilter() {
 // spaces) — clears the filter AND updates what's actually visible in the
 // table toolbar, not just the modal's own internal state.
 function resetTagFilter() {
-    filterMainIds.clear();
-    filterSubtagIds.clear();
+    filterTagIds.clear();
     renderActiveFilterChips();
 }
 
@@ -88,33 +51,19 @@ function applyTagFilter() {
     renderTable();
 }
 
-function removeMainFilter(id) {
-    filterMainIds.delete(id);
-    renderActiveFilterChips();
-    renderTable();
-}
-
-function removeSubtagFilter(id) {
-    filterSubtagIds.delete(id);
+function removeTagFilter(id) {
+    filterTagIds.delete(id);
     renderActiveFilterChips();
     renderTable();
 }
 
 function renderActiveFilterChips() {
     const row = document.getElementById('active-tag-filters');
-    const mainChips = [...filterMainIds].map(id => {
+    row.innerHTML = [...filterTagIds].map(id => {
         const tag = tags.find(t => t.id === id);
         if (!tag) return '';
         const contrast = getContrastColor(tag.color);
-        return `<span class="active-filter-chip" style="background:${tag.color || '#333'}; color:${contrast}">${tag.name}<button onclick="removeMainFilter('${id}')">✕</button></span>`;
+        return `<span class="active-filter-chip" style="background:${tag.color || '#333'}; color:${contrast}">${tag.name}<button onclick="removeTagFilter('${id}')">✕</button></span>`;
     }).join('');
-    const subChips = [...filterSubtagIds].map(id => {
-        const tag = tags.find(t => t.id === id);
-        if (!tag) return '';
-        const parentColor = getTagColor(tag.parent_id);
-        const contrast = getContrastColor(parentColor);
-        return `<span class="active-filter-chip" style="background:${parentColor || '#333'}; color:${contrast}">${tag.name}<button onclick="removeSubtagFilter('${id}')">✕</button></span>`;
-    }).join('');
-    row.innerHTML = mainChips + subChips;
-    row.style.display = (filterMainIds.size || filterSubtagIds.size) ? 'flex' : 'none';
+    row.style.display = filterTagIds.size ? 'flex' : 'none';
 }

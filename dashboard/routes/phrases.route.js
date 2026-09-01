@@ -1,6 +1,6 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
-import { getPhrases, getPhraseById, saveSentence, updatePhraseSubtag, updatePhraseSequenceOrder, updatePhraseTtsUrl, deletePhrase } from '../../database.js';
+import { getPhrases, getPhraseById, saveSentence, updatePhraseTag, updatePhraseTtsUrl, deletePhrase } from '../../database.js';
 import { translatePhrase } from '../translation/translationEngine.js';
 import { generateSpeech, deleteSpeechFile } from '../tts/ttsEngine.js';
 import { RATE_LIMIT_WINDOW_MS, TRANSLATE_RATE_LIMIT_MAX } from '../limitsConfig.js';
@@ -58,34 +58,15 @@ router.post('/phrases', translateLimiter, async (req, res) => {
     }
 });
 
-router.patch('/phrases/:id/subtag', async (req, res) => {
+router.patch('/phrases/:id/tag', async (req, res) => {
     const { id } = req.params;
-    const { subtagId } = req.body;
+    const { tagId } = req.body;
     try {
-        const phrase = await updatePhraseSubtag({ id, subtagId });
+        const phrase = await updatePhraseTag({ id, tagId });
         res.json(phrase);
     } catch (err) {
-        console.error('Error updating phrase subtag:', err);
+        console.error('Error updating phrase tag:', err);
         res.status(500).json({ error: 'Failed to update tag' });
-    }
-});
-
-// Manual override of a phrase's order number — only meaningful in spaces
-// that opted into ordering, but not restricted here; the frontend only
-// exposes this control for such spaces.
-router.patch('/phrases/:id/sequence-order', async (req, res) => {
-    const { id } = req.params;
-    const { sequenceOrder } = req.body;
-    const parsed = Number(sequenceOrder);
-    if (!Number.isInteger(parsed)) {
-        return res.status(400).json({ error: 'sequenceOrder must be an integer' });
-    }
-    try {
-        const phrase = await updatePhraseSequenceOrder({ id, sequenceOrder: parsed });
-        res.json(phrase);
-    } catch (err) {
-        console.error('Error updating sequence order:', err);
-        res.status(500).json({ error: 'Failed to update order' });
     }
 });
 
