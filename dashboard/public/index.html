@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="styles/table.css">
     <link rel="stylesheet" href="styles/modal.css">
     <link rel="stylesheet" href="styles/tags.css">
+    <link rel="stylesheet" href="styles/analytics.css">
     <link rel="stylesheet" href="styles/tabs.css">
     <link rel="stylesheet" href="styles/newPhrase.css">
     <link rel="stylesheet" href="styles/recording.css">
@@ -43,15 +44,21 @@
 
 <main id="view-container">
 
-    <!-- TABLE VIEW -->
-    <div id="view-table" class="view active">
+    <!-- PRACTICE VIEW -->
+    <div id="view-practice" class="view active">
         <div id="table-area">
+            <div id="date-scroll-bar">
+                <div class="mode-toggle" id="date-granularity-toggle">
+                    <button class="mode-toggle-btn active" data-granularity="day" onclick="setDateGranularity('day', this)">Daily</button>
+                    <button class="mode-toggle-btn" data-granularity="week" onclick="setDateGranularity('week', this)">Weekly</button>
+                </div>
+                <div id="date-scroll-track"></div>
+            </div>
             <div id="table-section">
                 <div id="table-toolbar">
                     <span id="phrase-count"></span>
                     <button onclick="openTagFilterModal()">Tags</button>
                     <button id="learned-filter-btn" onclick="toggleLearnedFilter()">All</button>
-                    <button id="sort-btn" onclick="toggleSort()">Date ↓</button>
                 </div>
                 <div id="active-tag-filters" class="active-filters-row" style="display:none"></div>
                 <div id="table-wrapper">
@@ -69,6 +76,22 @@
                 <button onclick="openAddTagModal()">+ tag</button>
             </div>
             <div id="tag-list"></div>
+        </div>
+    </div>
+
+    <!-- ANALYTICS VIEW -->
+    <div id="view-analytics" class="view">
+        <div id="analytics-section">
+            <div class="mode-toggle" id="analytics-granularity-toggle">
+                <button class="mode-toggle-btn active" data-granularity="day" onclick="setAnalyticsGranularity('day', this)">Daily</button>
+                <button class="mode-toggle-btn" data-granularity="week" onclick="setAnalyticsGranularity('week', this)">Weekly</button>
+            </div>
+            <div class="mode-toggle" id="analytics-mode-toggle">
+                <button class="mode-toggle-btn active" data-mode="tag" onclick="setAnalyticsMode('tag', this)">By tag</button>
+                <button class="mode-toggle-btn" data-mode="learned" onclick="setAnalyticsMode('learned', this)">Learned</button>
+            </div>
+            <div id="analytics-chart-bars"></div>
+            <div id="analytics-chart-legend"></div>
         </div>
     </div>
 
@@ -123,13 +146,17 @@
         <span class="tab-icon">🎙️</span>
         <span>Record</span>
     </button>
-    <button class="tab-btn active" data-view="table" onclick="showView('table', this)">
+    <button class="tab-btn active" data-view="practice" onclick="showView('practice', this)">
         <span class="tab-icon">📋</span>
-        <span>Table</span>
+        <span>Practice</span>
     </button>
     <button class="tab-btn" data-view="tags" onclick="showView('tags', this)">
         <span class="tab-icon">#️⃣</span>
         <span>Tags</span>
+    </button>
+    <button class="tab-btn" data-view="analytics" onclick="showView('analytics', this)">
+        <span class="tab-icon">📊</span>
+        <span>Analytics</span>
     </button>
     <button class="tab-btn" data-view="transcripts" onclick="enterTranscriptsTab(this)">
         <span class="tab-icon">📄</span>
@@ -216,6 +243,8 @@
 <script src="tagsMerge.js"></script>
 <script src="colorUtils.js"></script>
 <script src="phrasesTable.js"></script>
+<script src="practiceDateScroll.js"></script>
+<script src="analyticsChart.js"></script>
 <script src="phraseTagPicker.js"></script>
 <script src="phraseTagFilter.js"></script>
 <script src="newPhrase.js"></script>

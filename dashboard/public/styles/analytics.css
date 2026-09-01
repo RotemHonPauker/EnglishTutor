@@ -1,0 +1,90 @@
+#analytics-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 12px;
+    margin: 12px;
+    padding: 16px;
+    overflow: hidden;
+}
+
+#analytics-section .mode-toggle {
+    padding: 0;
+    flex-shrink: 0;
+}
+
+#analytics-chart-bars {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-right: 4px;
+}
+
+.chart-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.chart-row-label {
+    width: 50px;
+    flex-shrink: 0;
+    font-size: 0.6875rem;
+    color: #999;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chart-row-track {
+    flex: 1;
+    height: 20px;
+    background: #141414;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.chart-row-bar {
+    display: flex;
+    height: 100%;
+}
+
+.chart-segment {
+    height: 100%;
+}
+
+.chart-row-total {
+    width: 18px;
+    flex-shrink: 0;
+    font-size: 0.6875rem;
+    color: #999;
+}
+
+#analytics-chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.chart-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.75rem;
+    color: #999;
+}
+
+.chart-legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}

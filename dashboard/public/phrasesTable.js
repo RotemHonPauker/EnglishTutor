@@ -1,6 +1,5 @@
 const tableBody = document.getElementById('table-body');
 
-let sortAsc = false;
 let allPhrases = [];
 
 // Cycles through: all -> not-learned -> learned -> all.
@@ -16,7 +15,7 @@ function toggleLearnedFilter() {
     learnedFilter = learnedFilter === 'all' ? 'unlearned' : learnedFilter === 'unlearned' ? 'learned' : 'all';
     const btn = document.getElementById('learned-filter-btn');
     if (btn) {
-        btn.textContent = learnedFilter === 'all' ? 'All' : learnedFilter === 'unlearned' ? 'Not learned' : 'Learned';
+        btn.textContent = learnedFilter === 'all' ? 'All' : learnedFilter === 'unlearned' ? 'Not learned' : '👑 Learned';
         btn.classList.toggle('active', learnedFilter !== 'all');
     }
     renderTable();
@@ -35,48 +34,26 @@ function resetLearnedFilter() {
 async function loadTable() {
     const res = await fetch(`/phrases?spaceId=${activeSpaceId}`);
     allPhrases = await res.json();
+    if (typeof generateDateBuckets === 'function') generateDateBuckets();
+    if (typeof renderDateScroll === 'function') renderDateScroll();
     renderTable();
     if (typeof renderSidebar === 'function') renderSidebar();
+    if (typeof renderAnalyticsChart === 'function') renderAnalyticsChart();
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-// Coarse age bucket instead of an exact date — the exact date isn't useful
-// at a glance, and sorting still uses the real timestamp underneath, so
-// nothing is lost, only what's displayed changes.
-function getAgeCategory(createdAt) {
-    const created = new Date(createdAt);
-    const now = new Date();
-
-    // Compared by calendar date (local time), not raw elapsed hours — a
-    // phrase from 8pm yesterday should say "Yesterday", not "Today" just
-    // because it's under 24 hours old.
-    const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    const daysSince = Math.round((startOfDay(now) - startOfDay(created)) / DAY_MS);
-
-    if (daysSince <= 0) return 'Today';
-    if (daysSince === 1) return 'Yesterday';
-    if (daysSince <= 7) return 'This week';
-    if (daysSince <= 30) return 'This month';
-    return 'Old';
-}
+const DAY_MS = 24 * 60 * 60 * 1000; // also used by practiceDateScroll.js
 
 function renderTable() {
     const sorted = allPhrases
         .filter(phraseMatchesTagFilter)
         .filter(phraseMatchesLearnedFilter)
-        .sort((a, b) => {
-            const da = new Date(a.created_at);
-            const db = new Date(b.created_at);
-            return sortAsc ? da - db : db - da;
-        });
+        .filter(phraseMatchesDateFilter)
+        // Newest first within whatever's shown — with the date scroll
+        // already narrowing to a specific day/week, there's no separate
+        // sort control anymore; this is just the fixed within-bucket order.
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     document.getElementById('phrase-count').textContent = sorted.length;
-
-    const sortBtn = document.getElementById('sort-btn');
-    if (sortBtn) {
-        sortBtn.textContent = `Date ${sortAsc ? '↑' : '↓'}`;
-    }
 
     tableBody.innerHTML = sorted.map(p => {
         const tag = tags.find(t => t.id === p.tag_id);
@@ -97,9 +74,6 @@ function renderTable() {
                     <button title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑</button>
                 </div>
                 <button class="tag-badge" style="${badgeStyle}" onclick="openTagPicker('${p.id}')">${badgeLabel}</button>
-                <div class="phrase-card-right">
-                    <span class="phrase-date">${getAgeCategory(p.created_at)}</span>
-                </div>
             </div>
             <div class="phrase-card-main">
                 <div class="phrase-hebrew">${p.hebrew_text || ''}</div>
@@ -216,9 +190,4 @@ async function toggleLearned(id) {
         renderTable();
         alert('Failed to update learned status');
     }
-}
-
-function toggleSort() {
-    sortAsc = !sortAsc;
-    renderTable();
 }

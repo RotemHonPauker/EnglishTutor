@@ -12,4 +12,5 @@ async function loadTags() {
     tags = await res.json();
     if (typeof renderTable === 'function') renderTable();
     renderSidebar();
+    if (typeof renderAnalyticsChart === 'function') renderAnalyticsChart();
 }

@@ -1,3 +1,70 @@
+#date-scroll-bar {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 12px 0;
+}
+
+#date-scroll-bar .mode-toggle {
+    padding: 0;
+}
+
+#date-scroll-track {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scroll-snap-type: x proximity;
+}
+
+.date-bucket-pill {
+    flex-shrink: 0;
+    scroll-snap-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 52px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid #2a2a2a;
+    background: #1a1a1a;
+    color: #888;
+    cursor: pointer;
+}
+
+.date-bucket-pill.selected {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: white;
+}
+
+.date-bucket-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.date-bucket-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.15);
+    font-size: 0.6875rem;
+    font-weight: 700;
+}
+
+.date-scroll-empty {
+    color: #666;
+    font-size: 0.8125rem;
+    padding: 8px 4px;
+}
+
 #table-area {
     flex: 1;
     display: flex;
@@ -41,7 +108,7 @@
     margin-right: 4px;
 }
 
-#sort-btn {
+#learned-filter-btn {
     margin-left: auto;
 }
 
@@ -147,13 +214,11 @@
 }
 
 .phrase-card.has-color .phrase-hebrew,
-.phrase-card.has-color .phrase-variant,
-.phrase-card.has-color .phrase-date {
+.phrase-card.has-color .phrase-variant {
     color: inherit;
 }
 
-.phrase-card.has-color .phrase-variant,
-.phrase-card.has-color .phrase-date {
+.phrase-card.has-color .phrase-variant {
     opacity: 0.8;
 }
 
@@ -170,18 +235,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-}
-
-.phrase-card-right {
-    display: flex;
-    align-items: center;
-    gap: 6px;
     margin-left: auto;
-}
-
-.phrase-date {
-    font-size: 0.75rem;
-    color: #555;
 }
 
 .phrase-card-icons {
