@@ -1,6 +1,6 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
-import { getPhrases, getPhraseById, saveSentence, updatePhraseTag, updatePhraseTtsUrl, deletePhrase } from '../../database.js';
+import { getPhrases, getPhraseById, saveSentence, updatePhraseTag, updatePhraseLearned, updatePhraseTtsUrl, deletePhrase } from '../../database.js';
 import { translatePhrase } from '../translation/translationEngine.js';
 import { generateSpeech, deleteSpeechFile } from '../tts/ttsEngine.js';
 import { RATE_LIMIT_WINDOW_MS, TRANSLATE_RATE_LIMIT_MAX } from '../limitsConfig.js';
@@ -67,6 +67,18 @@ router.patch('/phrases/:id/tag', async (req, res) => {
     } catch (err) {
         console.error('Error updating phrase tag:', err);
         res.status(500).json({ error: 'Failed to update tag' });
+    }
+});
+
+router.patch('/phrases/:id/learned', async (req, res) => {
+    const { id } = req.params;
+    const { learned } = req.body;
+    try {
+        const phrase = await updatePhraseLearned({ id, learned: !!learned });
+        res.json(phrase);
+    } catch (err) {
+        console.error('Error updating learned status:', err);
+        res.status(500).json({ error: 'Failed to update learned status' });
     }
 });
 

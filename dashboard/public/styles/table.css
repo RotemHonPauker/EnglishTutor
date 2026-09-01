@@ -196,3 +196,26 @@
     font-size: 14px;
     padding: 2px;
 }
+
+/* ===== Learned state ===== */
+/* A uniform brightness dip works whether the card is plain dark or tinted
+   by a tag color, so it doesn't need two separate rules. The gold inset
+   edge is the at-a-glance "done" signal. */
+.phrase-card.learned {
+    filter: brightness(0.72);
+    box-shadow: inset 3px 0 0 0 #f2c14e;
+}
+
+.learned-btn {
+    filter: grayscale(1);
+}
+
+.learned-btn.active {
+    filter: none;
+}
+
+#learned-filter-btn.active {
+    background: #2563eb;
+    color: white;
+    border-color: #2563eb;
+}

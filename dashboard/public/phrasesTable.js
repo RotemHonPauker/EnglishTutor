@@ -3,6 +3,35 @@ const tableBody = document.getElementById('table-body');
 let sortAsc = false;
 let allPhrases = [];
 
+// Cycles through: all -> not-learned -> learned -> all.
+let learnedFilter = 'all';
+
+function phraseMatchesLearnedFilter(phrase) {
+    if (learnedFilter === 'learned') return !!phrase.learned_at;
+    if (learnedFilter === 'unlearned') return !phrase.learned_at;
+    return true;
+}
+
+function toggleLearnedFilter() {
+    learnedFilter = learnedFilter === 'all' ? 'unlearned' : learnedFilter === 'unlearned' ? 'learned' : 'all';
+    const btn = document.getElementById('learned-filter-btn');
+    if (btn) {
+        btn.textContent = learnedFilter === 'all' ? 'All' : learnedFilter === 'unlearned' ? 'Not learned' : 'Learned';
+        btn.classList.toggle('active', learnedFilter !== 'all');
+    }
+    renderTable();
+}
+
+// Called on space switch, alongside resetTagFilter.
+function resetLearnedFilter() {
+    learnedFilter = 'all';
+    const btn = document.getElementById('learned-filter-btn');
+    if (btn) {
+        btn.textContent = 'All';
+        btn.classList.remove('active');
+    }
+}
+
 async function loadTable() {
     const res = await fetch(`/phrases?spaceId=${activeSpaceId}`);
     allPhrases = await res.json();
@@ -35,6 +64,7 @@ function getAgeCategory(createdAt) {
 function renderTable() {
     const sorted = allPhrases
         .filter(phraseMatchesTagFilter)
+        .filter(phraseMatchesLearnedFilter)
         .sort((a, b) => {
             const da = new Date(a.created_at);
             const db = new Date(b.created_at);
@@ -57,10 +87,13 @@ function renderTable() {
             ? `background:${cardTextColor === '#ffffff' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'}; color:${cardTextColor};`
             : '';
         const badgeLabel = tag ? tag.name : '—';
+        const isLearned = !!p.learned_at;
+        const cardClasses = ['phrase-card', tagColor ? 'has-color' : '', isLearned ? 'learned' : ''].filter(Boolean).join(' ');
         return `
-        <div class="phrase-card${tagColor ? ' has-color' : ''}" style="${cardStyle}">
+        <div class="${cardClasses}" style="${cardStyle}">
             <div class="phrase-card-header">
                 <div class="phrase-card-icons">
+                    <button class="learned-btn ${isLearned ? 'active' : ''}" title="${isLearned ? 'Learned — tap to unmark' : 'Mark as learned'}" onclick="toggleLearned('${p.id}')">👑</button>
                     <button title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑</button>
                 </div>
                 <button class="tag-badge" style="${badgeStyle}" onclick="openTagPicker('${p.id}')">${badgeLabel}</button>
@@ -154,6 +187,34 @@ async function updatePhraseTagAssignment(id, tagId) {
         await loadTable();
     } catch (err) {
         alert('Failed to update tag');
+    }
+}
+
+// Optimistic-ish toggle: flips the local flag immediately so the crown and
+// card shading respond right away, re-rendering from the server's answer
+// only to correct it if the request actually failed.
+async function toggleLearned(id) {
+    const phrase = allPhrases.find(p => p.id === id);
+    if (!phrase) return;
+    const nextLearned = !phrase.learned_at;
+    phrase.learned_at = nextLearned ? new Date().toISOString() : null;
+    renderTable();
+    try {
+        const res = await fetch(`/phrases/${id}/learned`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ learned: nextLearned })
+        });
+        if (!res.ok) throw new Error('Failed to update learned status');
+        const updated = await res.json();
+        phrase.learned_at = updated.learned_at;
+        renderTable();
+        if (typeof renderSidebar === 'function') renderSidebar();
+    } catch (err) {
+        // Roll back on failure.
+        phrase.learned_at = nextLearned ? null : new Date().toISOString();
+        renderTable();
+        alert('Failed to update learned status');
     }
 }
 

@@ -41,11 +41,22 @@ export const updatePhrase = async ({ id, hebrewText, variant1, variant2 }) => {
     return result.rows[0];
 };
 
-// Table-driven edit: sets a phrase's tag directly 
+// Table-driven edit: sets a phrase's tag directly
 export const updatePhraseTag = async ({ id, tagId }) => {
     const result = await pool.query(
         `UPDATE phrases SET tag_id = $1 WHERE id = $2 RETURNING *`,
         [tagId || null, id]
+    );
+    return result.rows[0];
+};
+
+// Toggles "learned" — stores a timestamp (not just true/false) so it can
+// later feed an analytics timeline of when things were learned. Passing
+// learned=false clears it back to NULL.
+export const updatePhraseLearned = async ({ id, learned }) => {
+    const result = await pool.query(
+        `UPDATE phrases SET learned_at = $1 WHERE id = $2 RETURNING *`,
+        [learned ? new Date() : null, id]
     );
     return result.rows[0];
 };
@@ -182,7 +193,7 @@ export const deleteTag = async (id) => {
     await pool.query(`DELETE FROM tags WHERE id = $1`, [id]);
 };
 
-// Moves every phrase from sourceId onto targetId, then deletes the source tag. 
+// Moves every phrase from sourceId onto targetId, then deletes the source tag.
 export const mergeTags = async ({ sourceId, targetId }) => {
     if (sourceId === targetId) {
         throw new Error('Cannot merge a tag into itself');

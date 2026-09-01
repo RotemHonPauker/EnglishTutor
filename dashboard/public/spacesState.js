@@ -45,6 +45,7 @@ async function setActiveSpace(id) {
     renderSpaceHeader();
     closeSpacePicker();
     if (typeof resetTagFilter === 'function') resetTagFilter();
+    if (typeof resetLearnedFilter === 'function') resetLearnedFilter();
     // These only matter if the user is currently sitting on that tab — but
     // they're safe to call regardless (they just clear an off-screen log),
     // and it's the only way to catch that case, since the tab's own
