@@ -104,6 +104,19 @@ button.danger:hover { background: #b91c1c; }
     opacity: 0.6;
 }
 
+/* Purely visual — a loose weekly-activity nudge, never enforced. */
+.space-health-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: transparent;
+    flex-shrink: 0;
+}
+
+.space-health-dot.health-good { background: #33B679; }
+.space-health-dot.health-low { background: #F6BF26; }
+.space-health-dot.health-none { background: #666; }
+
 /* ===== App loading overlay (shown briefly on initial load, any tab) ===== */
 
 #app-loading-overlay {

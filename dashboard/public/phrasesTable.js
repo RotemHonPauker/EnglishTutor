@@ -39,6 +39,7 @@ async function loadTable() {
     renderTable();
     if (typeof renderSidebar === 'function') renderSidebar();
     if (typeof renderAnalyticsChart === 'function') renderAnalyticsChart();
+    if (typeof renderSpaceHealthIndicator === 'function') renderSpaceHealthIndicator();
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000; // also used by practiceDateScroll.js

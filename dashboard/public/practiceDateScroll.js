@@ -10,7 +10,7 @@
 
 const MAX_DATE_BUCKETS = 30;
 
-let dateGranularity = 'day'; // 'day' | 'week'
+let dateGranularity = 'day'; // 'day' | 'week' | 'month'
 let selectedBucketId = null; // a bucket id, or 'older'
 let dateBuckets = [];        // [{ id, label, count }] — non-empty only, 'older' first when present
 let earliestBucketId = null; // boundary used to decide what counts as "older"
@@ -26,6 +26,10 @@ function startOfWeek(d) {
     return day;
 }
 
+function startOfMonth(d) {
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
 // Formats a Date as YYYY-MM-DD using its *local* calendar date. Deliberately
 // not toISOString() — that converts to UTC first, which in timezones ahead
 // of UTC (like Israel) silently shifts local midnight back to the previous
@@ -38,7 +42,9 @@ function formatLocalDateId(d) {
 }
 
 function bucketIdFor(date, granularity) {
-    const start = granularity === 'week' ? startOfWeek(date) : startOfDay(date);
+    const start = granularity === 'week' ? startOfWeek(date)
+        : granularity === 'month' ? startOfMonth(date)
+        : startOfDay(date);
     return formatLocalDateId(start);
 }
 
@@ -48,13 +54,13 @@ function bucketIdFor(date, granularity) {
 // unambiguous, and identical everywhere.
 function bucketLabelFor(id, granularity) {
     const date = new Date(id + 'T00:00:00');
-    const today = startOfDay(new Date());
 
     if (granularity === 'day') {
-        const diffDays = Math.round((today - date) / DAY_MS);
-        if (diffDays === 0) return 'Today';
-        if (diffDays === 1) return 'Yesterday';
         return `${date.getDate()}/${date.getMonth() + 1}`;
+    }
+
+    if (granularity === 'month') {
+        return `${date.getMonth() + 1}/${String(date.getFullYear()).slice(-2)}`;
     }
 
     const weekEnd = new Date(date);
@@ -74,10 +80,14 @@ function generateDateBuckets() {
     const today = new Date();
     const rawBuckets = [];
     for (let i = MAX_DATE_BUCKETS - 1; i >= 0; i--) {
-        const d = new Date(today);
-        if (dateGranularity === 'week') {
+        let d;
+        if (dateGranularity === 'month') {
+            d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        } else if (dateGranularity === 'week') {
+            d = new Date(today);
             d.setDate(d.getDate() - i * 7);
         } else {
+            d = new Date(today);
             d.setDate(d.getDate() - i);
         }
         const id = bucketIdFor(d, dateGranularity);

@@ -34,6 +34,34 @@ function renderSpaceHeader() {
     if (!label) return;
     const active = getActiveSpace();
     label.textContent = active ? active.name : 'Select a space';
+    renderSpaceHealthIndicator();
+}
+
+// A lightweight, purely visual nudge — never enforced anywhere. Compares
+// this space's phrases from the last 7 days against a loose 2–3/week
+// target. Depends on allPhrases (from phrasesTable.js), so this is also
+// called from loadTable() whenever that data refreshes.
+function renderSpaceHealthIndicator() {
+    const dot = document.getElementById('space-health-dot');
+    if (!dot) return;
+
+    if (!getActiveSpace() || typeof allPhrases === 'undefined') {
+        dot.className = 'space-health-dot';
+        dot.title = '';
+        return;
+    }
+
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const recentCount = allPhrases.filter(p => new Date(p.created_at) >= weekAgo).length;
+
+    let level, label;
+    if (recentCount >= 3) { level = 'good'; label = 'Active this week'; }
+    else if (recentCount >= 1) { level = 'low'; label = 'Below the weekly goal (2–3 phrases)'; }
+    else { level = 'none'; label = 'No activity this week'; }
+
+    dot.className = `space-health-dot health-${level}`;
+    dot.title = label;
 }
 
 // Switching spaces reloads everything that's scoped to a space — the tag

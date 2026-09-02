@@ -37,6 +37,7 @@
 <!-- SPACE HEADER: shown above every tab, always. Tapping it opens the
      space picker/create modal. -->
 <header id="space-header" onclick="openSpacePicker()">
+    <span id="space-health-dot" class="space-health-dot"></span>
     <span id="space-header-name">Select a space</span>
     <span class="space-header-chevron">▾</span>
 </header>
@@ -50,6 +51,7 @@
                 <div class="mode-toggle" id="date-granularity-toggle">
                     <button class="mode-toggle-btn active" data-granularity="day" onclick="setDateGranularity('day', this)">Daily</button>
                     <button class="mode-toggle-btn" data-granularity="week" onclick="setDateGranularity('week', this)">Weekly</button>
+                    <button class="mode-toggle-btn" data-granularity="month" onclick="setDateGranularity('month', this)">Monthly</button>
                 </div>
                 <div id="date-scroll-track"></div>
             </div>
@@ -84,6 +86,7 @@
             <div class="mode-toggle" id="analytics-granularity-toggle">
                 <button class="mode-toggle-btn active" data-granularity="day" onclick="setAnalyticsGranularity('day', this)">Daily</button>
                 <button class="mode-toggle-btn" data-granularity="week" onclick="setAnalyticsGranularity('week', this)">Weekly</button>
+                <button class="mode-toggle-btn" data-granularity="month" onclick="setAnalyticsGranularity('month', this)">Monthly</button>
             </div>
             <div class="mode-toggle" id="analytics-mode-toggle">
                 <button class="mode-toggle-btn active" data-mode="tag" onclick="setAnalyticsMode('tag', this)">By tag</button>

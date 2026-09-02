@@ -8,7 +8,7 @@
 // Unlike the Practice date scroll, there's no "Older" row here and no row
 // is ever selectable — this is a trend view, not a navigation control.
 
-let analyticsGranularity = 'day'; // 'day' | 'week'
+let analyticsGranularity = 'day'; // 'day' | 'week' | 'month'
 let analyticsMode = 'tag';        // 'tag' | 'learned'
 
 const LEARNED_COLOR = '#f2c14e';
@@ -19,9 +19,16 @@ function computeAnalyticsBuckets() {
     const buckets = [];
     const today = new Date();
     for (let i = MAX_DATE_BUCKETS - 1; i >= 0; i--) {
-        const d = new Date(today);
-        if (analyticsGranularity === 'week') d.setDate(d.getDate() - i * 7);
-        else d.setDate(d.getDate() - i);
+        let d;
+        if (analyticsGranularity === 'month') {
+            d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        } else if (analyticsGranularity === 'week') {
+            d = new Date(today);
+            d.setDate(d.getDate() - i * 7);
+        } else {
+            d = new Date(today);
+            d.setDate(d.getDate() - i);
+        }
         const id = bucketIdFor(d, analyticsGranularity);
         if (!buckets.find(b => b.id === id)) {
             buckets.push({ id, label: bucketLabelFor(id, analyticsGranularity), phrases: [] });
