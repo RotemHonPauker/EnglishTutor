@@ -47,17 +47,11 @@ async function setActiveSpace(id) {
     if (typeof resetTagFilter === 'function') resetTagFilter();
     if (typeof resetLearnedFilter === 'function') resetLearnedFilter();
     if (typeof resetDateScroll === 'function') resetDateScroll();
-    // These only matter if the user is currently sitting on that tab — but
-    // they're safe to call regardless (they just clear an off-screen log),
-    // and it's the only way to catch that case, since the tab's own
-    // enter-tab reset won't fire without an actual tab click.
-    if (typeof resetNewPhraseLog === 'function') resetNewPhraseLog();
-    if (typeof recordingLog !== 'undefined') recordingLog.innerHTML = '';
-    if (typeof setRecordingMode === 'function') {
-        const captureBtn = document.querySelector('#recording-mode-toggle .mode-toggle-btn[data-mode="capture"]');
-        if (captureBtn) setRecordingMode('capture', captureBtn);
-    }
-    if (typeof loadTranscripts === 'function') await loadTranscripts();
+    // Only matters if the user is currently sitting on the Add tab — but
+    // it's safe to call regardless (it just clears an off-screen log), and
+    // it's the only way to catch that case, since the tab's own enter-tab
+    // reset won't fire without an actual tab click.
+    if (typeof resetCaptureLog === 'function') resetCaptureLog();
     await loadTags();
     await loadTable();
 }

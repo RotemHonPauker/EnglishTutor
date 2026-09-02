@@ -22,8 +22,7 @@
     <link rel="stylesheet" href="styles/tags.css">
     <link rel="stylesheet" href="styles/analytics.css">
     <link rel="stylesheet" href="styles/tabs.css">
-    <link rel="stylesheet" href="styles/newPhrase.css">
-    <link rel="stylesheet" href="styles/recording.css">
+    <link rel="stylesheet" href="styles/capture.css">
     <link rel="stylesheet" href="styles/transcripts.css">
 </head>
 <body>
@@ -95,42 +94,28 @@
         </div>
     </div>
 
-    <!-- NEW PHRASE VIEW -->
-    <div id="view-new" class="view">
-        <div id="new-phrase-section">
-            <div class="mode-toggle" id="new-phrase-mode-toggle">
-                <button class="mode-toggle-btn active" data-mode="capture" onclick="setNewPhraseMode('capture', this)">Hebrew phrase</button>
-                <button class="mode-toggle-btn" data-mode="check" onclick="setNewPhraseMode('check', this)">Check my English</button>
+    <!-- ADD VIEW -->
+    <div id="view-add" class="view">
+        <div id="capture-section">
+            <div id="capture-header-row">
+                <div class="mode-toggle" id="capture-mode-toggle">
+                    <button class="mode-toggle-btn active" data-mode="capture" onclick="setCaptureMode('capture', this)">Hebrew phrase</button>
+                    <button class="mode-toggle-btn" data-mode="check" onclick="setCaptureMode('check', this)">Check my English</button>
+                </div>
+                <button id="capture-history-btn" onclick="toggleCaptureView()" title="Recording logs">📄</button>
             </div>
-            <div id="new-phrase-log"></div>
-            <div id="new-phrase-input-area">
-                <textarea id="new-phrase-input" rows="1" placeholder="Type a Hebrew phrase..."></textarea>
-                <button class="primary" id="new-phrase-send" onclick="submitNewPhrase()">Send</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- RECORDING VIEW -->
-    <div id="view-recording" class="view">
-        <div id="recording-section">
-            <div class="mode-toggle" id="recording-mode-toggle">
-                <button class="mode-toggle-btn active" data-mode="capture" onclick="setRecordingMode('capture', this)">Hebrew phrase</button>
-                <button class="mode-toggle-btn" data-mode="check" onclick="setRecordingMode('check', this)">Check my English</button>
-            </div>
-            <div id="recording-log"></div>
-            <div id="recording-input-area">
-                <input type="file" id="recording-file-input" accept="audio/*,video/mp4,.mp4,.m4a,.aac,.wav,.mp3,.ogg" style="display:none" onchange="handleRecordingFileSelected(this)">
+            <div id="capture-log"></div>
+            <div id="capture-input-area">
+                <div id="capture-text-row">
+                    <textarea id="capture-text-input" rows="1" placeholder="Type a Hebrew phrase..."></textarea>
+                    <button class="primary" id="capture-send-btn" onclick="submitTypedPhrase()">Send</button>
+                </div>
+                <div id="capture-record-row">
+                    <input type="file" id="recording-file-input" accept="audio/*,video/mp4,.mp4,.m4a,.aac,.wav,.mp3,.ogg" style="display:none" onchange="handleRecordingFileSelected(this)">
+                    <button id="recording-upload-btn" onclick="document.getElementById('recording-file-input').click()">🎙️ Choose recording</button>
+                </div>
                 <div id="recording-limit-note">Recordings are limited to about 30 minutes.</div>
-                <button class="primary" id="recording-upload-btn" onclick="document.getElementById('recording-file-input').click()">Choose recording</button>
             </div>
-        </div>
-    </div>
-
-    <!-- TRANSCRIPTS VIEW -->
-    <div id="view-transcripts" class="view">
-        <div id="transcripts-section">
-            <div id="transcripts-warning" style="display:none"></div>
-            <div id="transcripts-list"></div>
         </div>
     </div>
 
@@ -138,13 +123,9 @@
 
 <!-- BOTTOM TAB BAR -->
 <nav id="tab-bar">
-    <button class="tab-btn" data-view="new" onclick="enterNewPhraseTab(this)">
-        <span class="tab-icon">✏️</span>
-        <span>Type</span>
-    </button>
-    <button class="tab-btn" data-view="recording" onclick="enterRecordingTab(this)">
-        <span class="tab-icon">🎙️</span>
-        <span>Record</span>
+    <button class="tab-btn" data-view="add" onclick="enterCaptureTab(this)">
+        <span class="tab-icon">➕</span>
+        <span>Add</span>
     </button>
     <button class="tab-btn active" data-view="practice" onclick="showView('practice', this)">
         <span class="tab-icon">📋</span>
@@ -157,10 +138,6 @@
     <button class="tab-btn" data-view="analytics" onclick="showView('analytics', this)">
         <span class="tab-icon">📊</span>
         <span>Analytics</span>
-    </button>
-    <button class="tab-btn" data-view="transcripts" onclick="enterTranscriptsTab(this)">
-        <span class="tab-icon">📄</span>
-        <span>Logs</span>
     </button>
 </nav>
 
@@ -247,8 +224,7 @@
 <script src="analyticsChart.js"></script>
 <script src="phraseTagPicker.js"></script>
 <script src="phraseTagFilter.js"></script>
-<script src="newPhrase.js"></script>
-<script src="recordingTab.js"></script>
+<script src="captureTab.js"></script>
 <script src="transcriptsTab.js"></script>
 <script src="app.js"></script>
 

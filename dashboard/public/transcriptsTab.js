@@ -1,10 +1,7 @@
 let transcripts = [];
 
-function enterTranscriptsTab(btnEl) {
-    showView('transcripts', btnEl);
-    loadTranscripts();
-}
-
+// Renders straight into #capture-log (owned by captureTab.js) — this file
+// only supplies the transcripts data and their accordion behavior.
 async function loadTranscripts() {
     const res = await fetch(`/transcripts?spaceId=${activeSpaceId}`);
     transcripts = await res.json();
@@ -12,16 +9,11 @@ async function loadTranscripts() {
 }
 
 function renderTranscripts() {
-    const warningEl = document.getElementById('transcripts-warning');
-    if (transcripts.length > 3) {
-        warningEl.textContent = `You have ${transcripts.length} saved transcripts — consider deleting old ones you've already reviewed.`;
-        warningEl.style.display = 'block';
-    } else {
-        warningEl.style.display = 'none';
-    }
+    const warningHtml = transcripts.length > 3
+        ? `<div id="transcripts-warning">You have ${transcripts.length} saved transcripts — consider deleting old ones you've already reviewed.</div>`
+        : '';
 
-    const list = document.getElementById('transcripts-list');
-    list.innerHTML = transcripts.map(t => {
+    const listHtml = transcripts.map(t => {
         const label = new Date(t.created_at).toLocaleString([], {
             dateStyle: 'medium',
             timeStyle: 'short'
@@ -38,8 +30,11 @@ function renderTranscripts() {
         </div>
     `;
     }).join('');
+
+    captureLog.innerHTML = warningHtml + (listHtml || '<div class="capture-log-item error">No recordings processed yet.</div>');
 }
 
+// Accordion: one click expands/collapses that entry in place.
 function toggleTranscript(id) {
     const body = document.getElementById(`transcript-body-${id}`);
     if (!body) return;

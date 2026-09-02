@@ -1,11 +1,5 @@
-#transcripts-section {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    padding: 16px 24px;
-    gap: 10px;
-}
+/* Renders inside #capture-log (capture.css), which already provides the
+   flex/gap spacing between items — no margins needed here. */
 
 #transcripts-warning {
     background: rgba(248, 113, 113, 0.12);
@@ -14,13 +8,6 @@
     border-radius: 8px;
     padding: 10px 14px;
     font-size: 0.8125rem;
-    margin-bottom: 10px;
-}
-
-#transcripts-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
 }
 
 .transcript-card {
