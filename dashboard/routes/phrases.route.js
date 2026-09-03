@@ -49,7 +49,8 @@ router.post('/phrases', translateLimiter, async (req, res) => {
             hebrewText: result.correctedHebrew,
             variant1: result.variant1,
             variant2: result.variant2,
-            spaceId
+            spaceId,
+            tagId: result.tagId
         });
         res.json(phrase);
     } catch (err) {

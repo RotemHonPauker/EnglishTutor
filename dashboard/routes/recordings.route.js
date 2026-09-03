@@ -41,7 +41,8 @@ router.post('/recordings', recordingLimiter, async (req, res) => {
                 hebrewText: p.hebrewText,
                 variant1: p.variant1,
                 variant2: p.variant2,
-                spaceId
+                spaceId,
+                tagId: p.tagId
             });
             savedPhrases.push(saved);
         }

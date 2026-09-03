@@ -12,11 +12,11 @@ export const connectDB = async () => {
     console.log('Connected to Postgres');
 };
 
-export const saveSentence = async ({ hebrewText, variant1, variant2, spaceId }) => {
+export const saveSentence = async ({ hebrewText, variant1, variant2, spaceId, tagId }) => {
     const result = await pool.query(
-        `INSERT INTO phrases (hebrew_text, variant_1, variant_2, space_id)
-         VALUES ($1, $2, $3, $4) RETURNING *`,
-        [hebrewText, variant1, variant2, spaceId]
+        `INSERT INTO phrases (hebrew_text, variant_1, variant_2, space_id, tag_id)
+         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+        [hebrewText, variant1, variant2, spaceId, tagId || null]
     );
     return result.rows[0];
 };

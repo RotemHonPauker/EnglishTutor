@@ -21,6 +21,9 @@ Follow this space's own rules above for how to clean the transcript and divide i
 ## Step 3: Translate Each Phrase
 ${variantGuidance}
 
+## Step 4: Suggest a Tag for Each Phrase
+${existingTagsSection}
+
 ## Output
 Respond ONLY with valid JSON in this exact format, no other text:
-{"transcript": "the cleaned transcript as continuous text", "phrases": [{"hebrewText": "...", "variant1": "...", "variant2": "..."}]}
+{"transcript": "the cleaned transcript as continuous text", "phrases": [{"hebrewText": "...", "variant1": "...", "variant2": "...", "tag": "..." or null}]}

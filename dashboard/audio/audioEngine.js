@@ -2,7 +2,7 @@ import { GoogleGenAI } from '@google/genai';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { getSpaceRules } from '../../database.js';
+import { getSpaceRules, getTags } from '../../database.js';
 
 const ai = new GoogleGenAI({ vertexai: false, apiKey: process.env.GEMINI_API_KEY });
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -15,6 +15,23 @@ const parseResponse = (rawText) => {
     return JSON.parse(cleaned);
 };
 
+// Same tag-suggestion approach as translationEngine.js — see there for the
+// reasoning. Kept as a near-duplicate rather than a shared helper for now,
+// since the two engines don't otherwise share a module.
+const buildExistingTagsSection = (spaceTags) => {
+    if (!spaceTags.length) {
+        return 'This space has no tags defined yet, so always put null for "tag".';
+    }
+    const names = spaceTags.map(t => t.name).join(', ');
+    return `This space has the following tags: ${names}\nFor each phrase, if one of these tags clearly and confidently fits its topic, put its exact name (as written above) in "tag". If none fit well, or you're not confident, put null instead — never guess, and never invent a tag name that isn't in the list above.`;
+};
+
+const resolveTagId = (tagName, spaceTags) => {
+    if (!tagName) return null;
+    const match = spaceTags.find(t => t.name.toLowerCase() === String(tagName).toLowerCase());
+    return match ? match.id : null;
+};
+
 // Gemini's inline request limit is 100MB total (prompt text + audio,
 // base64-encoded). 60MB of raw audio keeps the base64-encoded size (~33%
 // larger) comfortably under that — roughly half an hour of recording,
@@ -25,7 +42,7 @@ const INLINE_SIZE_LIMIT_BYTES = 60 * 1024 * 1024; // 60MB
 // speech — grammar and phrasing correction instead of translation).
 // audioPrompt.txt contains instructions for both; only the mode word
 // itself is injected, and the model follows whichever branch applies.
-// Returns { transcript, phrases: [{ hebrewText, variant1, variant2 }] }.
+// Returns { transcript, phrases: [{ hebrewText, variant1, variant2, tagId }] }.
 export const processRecording = async (audioBuffer, mimeType, spaceId, mode = 'capture') => {
     if (audioBuffer.length > INLINE_SIZE_LIMIT_BYTES) {
         throw new Error('Recording is too large (over ~30 minutes). Please use a shorter recording for now.');
@@ -33,7 +50,10 @@ export const processRecording = async (audioBuffer, mimeType, spaceId, mode = 'c
 
     const baseTemplate = readFileSync(basePromptPath, 'utf-8');
     const variantGuidance = readFileSync(variantGuidancePath, 'utf-8');
-    const spaceRules = await getSpaceRules(spaceId);
+    const [spaceRules, spaceTags] = await Promise.all([
+        getSpaceRules(spaceId),
+        getTags(spaceId)
+    ]);
     const spaceRulesSection = spaceRules
         ? `## Additional Rules for This Space\n${spaceRules}\n\n`
         : '';
@@ -41,7 +61,8 @@ export const processRecording = async (audioBuffer, mimeType, spaceId, mode = 'c
     const promptText = baseTemplate
         .replace('${mode}', mode)
         .replace('${variantGuidance}', variantGuidance)
-        .replace('${spaceRulesSection}', spaceRulesSection);
+        .replace('${spaceRulesSection}', spaceRulesSection)
+        .replace('${existingTagsSection}', buildExistingTagsSection(spaceTags));
 
     const audioPart = {
         inlineData: {
@@ -64,5 +85,15 @@ export const processRecording = async (audioBuffer, mimeType, spaceId, mode = 'c
     });
 
     const rawText = response.candidates[0].content.parts[0].text;
-    return parseResponse(rawText);
+    const result = parseResponse(rawText);
+
+    return {
+        transcript: result.transcript,
+        phrases: (result.phrases || []).map(p => ({
+            hebrewText: p.hebrewText,
+            variant1: p.variant1,
+            variant2: p.variant2,
+            tagId: resolveTagId(p.tag, spaceTags)
+        }))
+    };
 };

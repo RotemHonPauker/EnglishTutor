@@ -18,9 +18,12 @@ If any Hebrew words are mixed in, translate just those words into English as par
 ${variantGuidance}
 ${spaceRulesSection}
 
+## Step 3: Suggest a Tag
+${existingTagsSection}
+
 ## Phrase
 "${phrase}"
 
 ## Output
 Respond ONLY with valid JSON in this exact format, no other text:
-{"correctedHebrew": "...", "variant1": "...", "variant2": "..."}
+{"correctedHebrew": "...", "variant1": "...", "variant2": "...", "tag": "..." or null}
