@@ -94,6 +94,7 @@ function openSpacePicker() {
 function closeSpacePicker() {
     document.getElementById('space-picker-modal-overlay').style.display = 'none';
     document.getElementById('space-picker-new-form').innerHTML = '';
+    migrateSourceSpaceId = null;
 }
 
 function renderSpacePickerList() {
@@ -104,6 +105,7 @@ function renderSpacePickerList() {
                 ${s.name}
             </div>
             <button class="space-picker-edit-btn" onclick="event.stopPropagation(); showRenameSpaceForm('${s.id}')" title="Rename">✎</button>
+            <button class="space-picker-edit-btn" onclick="event.stopPropagation(); showMigrateSpaceForm('${s.id}')" title="Migrate into another space">⇄</button>
         </div>
     `).join('');
 }
@@ -174,4 +176,119 @@ async function submitNewSpace() {
     const space = await res.json();
     spaces.push(space);
     await setActiveSpace(space.id);
+}
+
+// ===== Space migration =====
+// Moves everything from one space into another, then deletes the source —
+// the space-level equivalent of merging a tag into another. Reuses the
+// same tag-chip/form-button styling as the tag merge flow, just rendered
+// into the space picker's own form slot instead of the tag edit modal.
+
+let migrateSourceSpaceId = null;
+
+function showMigrateSpaceForm(id) {
+    const source = spaces.find(s => s.id === id);
+    if (!source) return;
+    migrateSourceSpaceId = id;
+    const candidates = spaces.filter(s => s.id !== id);
+    const form = document.getElementById('space-picker-new-form');
+
+    if (!candidates.length) {
+        form.innerHTML = `
+            <div class="tag-name">No other space to migrate "${source.name}" into.</div>
+            <div class="form-buttons">
+                <button onclick="document.getElementById('space-picker-new-form').innerHTML = ''">Close</button>
+            </div>
+        `;
+        return;
+    }
+
+    form.innerHTML = `
+        <div class="tag-name">Migrate "${source.name}" into:</div>
+        <div class="tag-picker-chip-list">
+            ${candidates.map(s => `<div class="tag-chip" onclick="confirmMigrateSpaceTarget('${s.id}')">${s.name}</div>`).join('')}
+        </div>
+        <div class="form-buttons">
+            <button onclick="document.getElementById('space-picker-new-form').innerHTML = ''">Cancel</button>
+        </div>
+    `;
+}
+
+function confirmMigrateSpaceTarget(targetId) {
+    const source = spaces.find(s => s.id === migrateSourceSpaceId);
+    const target = spaces.find(s => s.id === targetId);
+    if (!source || !target) return;
+    renderMigrateSpaceConfirm(source, target);
+}
+
+// "Back" returns to the target-picking step of this same flow, same
+// two-step pattern as the tag merge confirmation.
+function renderMigrateSpaceConfirm(source, target) {
+    const form = document.getElementById('space-picker-new-form');
+    form.innerHTML = `
+        <div class="tag-name">
+            Move all phrases, tags, and transcripts from "${source.name}" into "${target.name}", and delete "${source.name}"?
+            This cannot be undone.
+        </div>
+        <div id="migrate-space-error" class="form-error" style="display:none"></div>
+        <div class="form-buttons">
+            <button onclick="showMigrateSpaceForm('${source.id}')">Back</button>
+            <button class="primary" onclick="submitMigrateSpace('${source.id}', '${target.id}', false)">Confirm migration</button>
+        </div>
+    `;
+}
+
+async function submitMigrateSpace(sourceId, targetId, dropSourceTranscripts) {
+    const res = await fetch('/spaces/migrate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceId, targetId, dropSourceTranscripts })
+    });
+
+    if (res.ok) {
+        document.getElementById('space-picker-new-form').innerHTML = '';
+        migrateSourceSpaceId = null;
+        await loadSpaces();
+        // If the space we were sitting on was the one just migrated away,
+        // land on whatever space remains instead of a now-nonexistent id.
+        if (!spaces.some(s => s.id === activeSpaceId)) {
+            await setActiveSpace(spaces[0]?.id || null);
+        } else {
+            renderSpacePickerList();
+        }
+        return;
+    }
+
+    const data = await res.json().catch(() => ({}));
+    if (data.error === 'too_many_transcripts') {
+        renderMigrateTranscriptOverflow(sourceId, targetId, data.sourceCount, data.targetCount);
+        return;
+    }
+
+    const errEl = document.getElementById('migrate-space-error');
+    if (errEl) {
+        errEl.style.display = 'block';
+        errEl.textContent = data.error || 'Failed to migrate space';
+    } else {
+        alert(data.error || 'Failed to migrate space');
+    }
+}
+
+// The server blocked the migration because combined transcripts would
+// exceed the hard cap — offer to drop the source's own transcripts and
+// proceed, or back out and let them be cleaned up manually first.
+function renderMigrateTranscriptOverflow(sourceId, targetId, sourceCount, targetCount) {
+    const source = spaces.find(s => s.id === sourceId);
+    const target = spaces.find(s => s.id === targetId);
+    const form = document.getElementById('space-picker-new-form');
+    form.innerHTML = `
+        <div class="tag-name">
+            Too many transcripts to migrate — "${target.name}" already has ${targetCount}, and "${source.name}" would add ${sourceCount} more.
+            "${source.name}"'s transcripts will be deleted rather than moved if you continue.
+        </div>
+        <div class="form-buttons">
+            <button onclick="document.getElementById('space-picker-new-form').innerHTML = ''">Wait — I'll clean up manually</button>
+            <button class="primary danger" onclick="submitMigrateSpace('${sourceId}', '${targetId}', true)">Delete & migrate</button>
+        </div>
+    `;
 }

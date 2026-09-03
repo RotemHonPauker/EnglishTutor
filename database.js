@@ -121,6 +121,113 @@ export const updateSpace = async ({ id, name }) => {
     return result.rows[0];
 };
 
+// --- Space migration ---
+// Moves everything from one space (source) into another (target), then
+// deletes the source. Unlike a tag merge, a space's tags come along too
+// (not deleted) — their space_id just moves, along with a rename/recolor
+// if that collides with something already in the target. Phrases keep
+// referencing the same tag_id throughout, since the tags themselves never
+// change identity, only which space they belong to.
+
+// Same palette as the frontend's tag color picker (tags.js) — kept in sync
+// manually since colors rarely change.
+const TAG_COLORS = [
+    '#AD1457', '#D81B60', '#E67C73', '#F4511E',
+    '#F09300', '#F6BF26', '#7CB342', '#0B8043',
+    '#009688', '#33B679', '#039BE5', '#3F51B5',
+    '#B39DDB', '#9E69AF', '#8E24AA', '#795548'
+];
+
+// A hard cap distinct from the app's existing ">3 saved transcripts"
+// nudge (that one's just a soft cleanup reminder) — this one actually
+// blocks a migration outright rather than silently piling transcripts up
+// in the target space.
+const MAX_TRANSCRIPTS_PER_SPACE_MIGRATION = 3;
+
+export const migrateSpace = async ({ sourceId, targetId, dropSourceTranscripts = false }) => {
+    if (sourceId === targetId) {
+        throw new Error('Cannot migrate a space into itself');
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // Transcript overflow check — skipped once the caller has already
+        // confirmed dropping the source's transcripts instead of moving them.
+        if (!dropSourceTranscripts) {
+            const { rows } = await client.query(
+                `SELECT
+                    (SELECT COUNT(*)::int FROM transcripts WHERE space_id = $1) AS source_count,
+                    (SELECT COUNT(*)::int FROM transcripts WHERE space_id = $2) AS target_count`,
+                [sourceId, targetId]
+            );
+            const { source_count, target_count } = rows[0];
+            if (source_count + target_count > MAX_TRANSCRIPTS_PER_SPACE_MIGRATION) {
+                await client.query('ROLLBACK');
+                const err = new Error('Too many transcripts to migrate');
+                err.code = 'TOO_MANY_TRANSCRIPTS';
+                err.sourceCount = source_count;
+                err.targetCount = target_count;
+                throw err;
+            }
+        }
+
+        // Move (or drop) transcripts.
+        if (dropSourceTranscripts) {
+            await client.query(`DELETE FROM transcripts WHERE space_id = $1`, [sourceId]);
+        } else {
+            await client.query(`UPDATE transcripts SET space_id = $1 WHERE space_id = $2`, [targetId, sourceId]);
+        }
+
+        // Move tags, resolving name/color collisions against the target's
+        // existing tags as we go.
+        const { rows: sourceTags } = await client.query(`SELECT * FROM tags WHERE space_id = $1`, [sourceId]);
+        const { rows: targetTags } = await client.query(`SELECT * FROM tags WHERE space_id = $2`, [targetId]);
+        const usedNames = new Set(targetTags.map(t => t.name.toLowerCase()));
+        const usedColors = new Set(targetTags.filter(t => t.color).map(t => t.color));
+
+        for (const tag of sourceTags) {
+            let newName = tag.name;
+            if (usedNames.has(newName.toLowerCase())) {
+                let suffix = '';
+                let attempt = 1;
+                do {
+                    suffix = attempt === 1 ? ' (new)' : ` (new ${attempt})`;
+                    attempt++;
+                } while (usedNames.has((tag.name + suffix).toLowerCase()));
+                newName = tag.name + suffix;
+            }
+            usedNames.add(newName.toLowerCase());
+
+            let newColor = tag.color;
+            if (newColor && usedColors.has(newColor)) {
+                newColor = TAG_COLORS.find(c => !usedColors.has(c)) || null;
+            }
+            if (newColor) usedColors.add(newColor);
+
+            await client.query(
+                `UPDATE tags SET space_id = $1, name = $2, color = $3 WHERE id = $4`,
+                [targetId, newName, newColor, tag.id]
+            );
+        }
+
+        // Move phrases — tag_id references stay valid, since the tags
+        // they point to just moved along rather than being replaced.
+        await client.query(`UPDATE phrases SET space_id = $1 WHERE space_id = $2`, [targetId, sourceId]);
+
+        // The source space is now empty — remove it.
+        await client.query(`DELETE FROM spaces WHERE id = $1`, [sourceId]);
+
+        await client.query('COMMIT');
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
+};
+
 // --- Space rules ---
 // Each space's own translation rules, stored directly as a column on
 // spaces. Edited manually in the database, not through the app.
