@@ -16,7 +16,8 @@ captureTextInput.addEventListener('keydown', (e) => {
     }
 });
 
-// One mode toggle shared by both the typed and recorded input paths
+// One mode toggle now shared by both the typed and recorded input paths —
+// whichever you use, it's translated/checked the same way.
 function setCaptureMode(mode, btnEl) {
     captureMode = mode;
     document.querySelectorAll('#capture-mode-toggle .mode-toggle-btn').forEach(b => b.classList.remove('active'));
@@ -169,7 +170,7 @@ function addCaptureResult(phrase) {
     const div = document.createElement('div');
     div.className = 'capture-log-item';
     div.innerHTML = `
-        <div class="phrase-hebrew">${phrase.hebrew_text || ''}</div>
+        <div class="phrase-hebrew" dir="auto">${phrase.hebrew_text || ''}</div>
         <div class="phrase-variant">${phrase.variant_1 || ''}</div>
         <div class="phrase-variant">${phrase.variant_2 || ''}</div>
     `;

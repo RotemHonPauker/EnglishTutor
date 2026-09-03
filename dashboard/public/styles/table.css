@@ -183,7 +183,6 @@
     font-size: 0.9rem;
     color: #e8e8e8;
     line-height: 1.4;
-    direction: auto;
     text-align: start;
 }
 
@@ -207,6 +206,10 @@
 .tts-btn:disabled {
     opacity: 0.4;
     cursor: default;
+}
+
+.tts-btn.playing {
+    color: #60a5fa;
 }
 
 .phrase-card.has-color .phrase-card-header {

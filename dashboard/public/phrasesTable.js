@@ -119,6 +119,8 @@ async function loadTable() {
 const DAY_MS = 24 * 60 * 60 * 1000; // also used by practiceDateScroll.js
 
 function renderTable() {
+    stopCurrentAudio();
+
     const sorted = allPhrases
         .filter(phraseMatchesTagFilter)
         .filter(phraseMatchesLearnedFilter)
@@ -151,7 +153,7 @@ function renderTable() {
                 <button class="tag-badge" style="${badgeStyle}" onclick="openTagPicker('${p.id}')">${badgeLabel}</button>
             </div>
             <div class="phrase-card-main">
-                <div class="phrase-hebrew">${p.hebrew_text || ''}</div>
+                <div class="phrase-hebrew" dir="auto">${p.hebrew_text || ''}</div>
                 <div class="phrase-variant"><button class="tts-btn" title="Play" onclick="playPhraseAudio('${p.id}', 1, this)">🔊</button> ${p.variant_1 || ''}</div>
                 <div class="phrase-variant"><button class="tts-btn" title="Play" onclick="playPhraseAudio('${p.id}', 2, this)">🔊</button> ${p.variant_2 || ''}</div>
             </div>
@@ -160,16 +162,58 @@ function renderTable() {
     }).join('');
 }
 
-// Lazy playback: uses the already-cached URL (loaded with the phrase) if
-// there is one, otherwise asks the server to generate it once, then plays.
-// Subsequent plays of the same variant never call the server again.
+// Only one phrase plays at a time. Tracked here (not per-button) so a new
+// play always stops whatever else was going, and so a re-render (tag
+// change, filter, etc.) never leaves audio playing with no visible way to
+// stop it — see the reset at the top of renderTable().
+let currentlyPlayingAudio = null;
+let currentlyPlayingBtn = null;
+
+function stopCurrentAudio() {
+    if (currentlyPlayingAudio) {
+        currentlyPlayingAudio.pause();
+        currentlyPlayingAudio.currentTime = 0;
+    }
+    if (currentlyPlayingBtn) {
+        currentlyPlayingBtn.textContent = '🔊';
+        currentlyPlayingBtn.classList.remove('playing');
+    }
+    currentlyPlayingAudio = null;
+    currentlyPlayingBtn = null;
+}
+
+function startPlayback(url, btnEl) {
+    const audio = new Audio(url);
+    currentlyPlayingAudio = audio;
+    currentlyPlayingBtn = btnEl;
+    btnEl.textContent = '⏹️';
+    btnEl.classList.add('playing');
+    audio.addEventListener('ended', () => {
+        if (currentlyPlayingAudio === audio) stopCurrentAudio();
+    });
+    audio.play();
+}
+
+// Lazy audio generation: returns the already-cached URL if this variant
+// was played before, and only calls the Gemini TTS API (and saves a new
+// file) the first time. Reuses the same translate rate limiter, since this
+// also calls an external AI API and should be protected the same way.
+// Tapping the same button again while it's playing stops it — no overlay,
+// no modal, just the button itself toggling between 🔊 and ⏹️, so the
+// screen underneath is always free to scroll.
 async function playPhraseAudio(phraseId, variant, btnEl) {
+    if (currentlyPlayingBtn === btnEl && currentlyPlayingAudio) {
+        stopCurrentAudio();
+        return;
+    }
+    stopCurrentAudio();
+
     const phrase = allPhrases.find(p => p.id === phraseId);
     if (!phrase) return;
 
     const existingUrl = variant === 1 ? phrase.tts_url_variant1 : phrase.tts_url_variant2;
     if (existingUrl) {
-        new Audio(existingUrl).play();
+        startPlayback(existingUrl, btnEl);
         return;
     }
 
@@ -186,10 +230,11 @@ async function playPhraseAudio(phraseId, variant, btnEl) {
         const data = await res.json();
         if (variant === 1) phrase.tts_url_variant1 = data.url;
         else phrase.tts_url_variant2 = data.url;
-        new Audio(data.url).play();
+        btnEl.disabled = false;
+        btnEl.textContent = originalContent;
+        startPlayback(data.url, btnEl);
     } catch (err) {
         alert('Failed to play audio');
-    } finally {
         btnEl.disabled = false;
         btnEl.textContent = originalContent;
     }

@@ -59,12 +59,22 @@ function renderAnalyticsChart() {
 
         let segments;
         if (analyticsMode === 'tag') {
-            const byTag = {};
+            const byTagId = {};
             b.phrases.forEach(p => {
                 const key = p.tag_id || 'notag';
-                byTag[key] = (byTag[key] || 0) + 1;
+                byTagId[key] = (byTagId[key] || 0) + 1;
             });
-            segments = Object.entries(byTag).map(([tagId, count]) => {
+            // Fixed order — follow the tags list itself, then "no tag"
+            // last — so a given tag's color always sits in the same
+            // position across every row, making rows comparable at a
+            // glance instead of shuffling based on which phrases happen
+            // to exist in that particular period.
+            const orderedEntries = [
+                ...tags.map(t => [t.id, byTagId[t.id] || 0]),
+                ['notag', byTagId['notag'] || 0]
+            ].filter(([, count]) => count > 0);
+
+            segments = orderedEntries.map(([tagId, count]) => {
                 const tag = tags.find(t => t.id === tagId);
                 const color = tag ? (tag.color || NO_TAG_COLOR) : NO_TAG_COLOR;
                 const name = tag ? tag.name : 'No tag';

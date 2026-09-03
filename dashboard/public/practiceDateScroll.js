@@ -51,7 +51,8 @@ function bucketIdFor(date, granularity) {
 // Manual numeric formatting instead of toLocaleDateString — that relies on
 // the browser/OS locale, which (in Hebrew, for example) can produce long
 // month names that overflow the narrow pill/row labels. D/M is short,
-// unambiguous, and identical everywhere.
+// unambiguous, identical everywhere, and — unlike "Today"/"Yesterday" —
+// the same length as every other label, so columns don't vary in width.
 function bucketLabelFor(id, granularity) {
     const date = new Date(id + 'T00:00:00');
 
@@ -178,4 +179,29 @@ function resetDateScroll() {
     document.querySelectorAll('#date-granularity-toggle .mode-toggle-btn').forEach(b => b.classList.remove('active'));
     const dayBtn = document.querySelector('#date-granularity-toggle .mode-toggle-btn[data-granularity="day"]');
     if (dayBtn) dayBtn.classList.add('active');
+}
+
+// Forces the scroll back to daily view, landed on today — used when
+// arriving at Practice straight from the Add tab (see enterPracticeTab
+// below), so a phrase you just added is immediately visible without
+// having to notice you're still parked on some other day/week/month.
+function jumpDateScrollToToday() {
+    dateGranularity = 'day';
+    selectedBucketId = null;
+    document.querySelectorAll('#date-granularity-toggle .mode-toggle-btn').forEach(b => b.classList.remove('active'));
+    const dayBtn = document.querySelector('#date-granularity-toggle .mode-toggle-btn[data-granularity="day"]');
+    if (dayBtn) dayBtn.classList.add('active');
+    generateDateBuckets();
+    renderDateScroll();
+    renderTable();
+}
+
+// The Practice tab button calls this instead of showView directly — it's
+// the only way to reach Practice, so checking what was active right before
+// the switch is enough to catch "coming from Add" reliably. Any other
+// origin tab leaves the scroll exactly where you left it, same as today.
+function enterPracticeTab(btnEl) {
+    const cameFromAdd = document.getElementById('view-add')?.classList.contains('active');
+    showView('practice', btnEl);
+    if (cameFromAdd) jumpDateScrollToToday();
 }
