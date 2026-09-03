@@ -2,6 +2,80 @@ const tableBody = document.getElementById('table-body');
 
 let allPhrases = [];
 
+// ===== Tag filter =====
+
+let filterTagIds = new Set();
+
+function phraseMatchesTagFilter(phrase) {
+    if (filterTagIds.size === 0) return true;
+    return filterTagIds.has(phrase.tag_id);
+}
+
+function openTagFilterModal() {
+    renderTagFilterModal();
+    document.getElementById('tag-filter-modal-overlay').style.display = 'flex';
+}
+
+function closeTagFilterModal() {
+    document.getElementById('tag-filter-modal-overlay').style.display = 'none';
+}
+
+function renderTagFilterModal() {
+    const chips = tags.map(t => {
+        const contrast = getContrastColor(t.color);
+        const selected = filterTagIds.has(t.id);
+        return `<div class="tag-chip ${selected ? 'selected' : ''}" style="background:${t.color || '#333'}; color:${contrast}" onclick="toggleFilterTag('${t.id}')">${t.name}</div>`;
+    }).join('');
+    document.getElementById('tag-filter-groups').innerHTML = `<div class="tag-picker-chip-list">${chips}</div>`;
+}
+
+function toggleFilterTag(id) {
+    if (filterTagIds.has(id)) {
+        filterTagIds.delete(id);
+    } else {
+        filterTagIds.add(id);
+    }
+    renderTagFilterModal();
+}
+
+function clearTagFilter() {
+    filterTagIds.clear();
+    renderTagFilterModal();
+}
+
+// Full reset for contexts outside the filter modal itself (e.g. switching
+// spaces) — clears the filter AND updates what's actually visible in the
+// table toolbar, not just the modal's own internal state.
+function resetTagFilter() {
+    filterTagIds.clear();
+    renderActiveFilterChips();
+}
+
+function applyTagFilter() {
+    closeTagFilterModal();
+    renderActiveFilterChips();
+    renderTable();
+}
+
+function removeTagFilter(id) {
+    filterTagIds.delete(id);
+    renderActiveFilterChips();
+    renderTable();
+}
+
+function renderActiveFilterChips() {
+    const row = document.getElementById('active-tag-filters');
+    row.innerHTML = [...filterTagIds].map(id => {
+        const tag = tags.find(t => t.id === id);
+        if (!tag) return '';
+        const contrast = getContrastColor(tag.color);
+        return `<span class="active-filter-chip" style="background:${tag.color || '#333'}; color:${contrast}">${tag.name}<button onclick="removeTagFilter('${id}')">✕</button></span>`;
+    }).join('');
+    row.style.display = filterTagIds.size ? 'flex' : 'none';
+}
+
+// ===== Learned filter =====
+
 // Cycles through: all -> not-learned -> learned -> all.
 let learnedFilter = 'all';
 
@@ -191,4 +265,47 @@ async function toggleLearned(id) {
         renderTable();
         alert('Failed to update learned status');
     }
+}
+
+// ===== Tag picker (opened by tapping a card's tag badge) =====
+
+let tagPickerPhraseId = null;
+let tagPickerSelectedTag = null;
+
+function openTagPicker(phraseId) {
+    const phrase = allPhrases.find(p => p.id === phraseId);
+    if (!phrase) return;
+    tagPickerPhraseId = phraseId;
+    tagPickerSelectedTag = phrase.tag_id || null;
+    renderTagPickerList();
+    document.getElementById('tag-picker-modal-overlay').style.display = 'flex';
+}
+
+function closeTagPicker() {
+    tagPickerPhraseId = null;
+    tagPickerSelectedTag = null;
+    document.getElementById('tag-picker-modal-overlay').style.display = 'none';
+}
+
+function renderTagPickerList() {
+    const noneChip = `<div class="tag-chip none ${!tagPickerSelectedTag ? 'selected' : ''}" onclick="selectPickerTag(null)">—</div>`;
+    const chips = tags.map(t => {
+        const contrast = getContrastColor(t.color);
+        const selected = tagPickerSelectedTag === t.id;
+        return `<div class="tag-chip ${selected ? 'selected' : ''}" style="background:${t.color || '#333'}; color:${contrast}" onclick="selectPickerTag('${t.id}')">${t.name}</div>`;
+    }).join('');
+    document.getElementById('tag-picker-list').innerHTML = noneChip + chips;
+}
+
+function selectPickerTag(tagId) {
+    tagPickerSelectedTag = tagId;
+    renderTagPickerList();
+}
+
+async function confirmTagPick() {
+    if (!tagPickerPhraseId) return;
+    const phraseId = tagPickerPhraseId;
+    const tagId = tagPickerSelectedTag;
+    closeTagPicker();
+    await updatePhraseTagAssignment(phraseId, tagId);
 }

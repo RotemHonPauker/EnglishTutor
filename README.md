@@ -22,12 +22,11 @@ This app is deliberately not built for use in the moment itself — not while yo
 
 ## How it works
 
-1. **Spaces** — the app always shows exactly one active space, named in the header at the top of every tab. Tap the name to switch to another space or create a new one. Each space is fully self contained: its own phrases, its own tag hierarchy, and its own additional translation rules — nothing is shared or filterable across spaces. At creation, a space is set to either use ordering or not (e.g. for translating a book's chunks in sequence) — this can't be changed afterward
-2. **Type tab** — type or paste a phrase, hit send. Two modes, chosen via a toggle at the top: **Hebrew phrase** (the default — typos corrected, translated into two English variants) or **Check my English** (input is already English, or mixed English/Hebrew — corrected for grammar and phrasing instead of translated). Either way it's saved right away, untagged — no confirmation step, by design, so capturing a phrase stays as fast as it used to be over WhatsApp
-3. **Record tab** — same two modes as the Type tab, via the same toggle. Pick an audio recording from your phone (up to ~30 minutes) — one AI call transcribes it, cleans it, identifies individual phrases (or sequential chunks, in an ordered space), and translates or corrects each one depending on the mode — several phrase cards appear from a single recording, the same way one appears from typing
-4. **Table tab** — your full phrase list as cards, and also your practice screen: filter by tag, browse. Sorts by date, or — in a space that uses ordering — by each phrase's order number instead, shown right on the card and editable by tapping it (a phrase inherits "last in its tag" by default when tagged). Tap the 🔊 next to either English variant to hear it spoken aloud — generated once on first play and cached from then on, so repeat listens never call the API again
-5. **Tags tab** — manage the main-tag / subtag hierarchy and colors for the active space
-6. **Logs tab** — every recording processed leaves behind its cleaned transcript here, as a passive backup — a flat list per space, collapsed to just the date/time, tap to expand and read the full text, delete once you've confirmed the extraction looks right. A banner appears once more than 3 are saved, as a nudge to clean up old ones
+1. **Spaces** — the app always shows exactly one active space, named in the header at the top of every tab, with a small colored dot next to it: a purely visual, never-enforced nudge for how active that space has been in the last 7 days (green = 3+ phrases, yellow = 1–2, gray = none). Tap the name to switch to another space or create a new one. Each space is fully self contained: its own phrases, its own flat set of tags, and its own additional translation rules — nothing is shared or filterable across spaces
+2. **Add tab** — capture a phrase by typing or recording, sharing one mode toggle at the top: **Hebrew phrase** (the default — typos corrected, translated into two English variants) or **Check my English** (input is already English, or mixed English/Hebrew — corrected for grammar and phrasing instead of translated). Type and hit Send, or pick an audio recording from your phone (up to ~30 minutes) — one AI call transcribes it, cleans it, identifies individual phrases, and translates or corrects each one depending on the mode, so several phrase cards can appear from a single recording. Either way it's saved right away, untagged, into the same shared log — no confirmation step, by design. A small 📄 button swaps that same window over to a list of past recording transcripts (tap one to expand/collapse, delete once you've confirmed the extraction looks right; a nudge appears once more than 3 are saved) — tap it again (now ✏️) to go back to capturing. No separate Logs screen anymore
+3. **Practice tab** — your full phrase list as cards. A horizontal date strip up top (Daily / Weekly / Monthly) jumps to a specific day, week, or month — periods with nothing in them aren't shown, and an "Older" bucket covers anything further back; picking one filters the cards below, combined with the tag filter and a learned/not-learned filter. Newest first within whatever's shown. Tap the 👑 crown on a card to toggle it as learned — it stays in the list, just dimmed with a gold accent, nothing disappears. Tap the 🔊 next to either English variant to hear it spoken aloud — generated once on first play and cached from then on, so repeat listens never call the API again
+4. **Tags tab** — a flat set of tags per space, shown as a wrapped chip cloud with each tag's phrase count. Tap a tag to edit its name/color, merge it into another tag (moves all its phrases over, then deletes it), or delete it (blocked while phrases are still linked)
+5. **Analytics tab** — a horizontal stacked-bar chart, one row per day/week/month (same Daily / Weekly / Monthly toggle as Practice), scrolling vertically with the most recent period at the top. A second toggle switches what each bar breaks down by: **By tag** (color-coded per tag, plus a "no tag" segment) or **Learned** (how much of what was created in that period is now marked learned vs. not)
 
 ---
 
@@ -54,16 +53,14 @@ Postgres via Supabase. Four tables:
 - **`spaces`**
   - `id` (PK)
   - `name`
-  - `has_order` — boolean, set once at creation and never changed afterward (enforced by the app, not the DB)
   - `rules` — text, `NULL` until set. Each space's own additional translation rules, combined with the fixed base prompt at translation/audio-processing time. Edited directly in the database (manually) — there's no in-app editing flow
   - `created_at`
 
-- **`tags`** — main tags and subtags in one table, distinguished by `parent_id`
+- **`tags`** — a flat set of tags per space, no hierarchy
   - `id` (PK)
   - `name`
-  - `color` — only set on main tags; subtags render using their parent's color
-  - `parent_id` (FK → `tags.id`, self-referencing) — `NULL` for a main tag, set for a subtag
-  - `space_id` (FK → `spaces.id`) — required only on main tags via a `CHECK` constraint; subtags inherit their space through `parent_id` and leave this `NULL`
+  - `color`
+  - `space_id` (FK → `spaces.id`) — required
   - `created_at`
 
 - **`phrases`**
@@ -71,9 +68,8 @@ Postgres via Supabase. Four tables:
   - `hebrew_text`
   - `variant_1` — first phrasing
   - `variant_2` — Second phrasing
-  - `subtag_id` (FK → `tags.id`) — `NULL` when untagged
-  - `sequence_order` — int4, only meaningful in a `has_order` space; auto-assigned to "last in this subtag" when a phrase is tagged, freely editable afterward, duplicates allowed
-  - `sequence_id` — uuid, unused, kept in place but no longer read or written by the app
+  - `tag_id` (FK → `tags.id`) — `NULL` when untagged
+  - `learned_at` — timestamptz, `NULL` until marked learned; toggled from the 👑 crown on a phrase card (set back to `NULL` if un-marked)
   - `tts_url_variant1` / `tts_url_variant2` — text, `NULL` until first played; path to a cached audio file on disk, not the audio itself
   - `embedding` — vector, pgvector, not currently used
   - `space_id` (FK → `spaces.id`) — required on every row
@@ -112,7 +108,7 @@ A few things worth knowing:
 
 ## Recording & audio processing
 
-The Record tab takes a whole audio recording and turns it into several phrase cards at once — one AI call handles transcription, cleaning, splitting into individual phrases (or sequential chunks, in a `has_order` space), and translation together, using the active space's own rules to know how.
+The recording path in the Add tab takes a whole audio recording and turns it into several phrase cards at once — one AI call handles transcription, cleaning, splitting into individual phrases, and translation together, using the active space's own rules to know how.
 
 - **~30 minute limit.** Requests are sent inline (embedded directly in the API call) rather than through a separate upload step, which is simpler but size-capped — 60MB of raw audio is the ceiling, comfortably under Gemini's 100MB inline request limit once base64 overhead is factored in. Based on this app's actual recording weight (~1.5MB/minute), that's roughly half an hour. Oversized files are rejected with a clear message rather than silently failing.
 - **No audio is ever stored.** Only the resulting text — the cleaned transcript (saved to `transcripts`) and the extracted phrases (saved to `phrases`, same as if typed) — survives past the request.
@@ -140,23 +136,18 @@ EnglishTutor/
 │   |   |   ├── icon-512-maskable.png
 │   |   |   └── loading.svg
 │   |   ├── styles/
+│   |   ├── analyticsChart.js
 │   |   ├── app.js
+│   |   ├── captureTab.js
 │   |   ├── colorUtils.js
 │   |   ├── index.html
 │   |   ├── loadingOverlay.js
 │   |   ├── manifest.json        (PWA — app name, icons, install behavior)
-│   |   ├── newPhrase.js
 │   |   ├── phrasesTable.js
-│   |   ├── phraseTagFilter.js
-│   |   ├── phraseTagPicker.js
-│   |   ├── recordingTab.js
+│   |   ├── practiceDateScroll.js
 │   |   ├── spacesState.js
 │   |   ├── sw.js                (PWA — service worker, required for installability)
-│   |   ├── tagsMerge.js
-│   |   ├── tagsMigrate.js
-│   |   ├── tagsSidebar.js
-│   |   ├── tagsState.js
-│   |   └── transcriptsTab.js
+│   |   └── tags.js
 │   ├── routes/
 │   |   ├── phrases.route.js
 │   |   ├── recordings.route.js

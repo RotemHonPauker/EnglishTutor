@@ -1,6 +1,6 @@
 // Wraps the browser's built-in fetch so the loading overlay shows and hides
 // automatically around EVERY network request in the app — page load, saving
-// a tag, opening the editor, merging/migrating subtags, etc. — without
+// a tag, opening the editor, etc. — without
 // having to add show/hide calls at each individual call site.
 //
 // A counter (rather than a simple boolean) is used because some actions
