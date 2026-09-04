@@ -35,6 +35,7 @@ function renderSpaceHeader() {
     const active = getActiveSpace();
     label.textContent = active ? active.name : 'Select a space';
     renderSpaceHealthIndicator();
+    if (typeof renderSpaceRulesForm === 'function') renderSpaceRulesForm();
 }
 
 // A lightweight, purely visual nudge — never enforced anywhere. Compares
@@ -101,7 +102,7 @@ function renderSpacePickerList() {
     const list = document.getElementById('space-picker-list');
     list.innerHTML = spaces.map(s => `
         <div class="space-picker-row">
-            <div class="space-picker-item ${s.id === activeSpaceId ? 'active' : ''}" onclick="setActiveSpace('${s.id}')">
+            <div class="space-picker-item ${s.id === activeSpaceId ? 'active' : ''}" onclick="requestSpaceSwitch('${s.id}')">
                 ${s.name}
             </div>
             <button class="space-picker-edit-btn" onclick="event.stopPropagation(); showRenameSpaceForm('${s.id}')" title="Rename">✎</button>

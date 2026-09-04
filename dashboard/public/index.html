@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="styles/table.css">
     <link rel="stylesheet" href="styles/modal.css">
     <link rel="stylesheet" href="styles/tags.css">
+    <link rel="stylesheet" href="styles/spaceRules.css">
     <link rel="stylesheet" href="styles/analytics.css">
     <link rel="stylesheet" href="styles/tabs.css">
     <link rel="stylesheet" href="styles/capture.css">
@@ -35,7 +36,7 @@
 
 <!-- SPACE HEADER: shown above every tab, always. Tapping it opens the
      space picker/create modal. -->
-<header id="space-header" onclick="openSpacePicker()">
+<header id="space-header" onclick="requestOpenSpacePicker()">
     <span id="space-health-dot" class="space-health-dot"></span>
     <span id="space-header-name">Select a space</span>
     <span class="space-header-chevron">▾</span>
@@ -68,14 +69,85 @@
         </div>
     </div>
 
-    <!-- TAGS VIEW -->
+    <!-- TAGS + SPACE SETUP VIEW -->
     <div id="view-tags" class="view">
-        <div id="tag-sidebar">
-            <div id="sidebar-header">
-                <span>Tags</span>
-                <button onclick="openAddTagModal()">+ tag</button>
+        <div id="setup-scroll">
+            <div id="space-rules-section">
+                <div id="space-rules-header">Space Setup</div>
+                <div class="space-rules-accordion">
+                    <div class="space-rules-item" data-field="about">
+                        <button type="button" class="space-rules-item-header" onclick="toggleSpaceRuleItem('about')">
+                            <span class="space-rules-item-title">About this space</span>
+                            <span class="space-rules-item-chevron">▾</span>
+                        </button>
+                        <div class="space-rules-item-body">
+                            <textarea id="space-rules-about" rows="8" placeholder="Who's speaking, common topics, terminology..."></textarea>
+                            <div class="space-rules-copy-area" id="space-rules-copy-about"></div>
+                            <div class="space-rules-item-actions">
+                                <button type="button" onclick="toggleCopyPicker('about')">Copy from...</button>
+                                <span class="space-rules-item-status" id="space-rules-status-about"></span>
+                                <button type="button" onclick="cancelSpaceRuleField('about')">Cancel</button>
+                                <button type="button" class="primary space-rules-save-btn" onclick="saveSpaceRuleField('about')">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-rules-item" data-field="variant1">
+                        <button type="button" class="space-rules-item-header" onclick="toggleSpaceRuleItem('variant1')">
+                            <span class="space-rules-item-title">Variant 1</span>
+                            <span class="space-rules-item-chevron">▾</span>
+                        </button>
+                        <div class="space-rules-item-body">
+                            <textarea id="space-rules-variant1" rows="8" placeholder="How Variant 1 should sound..."></textarea>
+                            <div class="space-rules-copy-area" id="space-rules-copy-variant1"></div>
+                            <div class="space-rules-item-actions">
+                                <button type="button" onclick="toggleCopyPicker('variant1')">Copy from...</button>
+                                <span class="space-rules-item-status" id="space-rules-status-variant1"></span>
+                                <button type="button" onclick="cancelSpaceRuleField('variant1')">Cancel</button>
+                                <button type="button" class="primary space-rules-save-btn" onclick="saveSpaceRuleField('variant1')">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-rules-item" data-field="variant2">
+                        <button type="button" class="space-rules-item-header" onclick="toggleSpaceRuleItem('variant2')">
+                            <span class="space-rules-item-title">Variant 2</span>
+                            <span class="space-rules-item-chevron">▾</span>
+                        </button>
+                        <div class="space-rules-item-body">
+                            <textarea id="space-rules-variant2" rows="8" placeholder="How Variant 2 should sound..."></textarea>
+                            <div class="space-rules-copy-area" id="space-rules-copy-variant2"></div>
+                            <div class="space-rules-item-actions">
+                                <button type="button" onclick="toggleCopyPicker('variant2')">Copy from...</button>
+                                <span class="space-rules-item-status" id="space-rules-status-variant2"></span>
+                                <button type="button" onclick="cancelSpaceRuleField('variant2')">Cancel</button>
+                                <button type="button" class="primary space-rules-save-btn" onclick="saveSpaceRuleField('variant2')">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-rules-item" data-field="audio">
+                        <button type="button" class="space-rules-item-header" onclick="toggleSpaceRuleItem('audio')">
+                            <span class="space-rules-item-title">Audio Recording</span>
+                            <span class="space-rules-item-chevron">▾</span>
+                        </button>
+                        <div class="space-rules-item-body">
+                            <textarea id="space-rules-audio" rows="8" placeholder="How to split/clean phrases from a recording..."></textarea>
+                            <div class="space-rules-copy-area" id="space-rules-copy-audio"></div>
+                            <div class="space-rules-item-actions">
+                                <button type="button" onclick="toggleCopyPicker('audio')">Copy from...</button>
+                                <span class="space-rules-item-status" id="space-rules-status-audio"></span>
+                                <button type="button" onclick="cancelSpaceRuleField('audio')">Cancel</button>
+                                <button type="button" class="primary space-rules-save-btn" onclick="saveSpaceRuleField('audio')">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div id="tag-list"></div>
+            <div id="tag-sidebar">
+                <div id="sidebar-header">
+                    Tags
+                    <button onclick="openAddTagModal()">+ tag</button>
+                </div>
+                <div id="tag-list"></div>
+            </div>
         </div>
     </div>
 
@@ -125,21 +197,21 @@
 
 <!-- BOTTOM TAB BAR -->
 <nav id="tab-bar">
-    <button class="tab-btn" data-view="add" onclick="enterCaptureTab(this)">
+    <button class="tab-btn" data-view="add" onclick="requestTabSwitch('add', this)">
         <span class="tab-icon">➕</span>
         <span>Add</span>
     </button>
-    <button class="tab-btn active" data-view="practice" onclick="enterPracticeTab(this)">
+    <button class="tab-btn active" data-view="practice" onclick="requestTabSwitch('practice', this)">
         <span class="tab-icon">📋</span>
         <span>Practice</span>
     </button>
-    <button class="tab-btn" data-view="tags" onclick="showView('tags', this)">
-        <span class="tab-icon">#️⃣</span>
-        <span>Tags</span>
-    </button>
-    <button class="tab-btn" data-view="analytics" onclick="showView('analytics', this)">
+    <button class="tab-btn" data-view="analytics" onclick="requestTabSwitch('analytics', this)">
         <span class="tab-icon">📊</span>
         <span>Analytics</span>
+    </button>
+    <button class="tab-btn" data-view="tags" onclick="requestTabSwitch('tags', this)">
+        <span class="tab-icon">⚙️</span>
+        <span>Setup</span>
     </button>
 </nav>
 
@@ -215,8 +287,23 @@
     </div>
 </div>
 
+<!-- UNSAVED SPACE-RULES CHANGE MODAL (blocks a tab switch, not a space switch) -->
+<div id="unsaved-rules-modal-overlay" style="display:none">
+    <div id="unsaved-rules-modal" class="confirm-modal">
+        <div class="modal-header">
+            <span>Unsaved change</span>
+        </div>
+        <div id="unsaved-rules-modal-text"></div>
+        <div class="modal-footer">
+            <button onclick="discardUnsavedRulesAndSwitch()">Discard change</button>
+            <button class="primary" onclick="closeUnsavedRulesModal()">Go back & review</button>
+        </div>
+    </div>
+</div>
+
 <script src="loadingOverlay.js"></script>
 <script src="spacesState.js"></script>
+<script src="spaceRules.js"></script>
 <script src="colorUtils.js"></script>
 <script src="tags.js"></script>
 <script src="phrasesTable.js"></script>

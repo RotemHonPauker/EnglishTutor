@@ -113,10 +113,43 @@ export const createSpace = async ({ name }) => {
     return result.rows[0];
 };
 
-export const updateSpace = async ({ id, name }) => {
+export const updateSpace = async ({ id, name, aboutThisSpace, variant1Notes, variant2Notes, audioRecordingNotes }) => {
+    // Only touch the columns actually passed in, so a plain rename never
+    // overwrites the rule fields (and vice versa for a Setup-tab save).
+    const fields = [];
+    const values = [];
+    let i = 1;
+
+    if (name !== undefined) {
+        fields.push(`name = $${i++}`);
+        values.push(name);
+    }
+    if (aboutThisSpace !== undefined) {
+        fields.push(`about_this_space = $${i++}`);
+        values.push(aboutThisSpace || null);
+    }
+    if (variant1Notes !== undefined) {
+        fields.push(`variant_1_notes = $${i++}`);
+        values.push(variant1Notes || null);
+    }
+    if (variant2Notes !== undefined) {
+        fields.push(`variant_2_notes = $${i++}`);
+        values.push(variant2Notes || null);
+    }
+    if (audioRecordingNotes !== undefined) {
+        fields.push(`audio_recording_notes = $${i++}`);
+        values.push(audioRecordingNotes || null);
+    }
+
+    if (!fields.length) {
+        const { rows } = await pool.query(`SELECT * FROM spaces WHERE id = $1`, [id]);
+        return rows[0];
+    }
+
+    values.push(id);
     const result = await pool.query(
-        `UPDATE spaces SET name = $1 WHERE id = $2 RETURNING *`,
-        [name, id]
+        `UPDATE spaces SET ${fields.join(', ')} WHERE id = $${i} RETURNING *`,
+        values
     );
     return result.rows[0];
 };
@@ -229,17 +262,25 @@ export const migrateSpace = async ({ sourceId, targetId, dropSourceTranscripts =
 };
 
 // --- Space rules ---
-// Each space's own translation rules, stored directly as a column on
-// spaces. Edited manually in the database, not through the app.
-// A space with no rules yet is a normal, valid state —
-// translation still works fine using just the base template.
+// Each space's own translation guidance, split into 4 structured fields
+// (edited from the Setup tab) instead of one free-text column: general
+// background, per-variant voice/style notes, and audio-specific phrase-
+// splitting notes. A space with nothing filled in yet is a normal, valid
+// state — translation still works fine using just the base prompts.
 
-export const getSpaceRules = async (spaceId) => {
+export const getSpaceRuleFields = async (spaceId) => {
     const { rows } = await pool.query(
-        `SELECT rules FROM spaces WHERE id = $1`,
+        `SELECT about_this_space, variant_1_notes, variant_2_notes, audio_recording_notes
+         FROM spaces WHERE id = $1`,
         [spaceId]
     );
-    return rows[0]?.rules ?? null;
+    const row = rows[0] || {};
+    return {
+        aboutThisSpace: row.about_this_space ?? null,
+        variant1Notes: row.variant_1_notes ?? null,
+        variant2Notes: row.variant_2_notes ?? null,
+        audioRecordingNotes: row.audio_recording_notes ?? null
+    };
 };
 
 // --- Tags ---

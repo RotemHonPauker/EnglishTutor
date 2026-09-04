@@ -28,16 +28,23 @@ router.post('/spaces', async (req, res) => {
 });
 
 router.put('/spaces/:id', async (req, res) => {
-    const { name } = req.body;
-    if (!name || !name.trim()) {
-        return res.status(400).json({ error: 'Name is required' });
+    const { name, aboutThisSpace, variant1Notes, variant2Notes, audioRecordingNotes } = req.body;
+    if (name !== undefined && !name.trim()) {
+        return res.status(400).json({ error: 'Name cannot be empty' });
     }
     try {
-        const space = await updateSpace({ id: req.params.id, name: name.trim() });
+        const space = await updateSpace({
+            id: req.params.id,
+            name: name !== undefined ? name.trim() : undefined,
+            aboutThisSpace,
+            variant1Notes,
+            variant2Notes,
+            audioRecordingNotes
+        });
         res.json(space);
     } catch (err) {
-        console.error('Error renaming space:', err);
-        res.status(500).json({ error: 'Failed to rename space' });
+        console.error('Error updating space:', err);
+        res.status(500).json({ error: 'Failed to update space' });
     }
 });
 

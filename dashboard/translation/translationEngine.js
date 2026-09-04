@@ -2,7 +2,7 @@ import { GoogleGenAI } from '@google/genai';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { getSpaceRules, getTags } from '../../database.js';
+import { getSpaceRuleFields, getTags } from '../../database.js';
 
 const ai = new GoogleGenAI({ vertexai: false, apiKey: process.env.GEMINI_API_KEY });
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -38,6 +38,28 @@ const resolveTagId = (tagName, spaceTags) => {
     return match ? match.id : null;
 };
 
+// Appends this space's own Variant 1 / Variant 2 notes (if any) onto the
+// generic variantGuidance.txt content, so space-specific voice/style sits
+// right alongside the general guidance instead of buried in one big blob.
+const buildVariantGuidanceSection = (baseGuidance, spaceFields) => {
+    if (!spaceFields.variant1Notes && !spaceFields.variant2Notes) {
+        return baseGuidance;
+    }
+    let section = `${baseGuidance}\n\n## This Space's Variant Guidance\n`;
+    if (spaceFields.variant1Notes) section += `Variant 1: ${spaceFields.variant1Notes}\n`;
+    if (spaceFields.variant2Notes) section += `Variant 2: ${spaceFields.variant2Notes}\n`;
+    return section;
+};
+
+// A space with nothing filled in under "About this space" yet is a normal
+// state — the section is simply omitted rather than left as an empty
+// heading.
+const buildSpaceRulesSection = (spaceFields) => {
+    return spaceFields.aboutThisSpace
+        ? `## About This Space\n${spaceFields.aboutThisSpace}\n\n`
+        : '';
+};
+
 // mode is 'capture' (default, Hebrew input) or 'check' (English/mixed
 // input — grammar and phrasing correction instead of translation).
 // translationPrompt.txt contains instructions for both; only the mode word
@@ -45,22 +67,16 @@ const resolveTagId = (tagName, spaceTags) => {
 // Returns { correctedHebrew, variant1, variant2, tagId }.
 export const translatePhrase = async (hebrewText, spaceId, mode = 'capture') => {
     const baseTemplate = readFileSync(basePromptPath, 'utf-8');
-    const variantGuidance = readFileSync(variantGuidancePath, 'utf-8');
-    const [spaceRules, spaceTags] = await Promise.all([
-        getSpaceRules(spaceId),
+    const variantGuidanceBase = readFileSync(variantGuidancePath, 'utf-8');
+    const [spaceFields, spaceTags] = await Promise.all([
+        getSpaceRuleFields(spaceId),
         getTags(spaceId)
     ]);
 
-    // A space with no additional rules yet is a normal state — the section
-    // is simply omitted rather than left as an empty heading.
-    const spaceRulesSection = spaceRules
-        ? `## Additional Rules for This Space\n${spaceRules}\n\n`
-        : '';
-
     const content = baseTemplate
         .replace('${mode}', mode)
-        .replace('${variantGuidance}', variantGuidance)
-        .replace('${spaceRulesSection}', spaceRulesSection)
+        .replace('${variantGuidance}', buildVariantGuidanceSection(variantGuidanceBase, spaceFields))
+        .replace('${spaceRulesSection}', buildSpaceRulesSection(spaceFields))
         .replace('${existingTagsSection}', buildExistingTagsSection(spaceTags))
         .replace('${phrase}', hebrewText);
 

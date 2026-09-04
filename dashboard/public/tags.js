@@ -26,7 +26,7 @@ function renderSidebar() {
     container.innerHTML = tags.map(tag => {
         const contrast = getContrastColor(tag.color);
         return `
-            <div class="tag-chip main-chip" style="background:${tag.color || '#333'}; color:${contrast}" onclick="openTagEditModal('${tag.id}')">${tag.name} <span class="tag-phrase-count">${getPhraseCountForTag(tag)}</span></div>
+            <div class="tag-chip" style="background:${tag.color || '#333'}; color:${contrast}" onclick="openTagEditModal('${tag.id}')">${tag.name} <span class="tag-phrase-count">${getPhraseCountForTag(tag)}</span></div>
         `;
     }).join('');
 }

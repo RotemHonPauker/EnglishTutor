@@ -56,7 +56,8 @@
 #tag-picker-modal-overlay,
 #tag-filter-modal-overlay,
 #tag-edit-modal-overlay,
-#space-picker-modal-overlay {
+#space-picker-modal-overlay,
+#unsaved-rules-modal-overlay {
     position: fixed;
     inset: 0;
     background: rgba(0,0,0,0.7);

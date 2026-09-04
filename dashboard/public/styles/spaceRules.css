@@ -1,0 +1,125 @@
+#setup-scroll {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+}
+
+#space-rules-section {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#space-rules-header {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.space-rules-accordion {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.space-rules-item {
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.space-rules-item-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #141414;
+    border: none;
+    border-radius: 0;
+    padding: 12px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.space-rules-item-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #ccc;
+}
+
+.space-rules-item-chevron {
+    font-size: 0.75rem;
+    color: #666;
+    transition: transform 0.15s;
+    flex-shrink: 0;
+}
+
+.space-rules-item.open .space-rules-item-chevron {
+    transform: rotate(180deg);
+}
+
+.space-rules-item-body {
+    display: none;
+    padding: 10px 12px 12px;
+}
+
+.space-rules-item.open .space-rules-item-body {
+    display: block;
+}
+
+.space-rules-item-body textarea {
+    width: 100%;
+    background: #0f0f0f;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 8px 10px;
+    color: #e8e8e8;
+    font-size: 0.875rem;
+    font-family: inherit;
+    outline: none;
+    resize: vertical;
+}
+
+.space-rules-item-body textarea:focus {
+    border-color: #2563eb;
+}
+
+.space-rules-copy-area {
+    margin-top: 8px;
+}
+
+.space-rules-copy-area.open {
+    padding-top: 8px;
+    border-top: 1px solid #2a2a2a;
+}
+
+.space-rules-copy-empty {
+    font-size: 0.8125rem;
+    color: #666;
+}
+
+.space-rules-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.space-rules-item-status {
+    margin-right: auto;
+    font-size: 0.75rem;
+    color: #33B679;
+}
+
+.space-rules-item-status.error {
+    color: #f87171;
+}

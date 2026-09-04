@@ -2,7 +2,7 @@ import { GoogleGenAI } from '@google/genai';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { getSpaceRules, getTags } from '../../database.js';
+import { getSpaceRuleFields, getTags } from '../../database.js';
 
 const ai = new GoogleGenAI({ vertexai: false, apiKey: process.env.GEMINI_API_KEY });
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -32,6 +32,32 @@ const resolveTagId = (tagName, spaceTags) => {
     return match ? match.id : null;
 };
 
+// Appends this space's own Variant 1 / Variant 2 notes (if any) onto the
+// generic variantGuidance.txt content — same approach as translationEngine.js.
+const buildVariantGuidanceSection = (baseGuidance, spaceFields) => {
+    if (!spaceFields.variant1Notes && !spaceFields.variant2Notes) {
+        return baseGuidance;
+    }
+    let section = `${baseGuidance}\n\n## This Space's Variant Guidance\n`;
+    if (spaceFields.variant1Notes) section += `Variant 1: ${spaceFields.variant1Notes}\n`;
+    if (spaceFields.variant2Notes) section += `Variant 2: ${spaceFields.variant2Notes}\n`;
+    return section;
+};
+
+const buildSpaceRulesSection = (spaceFields) => {
+    return spaceFields.aboutThisSpace
+        ? `## About This Space\n${spaceFields.aboutThisSpace}\n\n`
+        : '';
+};
+
+// Falls back to a sensible generic instruction when this space hasn't
+// defined its own audio-specific notes yet — Step 2 always needs *some*
+// instruction to follow.
+const buildAudioRecordingSection = (spaceFields) => {
+    return spaceFields.audioRecordingNotes
+        || 'Use your best judgement to divide the cleaned transcript into individual, natural phrases.';
+};
+
 // Gemini's inline request limit is 100MB total (prompt text + audio,
 // base64-encoded). 60MB of raw audio keeps the base64-encoded size (~33%
 // larger) comfortably under that — roughly half an hour of recording,
@@ -49,19 +75,17 @@ export const processRecording = async (audioBuffer, mimeType, spaceId, mode = 'c
     }
 
     const baseTemplate = readFileSync(basePromptPath, 'utf-8');
-    const variantGuidance = readFileSync(variantGuidancePath, 'utf-8');
-    const [spaceRules, spaceTags] = await Promise.all([
-        getSpaceRules(spaceId),
+    const variantGuidanceBase = readFileSync(variantGuidancePath, 'utf-8');
+    const [spaceFields, spaceTags] = await Promise.all([
+        getSpaceRuleFields(spaceId),
         getTags(spaceId)
     ]);
-    const spaceRulesSection = spaceRules
-        ? `## Additional Rules for This Space\n${spaceRules}\n\n`
-        : '';
 
     const promptText = baseTemplate
         .replace('${mode}', mode)
-        .replace('${variantGuidance}', variantGuidance)
-        .replace('${spaceRulesSection}', spaceRulesSection)
+        .replace('${variantGuidance}', buildVariantGuidanceSection(variantGuidanceBase, spaceFields))
+        .replace('${spaceRulesSection}', buildSpaceRulesSection(spaceFields))
+        .replace('${audioRecordingSection}', buildAudioRecordingSection(spaceFields))
         .replace('${existingTagsSection}', buildExistingTagsSection(spaceTags));
 
     const audioPart = {
