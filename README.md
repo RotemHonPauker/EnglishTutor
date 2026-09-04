@@ -22,11 +22,11 @@ This app is deliberately not built for use in the moment itself — not while yo
 
 ## How it works
 
-1. **Spaces** — the app always shows exactly one active space, named in the header at the top of every tab, with a small colored dot next to it: a purely visual, never-enforced nudge for how active that space has been in the last 7 days (green = 3+ phrases, yellow = 1–2, gray = none). Tap the name to switch to another space or create a new one. Each space is fully self contained: its own phrases, its own flat set of tags, and its own additional translation rules — nothing is shared or filterable across spaces
+1. **Spaces** — the app always shows exactly one active space, named in the header at the top of every tab, with a small colored dot next to it: a purely visual, never-enforced nudge for how active that space has been in the last 7 days (green = 3+ phrases, yellow = 1–2, gray = none). Tap the name to switch to another space, create a new one, or migrate one space into another — moves its phrases, tags, and transcripts into the target. Each space is fully self contained: its own phrases, its own flat set of tags, and its own translation guidance — nothing is shared across spaces unless you migrate it over
 2. **Add tab** — capture a phrase by typing or recording, sharing one mode toggle at the top: **Hebrew phrase** (the default — typos corrected, translated into two English variants) or **Check my English** (input is already English, or mixed English/Hebrew — corrected for grammar and phrasing instead of translated). Type and hit Send, or pick an audio recording from your phone (up to ~30 minutes) — one AI call transcribes it, cleans it, identifies individual phrases, and translates or corrects each one depending on the mode, so several phrase cards can appear from a single recording. Either way it's saved right away into the same shared log — the same AI call also tries to match it to one of the space's existing tags, only when confident (otherwise it's left untagged, same as before, and you can always tag or retag it yourself from Practice). No confirmation step, by design. A small 📄 button swaps that same window over to a list of past recording transcripts (tap one to expand/collapse, delete once you've confirmed the extraction looks right; a nudge appears once more than 3 are saved) — tap it again (now ✏️) to go back to capturing. No separate Logs screen anymore
 3. **Practice tab** — your full phrase list as cards. A horizontal date strip up top (Daily / Weekly / Monthly) jumps to a specific day, week, or month — periods with nothing in them aren't shown, and an "Older" bucket covers anything further back; picking one filters the cards below, combined with the tag filter and a learned/not-learned filter. Newest first within whatever's shown. Tap the 👑 crown on a card to toggle it as learned — it stays in the list, just dimmed with a gold accent, nothing disappears. Tap the 🔊 next to either English variant to hear it spoken aloud — generated once on first play and cached from then on, so repeat listens never call the API again
-4. **Tags tab** — a flat set of tags per space, shown as a wrapped chip cloud with each tag's phrase count. Tap a tag to edit its name/color, merge it into another tag (moves all its phrases over, then deletes it), or delete it (blocked while phrases are still linked)
-5. **Analytics tab** — a horizontal stacked-bar chart, one row per day/week/month (same Daily / Weekly / Monthly toggle as Practice), scrolling vertically with the most recent period at the top. A second toggle switches what each bar breaks down by: **By tag** (color-coded per tag, plus a "no tag" segment) or **Learned** (how much of what was created in that period is now marked learned vs. not)
+4. **Analytics tab** — a horizontal stacked-bar chart, one row per day/week/month (same Daily / Weekly / Monthly toggle as Practice), scrolling vertically with the most recent period at the top. A second toggle switches what each bar breaks down by: **By tag** (color-coded per tag, plus a "no tag" segment) or **Learned** (how much of what was created in that period is now marked learned vs. not)
+5. **Setup tab** — a flat set of tags per space (chip cloud, each with a color and phrase count; tap one to edit, merge into another tag, or delete), plus a **Space Setup** accordion above it that shapes how this space's phrases get processed: four fields — *About this space*, *Variant 1*, *Variant 2*, *Audio Recording* — each opening one at a time with its own Save/Cancel and a "Copy from..." option to pull that field's content from another space. Switching tabs or spaces with an unsaved field left open is blocked with a prompt to discard the change or go back and review it — Save is deliberately never offered directly from that prompt
 
 ---
 
@@ -53,8 +53,12 @@ Postgres via Supabase. Four tables:
 - **`spaces`**
   - `id` (PK)
   - `name`
-  - `rules` — text, `NULL` until set. Each space's own additional translation rules, combined with the fixed base prompt at translation/audio-processing time. Edited directly in the database (manually) — there's no in-app editing flow
+  - `about_this_space` — text, `NULL` until set. General background for this space (who's speaking, common topics, terminology)
+  - `variant_1_notes` / `variant_2_notes` — text, `NULL` until set. This space's own guidance for how each English variant should specifically sound, layered on top of the shared `variantGuidance.txt`
+  - `audio_recording_notes` — text, `NULL` until set. How to split/clean phrases from this space's recordings specifically — only read by the audio pipeline
   - `created_at`
+
+  All four rule fields are edited from the **Setup tab** now, not the database directly (see [How it works](#how-it-works))
 
 - **`tags`** — a flat set of tags per space, no hierarchy
   - `id` (PK)
@@ -90,7 +94,7 @@ Both translation (typed phrases) and audio processing (recordings) share the sam
 - **`dashboard/translation/translationPrompt.txt`** — the base prompt for typed phrases. Language-agnostic (input may be Hebrew, English, or a mix), correct/translate, output JSON. Plain file, not editable through the app.
 - **`dashboard/audio/audioPrompt.txt`** — the base prompt for recordings (transcribe, identify/chunk phrases per the space's own rules, correct/translate, output JSON). Also a plain file, also language-agnostic.
 - **`dashboard/translation/variantGuidance.txt`** — the instructions for how each of the two English variants should sound. Shared by both prompts above (referenced via a `${variantGuidance}` placeholder each substitutes at request time) so the translation style never drifts between the typed-phrase and audio pipelines.
-- **The active space's own rules** (`spaces.rules` in the database) — things like who's speaking, the tone each variant should have, how to resolve a recurring ambiguity, or (for audio) how to identify/clean/chunk that space's recordings specifically. A space with no rules yet is a normal state; both pipelines still work off the base prompts alone. Edited directly in the database — there's no in-app editing flow.
+- **The active space's own rules**, edited from the Setup tab's four fields — *About this space* fills a `${spaceRulesSection}` placeholder in both prompts (background, terminology, who's speaking); *Variant 1*/*Variant 2* notes get appended onto the shared `${variantGuidance}` content instead of replacing it; *Audio Recording* notes fill a `${audioRecordingSection}` placeholder used only in `audioPrompt.txt`'s phrase-splitting step. A space with nothing filled in yet is a normal state — the relevant section is simply omitted, or (for audio splitting specifically) falls back to a generic "use your best judgement" instruction.
 - **Tag suggestion** — both prompts also receive the active space's current tag names and ask for a best-fit tag per phrase (`null` if none fit confidently, or if the space has no tags yet). The model is never allowed to invent a tag: its answer is matched case-insensitively against the tags actually fetched for that space, in `translationEngine.js`/`audioEngine.js` — anything that doesn't match a real tag (including a hallucinated name) just falls back to untagged
 
 ---
@@ -142,6 +146,7 @@ EnglishTutor/
 │   |   ├── manifest.json        (PWA — app name, icons, install behavior)
 │   |   ├── phrasesTable.js
 │   |   ├── practiceDateScroll.js
+│   |   ├── spaceRules.js
 │   |   ├── spacesState.js
 │   |   ├── sw.js                (PWA — service worker, required for installability)
 │   |   └── tags.js
