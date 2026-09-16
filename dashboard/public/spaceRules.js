@@ -216,7 +216,12 @@ function requestOpenSpacePicker() {
 // there shouldn't be a dirty field left to catch (requestOpenSpacePicker
 // already would have blocked getting here).
 function requestSpaceSwitch(id) {
-    if (id === activeSpaceId) {
+    // In dictionary mode, activeSpaceId still holds whatever space was
+    // active before entering it — so this "already there" shortcut must
+    // not fire even if id happens to match, or picking that exact space
+    // back would silently do nothing instead of actually leaving
+    // dictionary mode.
+    if (!isDictionaryMode && id === activeSpaceId) {
         closeSpacePicker();
         return;
     }
