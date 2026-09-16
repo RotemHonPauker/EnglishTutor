@@ -53,3 +53,14 @@
 .tab-btn.active {
     color: #60a5fa;
 }
+
+/* Analytics/Setup while in dictionary mode — neither applies there. */
+.tab-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+    pointer-events: none;
+}
+
+.tab-btn:disabled:hover {
+    background: none;
+}

@@ -8,6 +8,7 @@ import { phrasesRouter } from './routes/phrases.route.js';
 import { tagsRouter } from './routes/tags.route.js';
 import { spacesRouter } from './routes/spaces.route.js';
 import { recordingsRouter } from './routes/recordings.route.js';
+import { dictionaryRouter } from './routes/dictionary.route.js';
 
 const app = express();
 const PORT = 3000;
@@ -22,6 +23,7 @@ app.use(phrasesRouter);
 app.use(tagsRouter);
 app.use(spacesRouter);
 app.use(recordingsRouter);
+app.use(dictionaryRouter);
 
 app.listen(PORT, async () => {
     await connectDB();

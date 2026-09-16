@@ -401,3 +401,39 @@ export const deleteTranscript = async (id) => {
     );
     return result.rows[0] || null;
 };
+
+// --- Dictionary ---
+// A standalone vocabulary list, global across the whole app — no space_id,
+// no tag_id, entirely independent of spaces.
+
+export const getDictionaryEntries = async () => {
+    const result = await pool.query(
+        `SELECT * FROM dictionary ORDER BY created_at DESC`
+    );
+    return result.rows;
+};
+
+export const saveDictionaryEntry = async ({ hebrewQuery, word, partOfSpeech, hebrewSynonyms, exampleSentence, englishSynonyms }) => {
+    const result = await pool.query(
+        `INSERT INTO dictionary (hebrew_query, word, part_of_speech, hebrew_synonyms, example_sentence, english_synonyms)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [hebrewQuery || null, word, partOfSpeech, hebrewSynonyms, exampleSentence, englishSynonyms]
+    );
+    return result.rows[0];
+};
+
+export const updateDictionaryEntryLearned = async ({ id, learned }) => {
+    const result = await pool.query(
+        `UPDATE dictionary SET learned_at = $1 WHERE id = $2 RETURNING *`,
+        [learned ? new Date() : null, id]
+    );
+    return result.rows[0];
+};
+
+export const deleteDictionaryEntry = async (id) => {
+    const result = await pool.query(
+        `DELETE FROM dictionary WHERE id = $1 RETURNING *`,
+        [id]
+    );
+    return result.rows[0] || null;
+};

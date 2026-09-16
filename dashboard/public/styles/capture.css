@@ -23,6 +23,12 @@
     font-size: 1rem;
 }
 
+#capture-history-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+    pointer-events: none;
+}
+
 #capture-log {
     flex: 1;
     overflow-y: auto;

@@ -79,6 +79,11 @@ async function submitTypedPhrase() {
     const text = captureTextInput.value.trim();
     if (!text) return;
 
+    if (typeof isDictionaryMode !== 'undefined' && isDictionaryMode) {
+        await submitDictionaryLookup(text);
+        return;
+    }
+
     const sendBtn = document.getElementById('capture-send-btn');
     captureTextInput.value = '';
     captureTextInput.style.height = 'auto';

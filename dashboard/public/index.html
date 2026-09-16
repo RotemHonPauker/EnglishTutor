@@ -24,6 +24,7 @@
     <link rel="stylesheet" href="styles/analytics.css">
     <link rel="stylesheet" href="styles/tabs.css">
     <link rel="stylesheet" href="styles/capture.css">
+    <link rel="stylesheet" href="styles/dictionary.css">
 </head>
 <body>
 
@@ -58,7 +59,7 @@
             <div id="table-section">
                 <div id="table-toolbar">
                     <span id="phrase-count"></span>
-                    <button onclick="openTagFilterModal()">Tags</button>
+                    <button id="practice-tags-btn" onclick="openTagFilterModal()">Tags</button>
                     <button id="learned-filter-btn" onclick="toggleLearnedFilter()">All</button>
                 </div>
                 <div id="active-tag-filters" class="active-filters-row" style="display:none"></div>
@@ -282,7 +283,7 @@
         <div id="delete-modal-text"></div>
         <div class="modal-footer">
             <button onclick="closeDeleteModal()">Cancel</button>
-            <button class="primary danger" onclick="confirmDeletePhrase()">Delete</button>
+            <button class="primary danger" onclick="confirmDelete()">Delete</button>
         </div>
     </div>
 </div>
@@ -304,6 +305,7 @@
 <script src="loadingOverlay.js"></script>
 <script src="spacesState.js"></script>
 <script src="spaceRules.js"></script>
+<script src="dictionary.js"></script>
 <script src="colorUtils.js"></script>
 <script src="tags.js"></script>
 <script src="phrasesTable.js"></script>

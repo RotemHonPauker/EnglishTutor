@@ -100,7 +100,7 @@ function generateDateBuckets() {
     earliestBucketId = rawBuckets[0].id;
     let olderCount = 0;
 
-    (typeof allPhrases !== 'undefined' ? allPhrases : []).forEach(p => {
+    (typeof getPracticeItems === 'function' ? getPracticeItems() : (typeof allPhrases !== 'undefined' ? allPhrases : [])).forEach(p => {
         const id = bucketIdFor(new Date(p.created_at), dateGranularity);
         if (id < earliestBucketId) {
             olderCount++;

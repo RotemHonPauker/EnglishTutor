@@ -106,6 +106,10 @@ function resetLearnedFilter() {
 }
 
 async function loadTable() {
+    if (typeof isDictionaryMode !== 'undefined' && isDictionaryMode) {
+        if (typeof loadDictionaryEntries === 'function') await loadDictionaryEntries();
+        return;
+    }
     const res = await fetch(`/phrases?spaceId=${activeSpaceId}`);
     allPhrases = await res.json();
     if (typeof generateDateBuckets === 'function') generateDateBuckets();
@@ -120,6 +124,11 @@ const DAY_MS = 24 * 60 * 60 * 1000; // also used by practiceDateScroll.js
 
 function renderTable() {
     stopCurrentAudio();
+
+    if (typeof isDictionaryMode !== 'undefined' && isDictionaryMode) {
+        if (typeof renderDictionaryCards === 'function') renderDictionaryCards();
+        return;
+    }
 
     const sorted = allPhrases
         .filter(phraseMatchesTagFilter)
@@ -241,11 +250,13 @@ async function playPhraseAudio(phraseId, variant, btnEl) {
 }
 
 let pendingDeleteId = null;
+let pendingDeleteType = 'phrase'; // 'phrase' | 'dictionary' — set by whichever delete* function opened the modal
 
 function deletePhraseRow(id) {
     const phrase = allPhrases.find(p => p.id === id);
     const preview = phrase ? (phrase.hebrew_text || '').slice(0, 60) : '';
     pendingDeleteId = id;
+    pendingDeleteType = 'phrase';
     document.getElementById('delete-modal-text').innerHTML =
         `Delete this phrase? This can't be undone.${preview ? `<span class="preview">"${preview}"</span>` : ''}`;
     document.getElementById('delete-modal-overlay').style.display = 'flex';
@@ -256,17 +267,21 @@ function closeDeleteModal() {
     document.getElementById('delete-modal-overlay').style.display = 'none';
 }
 
-async function confirmDeletePhrase() {
+// Handles both phrase and dictionary-entry deletion — see deleteDictionaryRow
+// (dictionary.js), which opens the same modal with pendingDeleteType set.
+async function confirmDelete() {
     if (!pendingDeleteId) return;
     const id = pendingDeleteId;
+    const type = pendingDeleteType;
+    const url = type === 'dictionary' ? `/dictionary/${id}` : `/phrases/${id}`;
     try {
-        const res = await fetch(`/phrases/${id}`, { method: 'DELETE' });
-        if (!res.ok) throw new Error('Failed to delete phrase');
+        const res = await fetch(url, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Failed to delete');
         closeDeleteModal();
         await loadTable();
     } catch (err) {
         closeDeleteModal();
-        alert('Failed to delete phrase');
+        alert(type === 'dictionary' ? 'Failed to delete word' : 'Failed to delete phrase');
     }
 }
 

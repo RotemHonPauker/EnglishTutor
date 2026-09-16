@@ -171,3 +171,9 @@ button.danger:hover { background: #b91c1c; }
     border-color: #2563eb;
     color: #fff;
 }
+
+.mode-toggle-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+    pointer-events: none;
+}

@@ -1,0 +1,44 @@
+/* Dictionary cards reuse .phrase-card / .phrase-card-header /
+   .phrase-card-icons / .phrase-card-main / .learned-btn / the .learned
+   state (table.css) as-is — only the dictionary-specific inner pieces
+   need their own rules here. */
+
+.dictionary-pos {
+    font-size: 0.75rem;
+    color: #888;
+    font-style: italic;
+    margin-left: auto;
+}
+
+.dictionary-word {
+    font-size: 1.0625rem;
+    font-weight: 700;
+    color: #e8e8e8;
+    line-height: 1.4;
+}
+
+.dictionary-synonyms {
+    font-size: 0.875rem;
+    color: #999;
+    line-height: 1.4;
+}
+
+.dictionary-example {
+    font-size: 0.875rem;
+    color: #999;
+    line-height: 1.4;
+    font-style: italic;
+}
+
+/* ===== Lookup flow, rendered into #capture-log (capture.css) ===== */
+
+.dictionary-options-prompt {
+    font-size: 0.8125rem;
+    color: #aaa;
+    margin-bottom: 8px;
+}
+
+.dictionary-option-context {
+    opacity: 0.75;
+    font-size: 0.85em;
+}

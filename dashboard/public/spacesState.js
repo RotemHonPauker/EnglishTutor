@@ -30,6 +30,13 @@ function getActiveSpace() {
 }
 
 function renderSpaceHeader() {
+    if (typeof isDictionaryMode !== 'undefined' && isDictionaryMode) {
+        const nameEl = document.getElementById('space-header-name');
+        if (nameEl) nameEl.textContent = '📖 Dictionary';
+        const dot = document.getElementById('space-health-dot');
+        if (dot) dot.style.display = 'none';
+        return;
+    }
     const label = document.getElementById('space-header-name');
     if (!label) return;
     const active = getActiveSpace();
@@ -69,6 +76,8 @@ function renderSpaceHealthIndicator() {
 // list and the phrase table — same as a fresh page load would, just
 // without actually reloading the page.
 async function setActiveSpace(id) {
+    if (typeof exitDictionaryModeIfNeeded === 'function') exitDictionaryModeIfNeeded();
+    if (typeof applyDictionaryModeUI === 'function') applyDictionaryModeUI();
     activeSpaceId = id;
     persistActiveSpace();
     renderSpaceHeader();
@@ -100,15 +109,23 @@ function closeSpacePicker() {
 
 function renderSpacePickerList() {
     const list = document.getElementById('space-picker-list');
-    list.innerHTML = spaces.map(s => `
+    const dictionaryRow = `
         <div class="space-picker-row">
-            <div class="space-picker-item ${s.id === activeSpaceId ? 'active' : ''}" onclick="requestSpaceSwitch('${s.id}')">
+            <div class="space-picker-item ${isDictionaryMode ? 'active' : ''}" onclick="enterDictionaryMode()">
+                📖 Dictionary
+            </div>
+        </div>
+    `;
+    const spaceRows = spaces.map(s => `
+        <div class="space-picker-row">
+            <div class="space-picker-item ${!isDictionaryMode && s.id === activeSpaceId ? 'active' : ''}" onclick="requestSpaceSwitch('${s.id}')">
                 ${s.name}
             </div>
             <button class="space-picker-edit-btn" onclick="event.stopPropagation(); showRenameSpaceForm('${s.id}')" title="Rename">✎</button>
             <button class="space-picker-edit-btn" onclick="event.stopPropagation(); showMigrateSpaceForm('${s.id}')" title="Migrate into another space">⇄</button>
         </div>
     `).join('');
+    list.innerHTML = dictionaryRow + spaceRows;
 }
 
 function showRenameSpaceForm(id) {
