@@ -191,8 +191,8 @@ export const migrateSpace = async ({ sourceId, targetId, dropSourceTranscripts =
         if (!dropSourceTranscripts) {
             const { rows } = await client.query(
                 `SELECT
-                    (SELECT COUNT(*)::int FROM transcripts WHERE space_id = $1) AS source_count,
-                    (SELECT COUNT(*)::int FROM transcripts WHERE space_id = $2) AS target_count`,
+                    (SELECT COUNT(*)::int FROM transcripts WHERE space_id = $1::uuid) AS source_count,
+                    (SELECT COUNT(*)::int FROM transcripts WHERE space_id = $2::uuid) AS target_count`,
                 [sourceId, targetId]
             );
             const { source_count, target_count } = rows[0];
@@ -216,7 +216,7 @@ export const migrateSpace = async ({ sourceId, targetId, dropSourceTranscripts =
         // Move tags, resolving name/color collisions against the target's
         // existing tags as we go.
         const { rows: sourceTags } = await client.query(`SELECT * FROM tags WHERE space_id = $1`, [sourceId]);
-        const { rows: targetTags } = await client.query(`SELECT * FROM tags WHERE space_id = $2`, [targetId]);
+        const { rows: targetTags } = await client.query(`SELECT * FROM tags WHERE space_id = $1`, [targetId]);
         const usedNames = new Set(targetTags.map(t => t.name.toLowerCase()));
         const usedColors = new Set(targetTags.filter(t => t.color).map(t => t.color));
 
