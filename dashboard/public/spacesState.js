@@ -255,7 +255,13 @@ async function submitMigrateSpace(sourceId, targetId, dropSourceTranscripts) {
         if (!spaces.some(s => s.id === activeSpaceId)) {
             await setActiveSpace(spaces[0]?.id || null);
         } else {
+            // Otherwise we're still on the same space id — but if it was
+            // the migration's target, its tags/phrases just changed under
+            // it. Refresh both instead of leaving the stale pre-migration
+            // view up until the next manual reload.
             renderSpacePickerList();
+            await loadTags();
+            await loadTable();
         }
         return;
     }
