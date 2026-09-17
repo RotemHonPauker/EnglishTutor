@@ -72,38 +72,55 @@
 }
 
 #capture-text-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-#capture-text-input {
-    flex: 1;
     background: #1a1a1a;
     border: 1px solid #333;
     border-radius: 8px;
-    padding: 10px 14px;
-    color: #e8e8e8;
-    font-size: 0.875rem;
-    outline: none;
-    resize: none;
-    font-family: inherit;
+    display: flex;
+    flex-direction: column;
 }
 
-#capture-text-input:focus { border-color: #2563eb; }
+#capture-text-row:focus-within {
+    border-color: #2563eb;
+}
 
-#capture-record-row {
+#capture-text-footer {
     display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 6px;
+    padding: 0 14px 14px;
+}
+
+#capture-send-btn {
+    flex-shrink: 0;
+    padding: 6px 12px;
+    font-size: 1rem;
+    line-height: 1;
 }
 
 #recording-upload-btn {
-    width: 100%;
-    padding: 10px 14px;
+    flex-shrink: 0;
+    padding: 6px 10px;
+    font-size: 1rem;
+    line-height: 1;
 }
 
 #recording-upload-btn:disabled {
     opacity: 0.6;
     cursor: default;
+}
+
+#capture-text-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    padding: 10px 14px;
+    color: #e8e8e8;
+    font-size: 0.875rem;
+    outline: none;
+    resize: none;
+    text-align: start;
+    font-family: inherit;
 }
 
 #recording-limit-note {

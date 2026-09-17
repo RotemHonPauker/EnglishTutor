@@ -182,12 +182,12 @@
             <div id="capture-log"></div>
             <div id="capture-input-area">
                 <div id="capture-text-row">
-                    <textarea id="capture-text-input" rows="1" placeholder="Type a Hebrew phrase..."></textarea>
-                    <button class="primary" id="capture-send-btn" onclick="submitTypedPhrase()">Send</button>
-                </div>
-                <div id="capture-record-row">
-                    <input type="file" id="recording-file-input" accept="audio/*,video/mp4,.mp4,.m4a,.aac,.wav,.mp3,.ogg" style="display:none" onchange="handleRecordingFileSelected(this)">
-                    <button id="recording-upload-btn" onclick="document.getElementById('recording-file-input').click()">🎙️ Choose recording</button>
+                    <textarea id="capture-text-input" dir="auto" rows="1" placeholder="Type a Hebrew phrase..."></textarea>
+                    <div id="capture-text-footer">
+                        <input type="file" id="recording-file-input" accept="audio/*,video/mp4,.mp4,.m4a,.aac,.wav,.mp3,.ogg" style="display:none" onchange="handleRecordingFileSelected(this)">
+                        <button id="recording-upload-btn" title="Choose recording (up to ~30 minutes)" onclick="document.getElementById('recording-file-input').click()">🎙️</button>
+                        <button class="primary" id="capture-send-btn" title="Send" onclick="submitTypedPhrase()">➤</button>
+                    </div>
                 </div>
                 <div id="recording-limit-note">Recordings are limited to about 30 minutes.</div>
             </div>

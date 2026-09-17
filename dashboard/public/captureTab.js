@@ -106,7 +106,7 @@ async function submitTypedPhrase() {
     } finally {
         captureTextInput.disabled = false;
         sendBtn.disabled = false;
-        sendBtn.textContent = 'Send';
+        sendBtn.textContent = '➤';
         captureTextInput.focus();
     }
 }
