@@ -21,12 +21,13 @@ function closeTagFilterModal() {
 }
 
 function renderTagFilterModal() {
+    const noTagChip = `<div class="tag-chip none ${filterTagIds.has(null) ? 'selected' : ''}" onclick="toggleFilterTag(null)">No tag</div>`;
     const chips = tags.map(t => {
         const contrast = getContrastColor(t.color);
         const selected = filterTagIds.has(t.id);
         return `<div class="tag-chip ${selected ? 'selected' : ''}" style="background:${t.color || '#333'}; color:${contrast}" onclick="toggleFilterTag('${t.id}')">${t.name}</div>`;
     }).join('');
-    document.getElementById('tag-filter-groups').innerHTML = `<div class="tag-picker-chip-list">${chips}</div>`;
+    document.getElementById('tag-filter-groups').innerHTML = `<div class="tag-picker-chip-list">${noTagChip}${chips}</div>`;
 }
 
 function toggleFilterTag(id) {
@@ -70,6 +71,9 @@ function removeTagFilter(id) {
 function renderActiveFilterChips() {
     const row = document.getElementById('active-tag-filters');
     row.innerHTML = [...filterTagIds].map(id => {
+        if (id === null) {
+            return `<span class="active-filter-chip" style="background:#333; color:#ccc">No tag<button onclick="removeTagFilter(null)">✕</button></span>`;
+        }
         const tag = tags.find(t => t.id === id);
         if (!tag) return '';
         const contrast = getContrastColor(tag.color);
@@ -96,6 +100,8 @@ function toggleLearnedFilter() {
         btn.textContent = learnedFilter === 'all' ? 'All' : learnedFilter === 'unlearned' ? 'Not learned' : '👑 Learned';
         btn.classList.toggle('active', learnedFilter !== 'all');
     }
+    if (typeof generateDateBuckets === 'function') generateDateBuckets();
+    if (typeof renderDateScroll === 'function') renderDateScroll();
     renderTable();
 }
 

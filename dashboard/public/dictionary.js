@@ -23,9 +23,20 @@ function enterDictionaryMode() {
     localStorage.setItem('isDictionaryMode', 'true');
     closeSpacePicker();
     applyDictionaryModeUI();
+
+    // Analytics and Setup just became disabled — if either was the active
+    // view, there's nothing there to show anymore. Land on Practice,
+    // rather than leaving the person stranded on a tab they can no longer
+    // reach via the tab bar.
+    const activeView = document.querySelector('.view.active')?.id;
+    if (activeView === 'view-analytics' || activeView === 'view-tags') {
+        navigateToTab('practice');
+    }
+
     if (typeof resetCaptureLog === 'function') resetCaptureLog();
     if (typeof resetDateScroll === 'function') resetDateScroll();
     if (typeof resetLearnedFilter === 'function') resetLearnedFilter();
+    if (typeof resetTagFilter === 'function') resetTagFilter();
     loadTable();
 }
 

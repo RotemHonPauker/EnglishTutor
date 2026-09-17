@@ -18,6 +18,10 @@ async function loadTags() {
     if (typeof renderTable === 'function') renderTable();
     renderSidebar();
     if (typeof renderAnalyticsChart === 'function') renderAnalyticsChart();
+    // The active-filter chips above Practice's toolbar show a tag's name/
+    // color at the time the filter was applied — stale if that tag gets
+    // renamed/recolored elsewhere before you come back.
+    if (typeof renderActiveFilterChips === 'function') renderActiveFilterChips();
 }
 
 function renderSidebar() {
