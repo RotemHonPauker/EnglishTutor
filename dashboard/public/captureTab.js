@@ -64,13 +64,17 @@ function applyCaptureViewMode() {
 // Shared by enterCaptureTab and space switching (spacesState.js calls this
 // directly, since enterCaptureTab won't fire if the user is already
 // sitting on this tab when they switch spaces from the header). Always
-// lands back on the normal capture log, not the transcripts view.
+// lands back on the normal capture log, not the transcripts view — and
+// cancels any in-progress phrase edit, since re-entering the tab fresh
+// means starting over.
 function resetCaptureLog() {
     captureViewMode = 'log';
     applyCaptureViewMode();
     captureLog.innerHTML = '';
     const captureBtn = document.querySelector('#capture-mode-toggle .mode-toggle-btn[data-mode="capture"]');
     if (captureBtn) setCaptureMode('capture', captureBtn);
+    editingPhraseId = null;
+    hideEditingBanner();
 }
 
 // ===== Typed input =====
@@ -81,6 +85,11 @@ async function submitTypedPhrase() {
 
     if (typeof isDictionaryMode !== 'undefined' && isDictionaryMode) {
         await submitDictionaryLookup(text);
+        return;
+    }
+
+    if (editingPhraseId) {
+        await submitPhraseEdit(text);
         return;
     }
 
@@ -241,5 +250,90 @@ async function deleteTranscriptRow(id) {
         await loadTranscripts();
     } catch (err) {
         alert('Failed to delete transcript');
+    }
+}
+
+// ===== Editing an existing phrase (✎ on a Practice card) =====
+// Reuses the same Add-tab input as a fresh capture — the difference is
+// just that Send re-translates and overwrites this one phrase in place
+// (same row, same created_at) instead of creating a new card. Tagging is
+// left untouched either way, same as a plain create.
+
+let editingPhraseId = null;
+
+// Called from phrasesTable.js's editPhraseRow. Reaching Practice at all
+// already means no Setup field is left open with an unsaved edit (that
+// would have blocked leaving Setup in the first place), so this jumps
+// straight to Add without going through the tab-switch guard again.
+function startEditingPhrase(phrase) {
+    navigateToTab('add'); // enterCaptureTab -> resetCaptureLog() clears editingPhraseId first
+    editingPhraseId = phrase.id;
+
+    // No column remembers which mode created older phrases — default those
+    // to 'capture'. Phrases saved from now on carry their real mode.
+    const editMode = phrase.mode === 'check' ? 'check' : 'capture';
+    const modeBtn = document.querySelector(`#capture-mode-toggle .mode-toggle-btn[data-mode="${editMode}"]`);
+    if (modeBtn) setCaptureMode(editMode, modeBtn);
+
+    captureTextInput.value = phrase.hebrew_text || '';
+    captureTextInput.style.height = 'auto';
+    captureTextInput.style.height = captureTextInput.scrollHeight + 'px';
+    captureTextInput.focus();
+
+    showEditingBanner(phrase);
+}
+
+function showEditingBanner(phrase) {
+    const banner = document.getElementById('capture-editing-banner');
+    if (!banner) return;
+    const text = (phrase.hebrew_text || '').slice(0, 40);
+    const preview = phrase.hebrew_text && phrase.hebrew_text.length > 40 ? `${text}…` : text;
+    const label = banner.querySelector('.capture-editing-text');
+    if (label) label.textContent = preview ? `Editing: "${preview}"` : 'Editing phrase';
+    banner.style.display = 'flex';
+}
+
+function hideEditingBanner() {
+    const banner = document.getElementById('capture-editing-banner');
+    if (banner) banner.style.display = 'none';
+}
+
+// Exits edit mode without saving — clears the input too, so nothing
+// half-edited lingers as if it were about to be sent as a new phrase.
+function cancelEditingPhrase() {
+    editingPhraseId = null;
+    hideEditingBanner();
+    captureTextInput.value = '';
+    captureTextInput.style.height = 'auto';
+}
+
+async function submitPhraseEdit(text) {
+    const id = editingPhraseId;
+    const sendBtn = document.getElementById('capture-send-btn');
+    captureTextInput.value = '';
+    captureTextInput.style.height = 'auto';
+    captureTextInput.disabled = true;
+    sendBtn.disabled = true;
+    sendBtn.textContent = '...';
+
+    try {
+        const res = await fetch(`/phrases/${id}/retranslate`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ hebrewText: text, spaceId: activeSpaceId, mode: captureMode })
+        });
+        if (!res.ok) throw new Error('Failed to update phrase');
+        const phrase = await res.json();
+        addCaptureResult(phrase);
+        editingPhraseId = null;
+        hideEditingBanner();
+        loadTable(); // so the updated wording is already there in Practice
+    } catch (err) {
+        addCaptureMessage("Couldn't update that phrase — try again.");
+    } finally {
+        captureTextInput.disabled = false;
+        sendBtn.disabled = false;
+        sendBtn.textContent = '➤';
+        captureTextInput.focus();
     }
 }

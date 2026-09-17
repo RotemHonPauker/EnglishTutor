@@ -167,6 +167,7 @@ function renderTable() {
             <div class="phrase-card-header">
                 <div class="phrase-card-icons">
                     <button class="learned-btn ${isLearned ? 'active' : ''}" title="${isLearned ? 'Learned — tap to unmark' : 'Mark as learned'}" onclick="toggleLearned('${p.id}')">👑</button>
+                    <button title="Edit phrase" onclick="editPhraseRow('${p.id}')">✎</button>
                     <button title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑</button>
                 </div>
                 <button class="tag-badge" style="${badgeStyle}" onclick="openTagPicker('${p.id}')">${badgeLabel}</button>
@@ -261,6 +262,13 @@ async function playPhraseAudio(phraseId, variant, btnEl) {
 
 let pendingDeleteId = null;
 let pendingDeleteType = 'phrase'; // 'phrase' | 'dictionary' — set by whichever delete* function opened the modal
+
+// Hands off to captureTab.js — editing happens in the Add tab, not here.
+function editPhraseRow(id) {
+    const phrase = allPhrases.find(p => p.id === id);
+    if (!phrase) return;
+    if (typeof startEditingPhrase === 'function') startEditingPhrase(phrase);
+}
 
 function deletePhraseRow(id) {
     const phrase = allPhrases.find(p => p.id === id);

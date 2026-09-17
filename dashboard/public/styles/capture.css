@@ -66,6 +66,31 @@
     transition: opacity 0.15s;
 }
 
+#capture-editing-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: rgba(37, 99, 235, 0.12);
+    border: 1px solid rgba(37, 99, 235, 0.3);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.8125rem;
+    color: #93c5fd;
+}
+
+#capture-editing-banner .capture-editing-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#capture-editing-banner button {
+    flex-shrink: 0;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+}
+
 #capture-input-area.disabled {
     opacity: 0.35;
     pointer-events: none;
@@ -128,6 +153,7 @@
     color: #666;
     text-align: center;
 }
+
 
 /* ===== Transcripts (the "logs" view toggled into #capture-log) ===== */
 /* Renders inside #capture-log above, which already provides the flex/gap

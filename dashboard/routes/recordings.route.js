@@ -42,7 +42,8 @@ router.post('/recordings', recordingLimiter, async (req, res) => {
                 variant1: p.variant1,
                 variant2: p.variant2,
                 spaceId,
-                tagId: p.tagId
+                tagId: p.tagId,
+                mode
             });
             savedPhrases.push(saved);
         }

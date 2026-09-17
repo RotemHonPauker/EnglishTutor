@@ -1,6 +1,6 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
-import { getPhrases, getPhraseById, saveSentence, updatePhraseTag, updatePhraseLearned, updatePhraseTtsUrl, deletePhrase } from '../../database.js';
+import { getPhrases, getPhraseById, saveSentence, updatePhrase, updatePhraseTag, updatePhraseLearned, updatePhraseTtsUrl, deletePhrase } from '../../database.js';
 import { translatePhrase } from '../translation/translationEngine.js';
 import { generateSpeech, deleteSpeechFile } from '../tts/ttsEngine.js';
 import { RATE_LIMIT_WINDOW_MS, TRANSLATE_RATE_LIMIT_MAX } from '../limitsConfig.js';
@@ -50,7 +50,8 @@ router.post('/phrases', translateLimiter, async (req, res) => {
             variant1: result.variant1,
             variant2: result.variant2,
             spaceId,
-            tagId: result.tagId
+            tagId: result.tagId,
+            mode
         });
         res.json(phrase);
     } catch (err) {
@@ -80,6 +81,46 @@ router.patch('/phrases/:id/learned', async (req, res) => {
     } catch (err) {
         console.error('Error updating learned status:', err);
         res.status(500).json({ error: 'Failed to update learned status' });
+    }
+});
+
+// Edit flow (Add tab's ✎ on a phrase card): re-translates the given text
+// through the same engine as a fresh capture, then overwrites this
+// phrase's wording in place — same row, same id, same created_at, only the
+// tag is left untouched (tagging stays entirely table-driven, same as a
+// plain create). The old cached TTS files no longer match the new
+// wording, so they're deleted here and cleared in the same update.
+router.patch('/phrases/:id/retranslate', translateLimiter, async (req, res) => {
+    const { id } = req.params;
+    const { hebrewText, spaceId, mode } = req.body;
+    if (!hebrewText || !hebrewText.trim()) {
+        return res.status(400).json({ error: 'Hebrew text is required' });
+    }
+    if (!spaceId) {
+        return res.status(400).json({ error: 'spaceId is required' });
+    }
+    try {
+        const existing = await getPhraseById(id);
+        if (!existing) {
+            return res.status(404).json({ error: 'Phrase not found' });
+        }
+
+        const result = await translatePhrase(hebrewText.trim(), spaceId, mode);
+        const phrase = await updatePhrase({
+            id,
+            hebrewText: result.correctedHebrew,
+            variant1: result.variant1,
+            variant2: result.variant2,
+            mode
+        });
+
+        await deleteSpeechFile(existing.tts_url_variant1);
+        await deleteSpeechFile(existing.tts_url_variant2);
+
+        res.json(phrase);
+    } catch (err) {
+        console.error('Error retranslating phrase:', err);
+        res.status(500).json({ error: 'Failed to update phrase' });
     }
 });
 

@@ -12,11 +12,11 @@ export const connectDB = async () => {
     console.log('Connected to Postgres');
 };
 
-export const saveSentence = async ({ hebrewText, variant1, variant2, spaceId, tagId }) => {
+export const saveSentence = async ({ hebrewText, variant1, variant2, spaceId, tagId, mode }) => {
     const result = await pool.query(
-        `INSERT INTO phrases (hebrew_text, variant_1, variant_2, space_id, tag_id)
-         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-        [hebrewText, variant1, variant2, spaceId, tagId || null]
+        `INSERT INTO phrases (hebrew_text, variant_1, variant_2, space_id, tag_id, mode)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [hebrewText, variant1, variant2, spaceId, tagId || null, mode || 'capture']
     );
     return result.rows[0];
 };
@@ -31,12 +31,18 @@ export const getPhraseById = async (id) => {
 
 // Editor-driven save: sets the final Hebrew text and variant wording.
 // Tagging stays entirely table-driven and untouched here, same as before.
-export const updatePhrase = async ({ id, hebrewText, variant1, variant2 }) => {
+// Editor-driven save: sets the final Hebrew text and variant wording (and
+// re-records which mode produced them). Tagging stays entirely
+// table-driven and untouched here, same as before. The old cached TTS URLs
+// are cleared — they were generated for wording that no longer exists;
+// the route layer deletes the actual files using the values it fetched
+// before calling this.
+export const updatePhrase = async ({ id, hebrewText, variant1, variant2, mode }) => {
     const result = await pool.query(
         `UPDATE phrases 
-         SET hebrew_text = $1, variant_1 = $2, variant_2 = $3
-         WHERE id = $4 RETURNING *`,
-        [hebrewText, variant1, variant2, id]
+         SET hebrew_text = $1, variant_1 = $2, variant_2 = $3, mode = $4, tts_url_variant1 = NULL, tts_url_variant2 = NULL
+         WHERE id = $5 RETURNING *`,
+        [hebrewText, variant1, variant2, mode || 'capture', id]
     );
     return result.rows[0];
 };
