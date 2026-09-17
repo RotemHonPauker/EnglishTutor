@@ -73,6 +73,18 @@ function bucketLabelFor(id, granularity) {
     return `${startLabel}\u2013${endLabel}`;
 }
 
+// Whether an item matches whatever filters are currently active — tag +
+// learned in phrase mode, learned only in dictionary mode (there are no
+// tags there). Used only for the *number* shown on each date pill; a
+// bucket's existence is still based on the unfiltered count below, so the
+// strip's shape stays stable as filters change.
+function matchesActiveFilters(item) {
+    if (typeof phraseMatchesLearnedFilter === 'function' && !phraseMatchesLearnedFilter(item)) return false;
+    if (typeof isDictionaryMode !== 'undefined' && !isDictionaryMode
+        && typeof phraseMatchesTagFilter === 'function' && !phraseMatchesTagFilter(item)) return false;
+    return true;
+}
+
 // Builds the last MAX_DATE_BUCKETS buckets up to and including today's, with
 // phrase counts from allPhrases, plus a single "Older" bucket for anything
 // before that range. Empty columns (no phrases at all) are dropped — an
@@ -93,26 +105,32 @@ function generateDateBuckets() {
         }
         const id = bucketIdFor(d, dateGranularity);
         if (!rawBuckets.find(b => b.id === id)) {
-            rawBuckets.push({ id, label: bucketLabelFor(id, dateGranularity), count: 0 });
+            rawBuckets.push({ id, label: bucketLabelFor(id, dateGranularity), count: 0, filteredCount: 0 });
         }
     }
 
     earliestBucketId = rawBuckets[0].id;
     let olderCount = 0;
+    let olderFilteredCount = 0;
 
     (typeof getPracticeItems === 'function' ? getPracticeItems() : (typeof allPhrases !== 'undefined' ? allPhrases : [])).forEach(p => {
         const id = bucketIdFor(new Date(p.created_at), dateGranularity);
+        const matches = matchesActiveFilters(p);
         if (id < earliestBucketId) {
             olderCount++;
+            if (matches) olderFilteredCount++;
             return;
         }
         const bucket = rawBuckets.find(b => b.id === id);
-        if (bucket) bucket.count++;
+        if (bucket) {
+            bucket.count++;
+            if (matches) bucket.filteredCount++;
+        }
     });
 
     const nonEmptyBuckets = rawBuckets.filter(b => b.count > 0);
     dateBuckets = olderCount > 0
-        ? [{ id: 'older', label: 'Older', count: olderCount }, ...nonEmptyBuckets]
+        ? [{ id: 'older', label: 'Older', count: olderCount, filteredCount: olderFilteredCount }, ...nonEmptyBuckets]
         : nonEmptyBuckets;
 
     // Keep the current selection if it still exists (e.g. after loadTable
@@ -135,7 +153,7 @@ function renderDateScroll() {
     track.innerHTML = dateBuckets.map(b => `
         <button class="date-bucket-pill ${b.id === selectedBucketId ? 'selected' : ''}" onclick="selectDateBucket('${b.id}')">
             <span class="date-bucket-label">${b.label}</span>
-            <span class="date-bucket-count">${b.count}</span>
+            <span class="date-bucket-count">${b.filteredCount}</span>
         </button>
     `).join('');
 

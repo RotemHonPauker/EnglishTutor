@@ -54,12 +54,16 @@ function resetTagFilter() {
 function applyTagFilter() {
     closeTagFilterModal();
     renderActiveFilterChips();
+    if (typeof generateDateBuckets === 'function') generateDateBuckets();
+    if (typeof renderDateScroll === 'function') renderDateScroll();
     renderTable();
 }
 
 function removeTagFilter(id) {
     filterTagIds.delete(id);
     renderActiveFilterChips();
+    if (typeof generateDateBuckets === 'function') generateDateBuckets();
+    if (typeof renderDateScroll === 'function') renderDateScroll();
     renderTable();
 }
 
