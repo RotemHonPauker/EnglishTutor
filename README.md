@@ -22,33 +22,34 @@ This app is deliberately not built for use in the moment itself — not while yo
 
 ## How it works
 
-1. **Spaces** — the app always shows exactly one active space, named in the header at the top of every tab, with a small colored dot next to it: a purely visual, never-enforced nudge for how active that space has been in the last 7 days (green = 3+ phrases, yellow = 1–2, gray = none). Tap the name to switch to another space, create a new one, or migrate one space into another — moves its phrases, tags, and transcripts into the target. Each space is fully self contained: its own phrases, its own flat set of tags, and its own translation guidance — nothing is shared across spaces unless you migrate it over
-2. **Add tab** — capture a phrase by typing or recording, sharing one mode toggle at the top: **Hebrew phrase** (the default — typos corrected, translated into two English variants) or **Check my English** (input is already English, or mixed English/Hebrew — corrected for grammar and phrasing instead of translated). Type and hit Send, or pick an audio recording from your phone (up to ~30 minutes) — one AI call transcribes it, cleans it, identifies individual phrases, and translates or corrects each one depending on the mode, so several phrase cards can appear from a single recording. Either way it's saved right away into the same shared log — the same AI call also tries to match it to one of the space's existing tags, only when confident (otherwise it's left untagged, same as before, and you can always tag or retag it yourself from Practice). No confirmation step, by design. A small 📄 button swaps that same window over to a list of past recording transcripts (tap one to expand/collapse, delete once you've confirmed the extraction looks right; a nudge appears once more than 3 are saved) — tap it again (now ✏️) to go back to capturing. No separate Logs screen anymore
-3. **Practice tab** — your full phrase list as cards. A horizontal date strip up top (Daily / Weekly / Monthly) jumps to a specific day, week, or month — periods with nothing in them aren't shown, and an "Older" bucket covers anything further back; picking one filters the cards below, combined with the tag filter and a learned/not-learned filter. Newest first within whatever's shown. Tap the 👑 crown on a card to toggle it as learned — it stays in the list, just dimmed with a gold accent, nothing disappears. Tap the 🔊 next to either English variant to hear it spoken aloud — generated once on first play and cached from then on, so repeat listens never call the API again
-4. **Analytics tab** — a horizontal stacked-bar chart, one row per day/week/month (same Daily / Weekly / Monthly toggle as Practice), scrolling vertically with the most recent period at the top. A second toggle switches what each bar breaks down by: **By tag** (color-coded per tag, plus a "no tag" segment) or **Learned** (how much of what was created in that period is now marked learned vs. not)
-5. **Setup tab** — a flat set of tags per space (chip cloud, each with a color and phrase count; tap one to edit, merge into another tag, or delete), plus a **Space Setup** accordion above it that shapes how this space's phrases get processed: four fields — *About this space*, *Variant 1*, *Variant 2*, *Audio Recording* — each opening one at a time with its own Save/Cancel and a "Copy from..." option to pull that field's content from another space. Switching tabs or spaces with an unsaved field left open is blocked with a prompt to discard the change or go back and review it — Save is deliberately never offered directly from that prompt
+1. **Spaces** — the app always shows exactly one active space, named in the header at the top of every tab, with a small colored dot next to it: a purely visual, never-enforced nudge for how active that space has been in the last 7 days (green = 3+ phrases, yellow = 1–2, gray = none). Tap the name to switch to another space, create a new one, migrate one space into another — moves its phrases, tags, and transcripts into the target — or enter Dictionary mode
+2. **Dictionary mode** — reached from the same space picker , a parallel context for looking up individual words instead of capturing full phrases — not tied to any space. While active, Analytics and Setup are disabled (neither applies), and in the Add tab the mode toggle and recording controls are disabled too, leaving only the typed-word input. Type a word and hit Send: Hebrew input returns a list of possible English translations to choose from (tap one to resolve it); English input resolves directly. Either way, once resolved it's saved immediately — word, part of speech, Hebrew/English synonyms, an example sentence — and shown in Practice under the same date strip, learned toggle, and sorting as phrase cards, just with no tags and no 🔊. Picking a space from the picker leaves dictionary mode and returns to normal
+3. **Add tab** — capture a phrase by typing or recording, sharing one mode toggle at the top: **Hebrew phrase** (the default — typos corrected, translated into two English variants) or **Check my English** (input is already English, or mixed English/Hebrew — corrected for grammar and phrasing instead of translated). Type and hit Send, or pick an audio recording from your phone (up to ~30 minutes) — one AI call transcribes it, cleans it, identifies individual phrases, and translates or corrects each one depending on the mode, so several phrase cards can appear from a single recording. Either way it's saved right away into the same shared log — the same AI call also tries to match it to one of the space's existing tags, only when confident (otherwise it's left untagged, same as before, and you can always tag or retag it yourself from Practice). No confirmation step, by design. A small 📄 button swaps that same window over to a list of past recording transcripts (tap one to expand/collapse, delete once you've confirmed the extraction looks right; a nudge appears once more than 3 are saved) — tap it again (now ✏️) to go back to capturing. No separate Logs screen anymore
+4. **Practice tab** — your full phrase list as cards. A horizontal date strip up top (Daily / Weekly / Monthly) jumps to a specific day, week, or month — periods with nothing in them aren't shown, and an "Older" bucket covers anything further back; picking one filters the cards below, combined with the tag filter and a learned/not-learned filter. Newest first within whatever's shown. Tap the 👑 crown on a card to toggle it as learned — it stays in the list, just dimmed with a gold accent, nothing disappears. Tap the 🔊 next to either English variant to hear it spoken aloud — generated once on first play and cached from then on, so repeat listens never call the API again
+5. **Analytics tab** — a horizontal stacked-bar chart, one row per day/week/month (same Daily / Weekly / Monthly toggle as Practice), scrolling vertically with the most recent period at the top. A second toggle switches what each bar breaks down by: **By tag** (color-coded per tag, plus a "no tag" segment) or **Learned** (how much of what was created in that period is now marked learned vs. not)
+6. **Setup tab** — a flat set of tags per space (chip cloud, each with a color and phrase count; tap one to edit, merge into another tag, or delete), plus a **Space Setup** accordion above it that shapes how this space's phrases get processed: four fields — _About this space_, _Variant 1_, _Variant 2_, _Audio Recording_ — each opening one at a time with its own Save/Cancel and a "Copy from..." option to pull that field's content from another space. Switching tabs or spaces with an unsaved field left open is blocked with a prompt to discard the change or go back and review it — Save is deliberately never offered directly from that prompt
 
 ---
 
 ## Stack
 
-| Piece                          | Technology                                                  |
-| ------------------------------ | ------------------------------------------------------------ |
-| Translation & audio processing | Google Gemini (`gemini-3.6-flash`)                          |
-| Text-to-speech                 | Google Gemini TTS (`gemini-3.1-flash-tts-preview`)          |
-| Database                       | Postgres via Supabase (pgvector enabled)                    |
-| Server                         | DigitalOcean VPS                                             |
-| Process manager                | PM2 (keeps the app alive, restarts on reboot)                |
-| Reverse proxy                  | Nginx                                                        |
-| HTTPS                          | Let's Encrypt via Certbot                                    |
-| Domain                         | DuckDNS (free dynamic DNS)                                   |
-| App install                    | PWA (manifest + service worker)                              |
+| Piece                          | Technology                                         |
+| ------------------------------ | -------------------------------------------------- |
+| Translation & audio processing | Google Gemini (`gemini-3.6-flash`)                 |
+| Text-to-speech                 | Google Gemini TTS (`gemini-3.1-flash-tts-preview`) |
+| Database                       | Postgres via Supabase (pgvector enabled)           |
+| Server                         | DigitalOcean VPS                                   |
+| Process manager                | PM2 (keeps the app alive, restarts on reboot)      |
+| Reverse proxy                  | Nginx                                              |
+| HTTPS                          | Let's Encrypt via Certbot                          |
+| Domain                         | DuckDNS (free dynamic DNS)                         |
+| App install                    | PWA (manifest + service worker)                    |
 
 ---
 
 ## Database
 
-Postgres via Supabase. Four tables:
+Postgres via Supabase. Five tables:
 
 - **`spaces`**
   - `id` (PK)
@@ -85,6 +86,16 @@ Postgres via Supabase. Four tables:
   - `content`
   - `created_at`
 
+- **`dictionary`** — a standalone vocabulary list, entirely independent of spaces (no `space_id`, no `tag_id`) — reached via Dictionary mode, not a specific space
+  - `id` (PK)
+  - `hebrew_query` — the original Hebrew word searched, if that's how this entry was found (`NULL` if looked up directly in English)
+  - `word` — the resolved English word
+  - `part_of_speech`
+  - `hebrew_synonyms` / `english_synonyms` — comma-separated text
+  - `example_sentence`
+  - `learned_at` — same toggle mechanic as `phrases.learned_at`
+  - `created_at`
+
 ---
 
 ## Prompts: base files + per-space rules
@@ -94,8 +105,9 @@ Both translation (typed phrases) and audio processing (recordings) share the sam
 - **`dashboard/translation/translationPrompt.txt`** — the base prompt for typed phrases. Language-agnostic (input may be Hebrew, English, or a mix), correct/translate, output JSON. Plain file, not editable through the app.
 - **`dashboard/audio/audioPrompt.txt`** — the base prompt for recordings (transcribe, identify/chunk phrases per the space's own rules, correct/translate, output JSON). Also a plain file, also language-agnostic.
 - **`dashboard/translation/variantGuidance.txt`** — the instructions for how each of the two English variants should sound. Shared by both prompts above (referenced via a `${variantGuidance}` placeholder each substitutes at request time) so the translation style never drifts between the typed-phrase and audio pipelines.
-- **The active space's own rules**, edited from the Setup tab's four fields — *About this space* fills a `${spaceRulesSection}` placeholder in both prompts (background, terminology, who's speaking); *Variant 1*/*Variant 2* notes get appended onto the shared `${variantGuidance}` content instead of replacing it; *Audio Recording* notes fill a `${audioRecordingSection}` placeholder used only in `audioPrompt.txt`'s phrase-splitting step. A space with nothing filled in yet is a normal state — the relevant section is simply omitted, or (for audio splitting specifically) falls back to a generic "use your best judgement" instruction.
+- **The active space's own rules**, edited from the Setup tab's four fields — _About this space_ fills a `${spaceRulesSection}` placeholder in both prompts (background, terminology, who's speaking); _Variant 1_/_Variant 2_ notes get appended onto the shared `${variantGuidance}` content instead of replacing it; _Audio Recording_ notes fill a `${audioRecordingSection}` placeholder used only in `audioPrompt.txt`'s phrase-splitting step. A space with nothing filled in yet is a normal state — the relevant section is simply omitted, or (for audio splitting specifically) falls back to a generic "use your best judgement" instruction.
 - **Tag suggestion** — both prompts also receive the active space's current tag names and ask for a best-fit tag per phrase (`null` if none fit confidently, or if the space has no tags yet). The model is never allowed to invent a tag: its answer is matched case-insensitively against the tags actually fetched for that space, in `translationEngine.js`/`audioEngine.js` — anything that doesn't match a real tag (including a hallucinated name) just falls back to untagged
+- **Dictionary lookups are a separate, standalone pipeline** (`dashboard/dictionary/dictionaryPrompt.txt` via `dictionaryEngine.js`) — no space rules, no tags, no `${spaceRulesSection}`/`${variantGuidance}` placeholders, just the word itself. The model auto-detects Hebrew vs. English by script alone and returns one of two JSON shapes: a disambiguation list (Hebrew input) or the full definition directly (English input, including a word just chosen from that list)
 
 ---
 
@@ -123,7 +135,7 @@ The recording path in the Add tab takes a whole audio recording and turns it int
 
 ## Rate limiting & usage caps
 
-A layer protects the Gemini API usage from runaway cost (abuse, a bug, or an abandoned browser tab): **per-route rate limits** (`express-rate-limit`) on `/phrases` (translation) and `/recordings` (audio processing) — capped requests per IP per time window.
+A layer protects the Gemini API usage from runaway cost (abuse, a bug, or an abandoned browser tab): **per-route rate limits** (`express-rate-limit`) on `/phrases` (translation), `/recordings` (audio processing), and `/dictionary/lookup` (word lookups) — capped requests per IP per time window.
 
 ---
 
@@ -133,6 +145,9 @@ EnglishTutor/
 │   ├── audio/
 │   |   ├── audioEngine.js
 │   |   └── audioPrompt.txt
+│   ├── dictionary/
+│   |   ├── dictionaryEngine.js
+│   |   └── dictionaryPrompt.txt
 │   ├── public/
 │   |   ├── audio-cache/         (gitignored — generated at runtime)
 │   |   ├── icons/
@@ -141,6 +156,7 @@ EnglishTutor/
 │   |   ├── app.js
 │   |   ├── captureTab.js
 │   |   ├── colorUtils.js
+│   |   ├── dictionary.js
 │   |   ├── index.html
 │   |   ├── loadingOverlay.js
 │   |   ├── manifest.json        (PWA — app name, icons, install behavior)
@@ -151,6 +167,7 @@ EnglishTutor/
 │   |   ├── sw.js                (PWA — service worker, required for installability)
 │   |   └── tags.js
 │   ├── routes/
+│   |   ├── dictionary.route.js
 │   |   ├── phrases.route.js
 │   |   ├── recordings.route.js
 │   |   ├── spaces.route.js
@@ -220,7 +237,7 @@ This is the exact sequence used to get from a blank VPS to the live app. Useful 
 
 - Provider: DigitalOcean → Create → Droplet
 - Image: Ubuntu 24.04 LTS
-- Plan: Basic → Regular SSD → cheapest tier ($4–6/mo, 1GB RAM is enough)
+- Plan: Basic → Regular SSD → 1GB RAM ($6/mo).
 - Authentication: SSH key (generate locally first if you don't have one — see step 2)
 - Leave Volumes, Backups, IPv6, and Managed Database unchecked
 - Note the assigned public IP address after creation
@@ -316,6 +333,8 @@ Paste:
 server {
     listen 80;
     server_name phrase-app.duckdns.org;
+
+    client_max_body_size 100M;  # default is 1MB — far too small for a base64-encoded recording
 
     location / {
         proxy_pass http://localhost:3000;
