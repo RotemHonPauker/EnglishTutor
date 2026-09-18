@@ -85,7 +85,7 @@ function renderTagEditActions() {
         <div class="tag-edit-actions">
             <button onclick="renderTagEditEdit()">✎ Edit</button>
             <button onclick="renderTagEditMerge()">⇄ Merge into...</button>
-            <button class="danger" onclick="handleTagEditDelete()">🗑 Delete</button>
+            <button class="danger" onclick="handleTagEditDelete()">🗑️ Delete</button>
         </div>
         <div id="tag-edit-modal-error" class="form-error" style="display:none"></div>
     `;

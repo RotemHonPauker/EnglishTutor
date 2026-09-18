@@ -225,7 +225,7 @@ function renderTranscripts() {
             <div class="transcript-card-header" onclick="toggleTranscript('${t.id}')">
                 <span>${label}</span>
                 <div class="transcript-card-actions">
-                    <button title="Delete" onclick="event.stopPropagation(); deleteTranscriptRow('${t.id}')">🗑</button>
+                    <button title="Delete" onclick="event.stopPropagation(); deleteTranscriptRow('${t.id}')">🗑️</button>
                 </div>
             </div>
             <div class="transcript-card-body" id="transcript-body-${t.id}" style="display:none">${t.content}</div>

@@ -226,8 +226,8 @@ function renderDictionaryCards() {
         <div class="${cardClasses}">
             <div class="phrase-card-header">
                 <div class="phrase-card-icons">
+                    <button title="Delete word" onclick="deleteDictionaryRow('${e.id}')">🗑️</button>
                     <button class="learned-btn ${isLearned ? 'active' : ''}" title="${isLearned ? 'Learned — tap to unmark' : 'Mark as learned'}" onclick="toggleDictionaryLearned('${e.id}')">👑</button>
-                    <button title="Delete word" onclick="deleteDictionaryRow('${e.id}')">🗑</button>
                 </div>
                 <span class="dictionary-pos">${e.part_of_speech || ''}</span>
             </div>

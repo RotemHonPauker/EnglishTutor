@@ -156,8 +156,15 @@ function renderTable() {
         const tagColor = tag ? tag.color : null;
         const cardTextColor = tagColor ? getContrastColor(tagColor) : null;
         const cardStyle = tagColor ? `background:${tagColor}; border-color:${tagColor}; color:${cardTextColor};` : '';
+        // Same lighter-overlay technique as the tag badge below — a
+        // semi-transparent white/black wash relative to this card's own
+        // background, so it reads as "lighter than the card" whatever that
+        // card's color is, instead of one fixed gray regardless of tag color.
+        const iconBg = tagColor
+            ? (cardTextColor === '#ffffff' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)')
+            : '';
         const badgeStyle = tagColor
-            ? `background:${cardTextColor === '#ffffff' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'}; color:${cardTextColor};`
+            ? `background:${iconBg}; color:${cardTextColor};`
             : '';
         const badgeLabel = tag ? tag.name : '—';
         const isLearned = !!p.learned_at;
@@ -166,9 +173,9 @@ function renderTable() {
         <div class="${cardClasses}" style="${cardStyle}">
             <div class="phrase-card-header">
                 <div class="phrase-card-icons">
-                    <button class="learned-btn ${isLearned ? 'active' : ''}" title="${isLearned ? 'Learned — tap to unmark' : 'Mark as learned'}" onclick="toggleLearned('${p.id}')">👑</button>
-                    <button title="Edit phrase" onclick="editPhraseRow('${p.id}')">✏️</button>
-                    <button title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑</button>
+                    <button style="${iconBg ? `background:${iconBg};` : ''}" title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑️</button>
+                    <button style="${iconBg ? `background:${iconBg};` : ''}" title="Edit phrase" onclick="editPhraseRow('${p.id}')">✏️</button>
+                    <button class="learned-btn ${isLearned ? 'active' : ''}" style="${iconBg ? `background:${iconBg};` : ''}" title="${isLearned ? 'Learned — tap to unmark' : 'Mark as learned'}" onclick="toggleLearned('${p.id}')">👑</button>
                 </div>
                 <button class="tag-badge" style="${badgeStyle}" onclick="openTagPicker('${p.id}')">${badgeLabel}</button>
             </div>
