@@ -243,7 +243,7 @@
 
 .phrase-card-icons {
     display: flex;
-    gap: 6px;
+    gap: 12px;
 }
 
 .phrase-card-icons button {
@@ -251,7 +251,7 @@
     background: none;
     cursor: pointer;
     font-size: 14px;
-    padding: 2px;
+    padding: 5px;
 }
 
 /* ===== Learned state ===== */

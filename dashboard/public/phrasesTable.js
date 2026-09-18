@@ -167,7 +167,7 @@ function renderTable() {
             <div class="phrase-card-header">
                 <div class="phrase-card-icons">
                     <button class="learned-btn ${isLearned ? 'active' : ''}" title="${isLearned ? 'Learned — tap to unmark' : 'Mark as learned'}" onclick="toggleLearned('${p.id}')">👑</button>
-                    <button title="Edit phrase" onclick="editPhraseRow('${p.id}')">✎</button>
+                    <button title="Edit phrase" onclick="editPhraseRow('${p.id}')">✏️</button>
                     <button title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑</button>
                 </div>
                 <button class="tag-badge" style="${badgeStyle}" onclick="openTagPicker('${p.id}')">${badgeLabel}</button>
