@@ -30,15 +30,15 @@ router.get('/dictionary', async (req, res) => {
 // is resolving a word the person picked from an earlier options list, so
 // the original Hebrew search stays attached to the entry that gets saved.
 router.post('/dictionary/lookup', lookupLimiter, async (req, res) => {
-    const { query, hebrewQuery } = req.body;
+    const { query, hebrewQuery, partOfSpeechHint } = req.body;
     if (!query || !query.trim()) {
         return res.status(400).json({ error: 'query is required' });
     }
     try {
-        const result = await lookupWord(query.trim());
+        const result = await lookupWord(query.trim(), partOfSpeechHint || null);
 
         if (result.type === 'options') {
-            return res.json({ type: 'options', options: result.options || [] });
+            return res.json({ type: 'options', kind: result.kind, options: result.options || [] });
         }
 
         const entry = await saveDictionaryEntry({

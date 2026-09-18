@@ -100,7 +100,7 @@ function applyDictionaryModeUI() {
 // Hebrew search, carried through when this call is resolving a word
 // chosen from an earlier options list, so the saved entry remembers what
 // was actually searched for.
-async function submitDictionaryLookup(query, hebrewQuery) {
+async function submitDictionaryLookup(query, hebrewQuery, partOfSpeechHint) {
     const sendBtn = document.getElementById('capture-send-btn');
     captureTextInput.value = '';
     captureTextInput.style.height = 'auto';
@@ -112,13 +112,13 @@ async function submitDictionaryLookup(query, hebrewQuery) {
         const res = await fetch('/dictionary/lookup', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query, hebrewQuery: hebrewQuery || null })
+            body: JSON.stringify({ query, hebrewQuery: hebrewQuery || null, partOfSpeechHint: partOfSpeechHint || null })
         });
         if (!res.ok) throw new Error('Failed to look up word');
         const data = await res.json();
 
         if (data.type === 'options') {
-            addDictionaryOptions(data.options, query);
+            addDictionaryOptions(data.options, data.kind, query, hebrewQuery);
         } else {
             addDictionarySavedMessage(data.entry);
             allDictionaryEntries.unshift(data.entry);
@@ -137,7 +137,7 @@ async function submitDictionaryLookup(query, hebrewQuery) {
 // contain apostrophes ("don't", "it's"), which would break naive
 // string-interpolated onclick attributes. Event listeners with closures
 // sidestep that entirely.
-function addDictionaryOptions(options, hebrewQuery) {
+function addDictionaryOptions(options, kind, query, hebrewQuery) {
     const container = document.createElement('div');
     container.className = 'capture-log-item';
 
@@ -150,16 +150,16 @@ function addDictionaryOptions(options, hebrewQuery) {
 
     const prompt = document.createElement('div');
     prompt.className = 'dictionary-options-prompt';
-    prompt.textContent = 'Which word did you mean?';
+    prompt.textContent = kind === 'senses' ? 'Which meaning did you mean?' : 'Which word did you mean?';
     container.appendChild(prompt);
 
     const chipList = document.createElement('div');
-    chipList.className = 'tag-picker-chip-list';
+    chipList.className = 'dictionary-option-list';
 
     options.forEach(o => {
         const chip = document.createElement('div');
-        chip.className = 'tag-chip none';
-        chip.textContent = o.word;
+        chip.className = 'dictionary-option-chip';
+        chip.textContent = kind === 'senses' ? o.partOfSpeech : o.word;
         if (o.context) {
             const contextSpan = document.createElement('span');
             contextSpan.className = 'dictionary-option-context';
@@ -168,7 +168,14 @@ function addDictionaryOptions(options, hebrewQuery) {
         }
         chip.addEventListener('click', () => {
             chipList.querySelectorAll('.tag-chip').forEach(c => c.style.pointerEvents = 'none');
-            submitDictionaryLookup(o.word, hebrewQuery);
+            if (kind === 'senses') {
+                // Same word, resubmitted with a part-of-speech hint so the
+                // model locks onto this sense instead of re-triggering the
+                // same ambiguity.
+                submitDictionaryLookup(query, hebrewQuery, o.partOfSpeech);
+            } else {
+                submitDictionaryLookup(o.word, hebrewQuery);
+            }
         });
         chipList.appendChild(chip);
     });

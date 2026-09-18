@@ -42,7 +42,32 @@
     margin-bottom: 8px;
 }
 
+.dictionary-option-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dictionary-option-chip {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid #2563eb;
+    cursor: pointer;
+    font-size: 0.875rem;
+    background: rgba(37, 99, 235, 0.15);
+    color: #e8e8e8;
+    text-align: start;
+}
+
+.dictionary-option-chip:hover {
+    background: rgba(37, 99, 235, 0.25);
+}
+
 .dictionary-option-context {
-    opacity: 0.75;
+    opacity: 0.85;
     font-size: 0.85em;
+    color: #cbd5f5;
 }
