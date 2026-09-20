@@ -29,8 +29,6 @@ export const getPhraseById = async (id) => {
     return result.rows[0] || null;
 };
 
-// Editor-driven save: sets the final Hebrew text and variant wording.
-// Tagging stays entirely table-driven and untouched here, same as before.
 // Editor-driven save: sets the final Hebrew text and variant wording (and
 // re-records which mode produced them). Tagging stays entirely
 // table-driven and untouched here, same as before. The old cached TTS URLs
@@ -217,15 +215,14 @@ export const migrateSpace = async ({ sourceId, targetId, dropSourceTranscripts =
 
         // Move (or drop) transcripts.
         if (dropSourceTranscripts) {
-            await client.query(`DELETE FROM transcripts WHERE space_id = $1`, [sourceId]);
+            await client.query(`DELETE FROM transcripts WHERE space_id = $1::uuid`, [sourceId]);
         } else {
-            await client.query(`UPDATE transcripts SET space_id = $1 WHERE space_id = $2`, [targetId, sourceId]);
+            await client.query(`UPDATE transcripts SET space_id = $1::uuid WHERE space_id = $2::uuid`, [targetId, sourceId]);
         }
-
         // Move tags, resolving name/color collisions against the target's
         // existing tags as we go.
-        const { rows: sourceTags } = await client.query(`SELECT * FROM tags WHERE space_id = $1`, [sourceId]);
-        const { rows: targetTags } = await client.query(`SELECT * FROM tags WHERE space_id = $1`, [targetId]);
+        const { rows: sourceTags } = await client.query(`SELECT * FROM tags WHERE space_id = $1::uuid`, [sourceId]);
+        const { rows: targetTags } = await client.query(`SELECT * FROM tags WHERE space_id = $1::uuid`, [targetId]);
         const usedNames = new Set(targetTags.map(t => t.name.toLowerCase()));
         const usedColors = new Set(targetTags.filter(t => t.color).map(t => t.color));
 
