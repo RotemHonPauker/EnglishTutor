@@ -14,7 +14,7 @@ Put the input as-is, with only obvious typos fixed, into "correctedHebrew" — d
 Then produce two corrected, natural English versions of it for "variant1" and "variant2" below, fixing grammar and phrasing while preserving the original meaning and intent. 
 If any Hebrew words are mixed in, translate just those words into English as part of the correction.
 
-## Step 2: Translate into Two Variants
+## Step 2: Translate into Two Levels
 ${variantGuidance}
 ${spaceRulesSection}
 

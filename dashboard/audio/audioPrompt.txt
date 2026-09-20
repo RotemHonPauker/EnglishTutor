@@ -18,7 +18,7 @@ Transcribe it as spoken — grammar and phrasing correction happen in a later st
 ## Step 2: Identify Individual Phrases
 ${audioRecordingSection}
 
-## Step 3: Translate Each Phrase
+## Step 3: Translate Each Phrase into Two Levels
 ${variantGuidance}
 
 ## Step 4: Suggest a Tag for Each Phrase

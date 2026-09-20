@@ -1,5 +1,5 @@
-// Space Setup: the 4-field accordion (About this space / Variant 1 /
-// Variant 2 / Audio Recording), each with its own Save/Cancel/Copy-from,
+// Space Setup: the 4-field accordion (About this space / Level 1 /
+// Level 2 / Audio Recording), each with its own Save/Cancel/Copy-from,
 // plus the navigation guard that blocks switching tabs or spaces while a
 // field has an unsaved edit. Split out of spacesState.js, which still owns
 // `spaces`/`activeSpaceId`/`getActiveSpace()` and calls renderSpaceRulesForm()
@@ -15,8 +15,8 @@
 
 const SPACE_RULE_FIELDS = {
     about: { textareaId: 'space-rules-about', dbKey: 'about_this_space', bodyKey: 'aboutThisSpace', label: 'About this space' },
-    variant1: { textareaId: 'space-rules-variant1', dbKey: 'variant_1_notes', bodyKey: 'variant1Notes', label: 'Variant 1' },
-    variant2: { textareaId: 'space-rules-variant2', dbKey: 'variant_2_notes', bodyKey: 'variant2Notes', label: 'Variant 2' },
+    level1: { textareaId: 'space-rules-level1', dbKey: 'variant_1_notes', bodyKey: 'variant1Notes', label: 'Level 1' },
+    level2: { textareaId: 'space-rules-level2', dbKey: 'variant_2_notes', bodyKey: 'variant2Notes', label: 'Level 2' },
     audio: { textareaId: 'space-rules-audio', dbKey: 'audio_recording_notes', bodyKey: 'audioRecordingNotes', label: 'Audio Recording' }
 };
 

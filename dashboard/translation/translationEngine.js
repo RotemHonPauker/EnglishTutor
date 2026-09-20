@@ -38,16 +38,16 @@ const resolveTagId = (tagName, spaceTags) => {
     return match ? match.id : null;
 };
 
-// Appends this space's own Variant 1 / Variant 2 notes (if any) onto the
+// Appends this space's own Level 1 / Level 2 notes (if any) onto the
 // generic variantGuidance.txt content, so space-specific voice/style sits
 // right alongside the general guidance instead of buried in one big blob.
 const buildVariantGuidanceSection = (baseGuidance, spaceFields) => {
     if (!spaceFields.variant1Notes && !spaceFields.variant2Notes) {
         return baseGuidance;
     }
-    let section = `${baseGuidance}\n\n## This Space's Variant Guidance\n`;
-    if (spaceFields.variant1Notes) section += `Variant 1: ${spaceFields.variant1Notes}\n`;
-    if (spaceFields.variant2Notes) section += `Variant 2: ${spaceFields.variant2Notes}\n`;
+    let section = `${baseGuidance}\n\n## This Space's Level Guidance\n`;
+    if (spaceFields.variant1Notes) section += `Level 1: ${spaceFields.variant1Notes}\n`;
+    if (spaceFields.variant2Notes) section += `Level 2: ${spaceFields.variant2Notes}\n`;
     return section;
 };
 

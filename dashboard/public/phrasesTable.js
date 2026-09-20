@@ -168,6 +168,10 @@ function renderTable() {
             : '';
         const badgeLabel = tag ? tag.name : '—';
         const isLearned = !!p.learned_at;
+        const level = p.level === 2 ? 2 : 1;
+        const displayedVariant = level === 2 ? p.variant_2 : p.variant_1;
+        const levelLabel = isLearned ? '👑' : `Level ${level}`;
+        const levelClass = isLearned ? 'learned' : `level-${level}`;
         const cardClasses = ['phrase-card', tagColor ? 'has-color' : '', isLearned ? 'learned' : ''].filter(Boolean).join(' ');
         return `
         <div class="${cardClasses}" style="${cardStyle}">
@@ -175,14 +179,15 @@ function renderTable() {
                 <div class="phrase-card-icons">
                     <button style="${iconBg ? `background:${iconBg};` : ''}" title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑️</button>
                     <button style="${iconBg ? `background:${iconBg};` : ''}" title="Edit phrase" onclick="editPhraseRow('${p.id}')">✏️</button>
-                    <button class="learned-btn ${isLearned ? 'active' : ''}" style="${iconBg ? `background:${iconBg};` : ''}" title="${isLearned ? 'Learned — tap to unmark' : 'Mark as learned'}" onclick="toggleLearned('${p.id}')">👑</button>
                 </div>
-                <button class="tag-badge" style="${badgeStyle}" onclick="openTagPicker('${p.id}')">${badgeLabel}</button>
+                <div class="phrase-card-badges">
+                    <button class="level-badge ${levelClass}" style="${badgeStyle}" title="Tap to advance: Level 1 → Level 2 → Learned" onclick="cyclePhraseProgress('${p.id}')">${levelLabel}</button>
+                    <button class="tag-badge" style="${badgeStyle}" onclick="openTagPicker('${p.id}')">${badgeLabel}</button>
+                </div>
             </div>
             <div class="phrase-card-main">
                 <div class="phrase-hebrew" dir="auto">${p.hebrew_text || ''}</div>
-                <div class="phrase-variant"><button class="tts-btn" title="Play" onclick="playPhraseAudio('${p.id}', 1, this)">🔊</button> ${p.variant_1 || ''}</div>
-                <div class="phrase-variant"><button class="tts-btn" title="Play" onclick="playPhraseAudio('${p.id}', 2, this)">🔊</button> ${p.variant_2 || ''}</div>
+                <div class="phrase-variant"><button class="tts-btn" title="Play" onclick="playPhraseAudio('${p.id}', ${level}, this)">🔊</button> ${displayedVariant || ''}</div>
             </div>
         </div>
     `;
@@ -324,31 +329,53 @@ async function updatePhraseTagAssignment(id, tagId) {
     }
 }
 
-// Optimistic-ish toggle: flips the local flag immediately so the crown and
-// card shading respond right away, re-rendering from the server's answer
-// only to correct it if the request actually failed.
-async function toggleLearned(id) {
+// Optimistic-ish cycle: Level 1 -> Level 2 -> Learned -> Level 1 ...
+// Advances the local state immediately so the badge responds right away,
+// re-rendering from the server's answer only to correct it if the request
+// actually failed. Level and learned move together as a single target
+// state — see updatePhraseProgress (database.js) — so a card is always in
+// exactly one of the three positions, never "learned at level 1" etc.
+async function cyclePhraseProgress(id) {
     const phrase = allPhrases.find(p => p.id === id);
     if (!phrase) return;
-    const nextLearned = !phrase.learned_at;
+
+    const wasLearned = !!phrase.learned_at;
+    const wasLevel = phrase.level === 2 ? 2 : 1;
+
+    let nextLevel, nextLearned;
+    if (wasLearned) {
+        nextLevel = 1;
+        nextLearned = false;
+    } else if (wasLevel === 1) {
+        nextLevel = 2;
+        nextLearned = false;
+    } else {
+        nextLevel = 2;
+        nextLearned = true;
+    }
+
+    phrase.level = nextLevel;
     phrase.learned_at = nextLearned ? new Date().toISOString() : null;
     renderTable();
+
     try {
-        const res = await fetch(`/phrases/${id}/learned`, {
+        const res = await fetch(`/phrases/${id}/progress`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ learned: nextLearned })
+            body: JSON.stringify({ level: nextLevel, learned: nextLearned })
         });
-        if (!res.ok) throw new Error('Failed to update learned status');
+        if (!res.ok) throw new Error('Failed to update progress');
         const updated = await res.json();
+        phrase.level = updated.level;
         phrase.learned_at = updated.learned_at;
         renderTable();
         if (typeof renderSidebar === 'function') renderSidebar();
     } catch (err) {
         // Roll back on failure.
-        phrase.learned_at = nextLearned ? null : new Date().toISOString();
+        phrase.level = wasLevel;
+        phrase.learned_at = wasLearned ? new Date().toISOString() : null;
         renderTable();
-        alert('Failed to update learned status');
+        alert('Failed to update progress');
     }
 }
 

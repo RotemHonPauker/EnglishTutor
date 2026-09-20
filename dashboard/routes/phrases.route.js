@@ -1,6 +1,6 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
-import { getPhrases, getPhraseById, saveSentence, updatePhrase, updatePhraseTag, updatePhraseLearned, updatePhraseTtsUrl, deletePhrase } from '../../database.js';
+import { getPhrases, getPhraseById, saveSentence, updatePhrase, updatePhraseTag, updatePhraseProgress, updatePhraseTtsUrl, deletePhrase } from '../../database.js';
 import { translatePhrase } from '../translation/translationEngine.js';
 import { generateSpeech, deleteSpeechFile } from '../tts/ttsEngine.js';
 import { RATE_LIMIT_WINDOW_MS, TRANSLATE_RATE_LIMIT_MAX } from '../limitsConfig.js';
@@ -34,7 +34,8 @@ router.get('/phrases', async (req, res) => {
 
 // New-phrase capture: takes raw Hebrew, corrects transcription, produces two English variants
 // using the active space's own translation prompt, and saves it immediately as uncategorized —
-// no confirmation step, by design.
+// no confirmation step, by design. Always starts at level 1 (the level/learned_at columns default
+// to that on insert — see the phrases table).
 router.post('/phrases', translateLimiter, async (req, res) => {
     const { hebrewText, spaceId, mode } = req.body;
     if (!hebrewText || !hebrewText.trim()) {
@@ -72,15 +73,23 @@ router.patch('/phrases/:id/tag', async (req, res) => {
     }
 });
 
-router.patch('/phrases/:id/learned', async (req, res) => {
+// The 3-way level/learned cycle badge (next to the tag on each card) sends
+// the exact target state it's moving to — { level: 1 | 2, learned: bool }
+// — rather than asking the server to compute "next", since the client
+// already knows which of the three positions it's currently on.
+router.patch('/phrases/:id/progress', async (req, res) => {
     const { id } = req.params;
-    const { learned } = req.body;
+    const level = Number(req.body.level);
+    const learned = !!req.body.learned;
+    if (![1, 2].includes(level)) {
+        return res.status(400).json({ error: 'level must be 1 or 2' });
+    }
     try {
-        const phrase = await updatePhraseLearned({ id, learned: !!learned });
+        const phrase = await updatePhraseProgress({ id, level, learned });
         res.json(phrase);
     } catch (err) {
-        console.error('Error updating learned status:', err);
-        res.status(500).json({ error: 'Failed to update learned status' });
+        console.error('Error updating phrase progress:', err);
+        res.status(500).json({ error: 'Failed to update progress' });
     }
 });
 

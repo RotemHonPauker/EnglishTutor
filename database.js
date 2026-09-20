@@ -56,13 +56,16 @@ export const updatePhraseTag = async ({ id, tagId }) => {
     return result.rows[0];
 };
 
-// Toggles "learned" — stores a timestamp (not just true/false) so it can
-// later feed an analytics timeline of when things were learned. Passing
-// learned=false clears it back to NULL.
-export const updatePhraseLearned = async ({ id, learned }) => {
+// ===== Level / learned progress =====
+// A single tri-state cycle per phrase now drives both fields at once:
+// level 1 -> level 2 -> learned -> level 1 ... The client always sends the
+// exact target state it's moving to (it already knows the current one),
+// so this just writes both columns together rather than trying to infer
+// "next" server-side.
+export const updatePhraseProgress = async ({ id, level, learned }) => {
     const result = await pool.query(
-        `UPDATE phrases SET learned_at = $1 WHERE id = $2 RETURNING *`,
-        [learned ? new Date() : null, id]
+        `UPDATE phrases SET level = $1, learned_at = $2 WHERE id = $3 RETURNING *`,
+        [level, learned ? new Date() : null, id]
     );
     return result.rows[0];
 };
@@ -270,7 +273,7 @@ export const migrateSpace = async ({ sourceId, targetId, dropSourceTranscripts =
 // --- Space rules ---
 // Each space's own translation guidance, split into 4 structured fields
 // (edited from the Setup tab) instead of one free-text column: general
-// background, per-variant voice/style notes, and audio-specific phrase-
+// background, per-level voice/style notes, and audio-specific phrase-
 // splitting notes. A space with nothing filled in yet is a normal, valid
 // state — translation still works fine using just the base prompts.
 

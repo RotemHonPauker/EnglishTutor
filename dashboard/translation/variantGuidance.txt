@@ -3,3 +3,6 @@ Translate into two natural English variants that convey the same meaning but dif
 ## General Rules
 * Do not use dashes anywhere in the translated variants.
 * Where possible use different vocabulary from variant 1 — avoid repeating the same key words across both variants.
+
+## Level Progression
+These two variants are shown to the learner as "Level 1" and "Level 2" — a small step up in fluency, not just an alternate phrasing. Variant 2 should feel like a natural next step from Variant 1: slightly more advanced, native-sounding, or idiomatic vocabulary/phrasing, while remaining just as understandable and no longer than Variant 1. Both must stay fully natural — Level 2 is a step toward native-like phrasing, not a display of obscure vocabulary.
