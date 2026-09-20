@@ -15,15 +15,16 @@ const parseResponse = (rawText) => {
     return JSON.parse(cleaned);
 };
 
-// Same tag-suggestion approach as translationEngine.js — see there for the
-// reasoning. Kept as a near-duplicate rather than a shared helper for now,
-// since the two engines don't otherwise share a module.
+// Same tag-resolution mechanics as translationEngine.js (never trust the
+// model's name directly, resolve against real tags, fall back to null) —
+// but here it's applied once for the whole recording, not per phrase; see
+// processRecording below.
 const buildExistingTagsSection = (spaceTags) => {
     if (!spaceTags.length) {
         return 'This space has no tags defined yet, so always put null for "tag".';
     }
     const names = spaceTags.map(t => t.name).join(', ');
-    return `This space has the following tags: ${names}\nFor each phrase, if one of these tags clearly and confidently fits its topic, put its exact name (as written above) in "tag". If none fit well, or you're not confident, put null instead — never guess, and never invent a tag name that isn't in the list above.`;
+    return `This space has the following tags: ${names}\nIf one of these tags clearly and confidently fits the recording's overall topic, put its exact name (as written above) in "tag". If none fit well, or you're not confident, put null instead — never guess, and never invent a tag name that isn't in the list above.`;
 };
 
 const resolveTagId = (tagName, spaceTags) => {
@@ -69,6 +70,10 @@ const INLINE_SIZE_LIMIT_BYTES = 60 * 1024 * 1024; // 60MB
 // audioPrompt.txt contains instructions for both; only the mode word
 // itself is injected, and the model follows whichever branch applies.
 // Returns { transcript, phrases: [{ hebrewText, variant1, variant2, tagId }] }.
+// tagId is resolved once for the whole recording (see audioPrompt.txt Step
+// 4) and applied to every phrase extracted from it — recordings are
+// usually one coherent topic, so this is deliberately a single decision,
+// not a per-phrase one like the typed-capture pipeline.
 export const processRecording = async (audioBuffer, mimeType, spaceId, mode = 'capture') => {
     if (audioBuffer.length > INLINE_SIZE_LIMIT_BYTES) {
         throw new Error('Recording is too large (over ~30 minutes). Please use a shorter recording for now.');
@@ -110,6 +115,7 @@ export const processRecording = async (audioBuffer, mimeType, spaceId, mode = 'c
 
     const rawText = response.candidates[0].content.parts[0].text;
     const result = parseResponse(rawText);
+    const tagId = resolveTagId(result.tag, spaceTags);
 
     return {
         transcript: result.transcript,
@@ -117,7 +123,7 @@ export const processRecording = async (audioBuffer, mimeType, spaceId, mode = 'c
             hebrewText: p.hebrewText,
             variant1: p.variant1,
             variant2: p.variant2,
-            tagId: resolveTagId(p.tag, spaceTags)
+            tagId
         }))
     };
 };

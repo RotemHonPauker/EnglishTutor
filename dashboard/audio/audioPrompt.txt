@@ -21,9 +21,11 @@ ${audioRecordingSection}
 ## Step 3: Translate Each Phrase into Two Levels
 ${variantGuidance}
 
-## Step 4: Suggest a Tag for Each Phrase
+## Step 4: Suggest One Tag for the Whole Recording
+Recordings are usually one coherent topic/activity throughout, so pick at most ONE tag for the entire recording — never a different tag per phrase.
 ${existingTagsSection}
+If the recording clearly covers more than one unrelated topic, or no single tag fits confidently across the whole thing, put null instead of guessing.
 
 ## Output
 Respond ONLY with valid JSON in this exact format, no other text:
-{"transcript": "the cleaned transcript as continuous text", "phrases": [{"hebrewText": "...", "variant1": "...", "variant2": "...", "tag": "..." or null}]}
+{"transcript": "the cleaned transcript as continuous text", "tag": "..." or null, "phrases": [{"hebrewText": "...", "variant1": "...", "variant2": "..."}]}
