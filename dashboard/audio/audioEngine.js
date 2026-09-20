@@ -2,61 +2,24 @@ import { GoogleGenAI } from '@google/genai';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { getSpaceRuleFields, getTags } from '../../database.js';
+import { getSpaceRuleFields } from '../../database.js';
 
 const ai = new GoogleGenAI({ vertexai: false, apiKey: process.env.GEMINI_API_KEY });
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const basePromptPath = join(__dirname, 'audioPrompt.txt');
-// Shared with the typed-phrase pipeline — one file, not duplicated here.
-const variantGuidancePath = join(__dirname, '..', 'translation', 'variantGuidance.txt');
 
 const parseResponse = (rawText) => {
     const cleaned = rawText.trim().replace(/```json|```/g, '').trim();
     return JSON.parse(cleaned);
 };
 
-// Same tag-resolution mechanics as translationEngine.js (never trust the
-// model's name directly, resolve against real tags, fall back to null) —
-// but here it's applied once for the whole recording, not per phrase; see
-// processRecording below.
-const buildExistingTagsSection = (spaceTags) => {
-    if (!spaceTags.length) {
-        return 'This space has no tags defined yet, so always put null for "tag".';
-    }
-    const names = spaceTags.map(t => t.name).join(', ');
-    return `This space has the following tags: ${names}\nIf one of these tags clearly and confidently fits the recording's overall topic, put its exact name (as written above) in "tag". If none fit well, or you're not confident, put null instead — never guess, and never invent a tag name that isn't in the list above.`;
-};
-
-const resolveTagId = (tagName, spaceTags) => {
-    if (!tagName) return null;
-    const match = spaceTags.find(t => t.name.toLowerCase() === String(tagName).toLowerCase());
-    return match ? match.id : null;
-};
-
-// Appends this space's own Level 1 / Level 2 notes (if any) onto the
-// generic variantGuidance.txt content — same approach as translationEngine.js.
-const buildVariantGuidanceSection = (baseGuidance, spaceFields) => {
-    if (!spaceFields.variant1Notes && !spaceFields.variant2Notes) {
-        return baseGuidance;
-    }
-    let section = `${baseGuidance}\n\n## This Space's Level Guidance\n`;
-    if (spaceFields.variant1Notes) section += `Level 1: ${spaceFields.variant1Notes}\n`;
-    if (spaceFields.variant2Notes) section += `Level 2: ${spaceFields.variant2Notes}\n`;
-    return section;
-};
-
+// A space with nothing filled in under "About this space" yet is a normal
+// state — the section is simply omitted rather than left as an empty
+// heading.
 const buildSpaceRulesSection = (spaceFields) => {
     return spaceFields.aboutThisSpace
         ? `## About This Space\n${spaceFields.aboutThisSpace}\n\n`
         : '';
-};
-
-// Falls back to a sensible generic instruction when this space hasn't
-// defined its own audio-specific notes yet — Step 2 always needs *some*
-// instruction to follow.
-const buildAudioRecordingSection = (spaceFields) => {
-    return spaceFields.audioRecordingNotes
-        || 'Use your best judgement to divide the cleaned transcript into individual, natural phrases.';
 };
 
 // Gemini's inline request limit is 100MB total (prompt text + audio,
@@ -65,33 +28,27 @@ const buildAudioRecordingSection = (spaceFields) => {
 // based on this app's actual observed recording weight (~1.5MB/minute).
 const INLINE_SIZE_LIMIT_BYTES = 60 * 1024 * 1024; // 60MB
 
-// mode is 'capture' (default, Hebrew speech) or 'check' (English/mixed
-// speech — grammar and phrasing correction instead of translation).
-// audioPrompt.txt contains instructions for both; only the mode word
-// itself is injected, and the model follows whichever branch applies.
-// Returns { transcript, phrases: [{ hebrewText, variant1, variant2, tagId }] }.
-// tagId is resolved once for the whole recording (see audioPrompt.txt Step
-// 4) and applied to every phrase extracted from it — recordings are
-// usually one coherent topic, so this is deliberately a single decision,
-// not a per-phrase one like the typed-capture pipeline.
+// Transcription only. Phrase splitting, translation, and tagging used to
+// happen here too, automatically, on the whole recording — but that meant
+// paying (in tokens, and in edit-after-the-fact cleanup) for every aside
+// and filler word Gemini decided to carve into a phrase. Now the person
+// picks what's actually worth keeping straight from the transcript (see
+// the selection-to-input flow in captureTab.js), and each pick goes
+// through the exact same one-phrase-at-a-time pipeline as typing it in
+// by hand (translationEngine.js) — so nothing gets translated unless a
+// person chose it.
+// Returns { transcript }.
 export const processRecording = async (audioBuffer, mimeType, spaceId, mode = 'capture') => {
     if (audioBuffer.length > INLINE_SIZE_LIMIT_BYTES) {
         throw new Error('Recording is too large (over ~30 minutes). Please use a shorter recording for now.');
     }
 
     const baseTemplate = readFileSync(basePromptPath, 'utf-8');
-    const variantGuidanceBase = readFileSync(variantGuidancePath, 'utf-8');
-    const [spaceFields, spaceTags] = await Promise.all([
-        getSpaceRuleFields(spaceId),
-        getTags(spaceId)
-    ]);
+    const spaceFields = await getSpaceRuleFields(spaceId);
 
     const promptText = baseTemplate
         .replace('${mode}', mode)
-        .replace('${variantGuidance}', buildVariantGuidanceSection(variantGuidanceBase, spaceFields))
-        .replace('${spaceRulesSection}', buildSpaceRulesSection(spaceFields))
-        .replace('${audioRecordingSection}', buildAudioRecordingSection(spaceFields))
-        .replace('${existingTagsSection}', buildExistingTagsSection(spaceTags));
+        .replace('${spaceRulesSection}', buildSpaceRulesSection(spaceFields));
 
     const audioPart = {
         inlineData: {
@@ -115,15 +72,6 @@ export const processRecording = async (audioBuffer, mimeType, spaceId, mode = 'c
 
     const rawText = response.candidates[0].content.parts[0].text;
     const result = parseResponse(rawText);
-    const tagId = resolveTagId(result.tag, spaceTags);
 
-    return {
-        transcript: result.transcript,
-        phrases: (result.phrases || []).map(p => ({
-            hebrewText: p.hebrewText,
-            variant1: p.variant1,
-            variant2: p.variant2,
-            tagId
-        }))
-    };
+    return { transcript: result.transcript };
 };

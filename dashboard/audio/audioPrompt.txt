@@ -15,17 +15,6 @@ Transcribe the audio, focusing on the primary/main speaker.
 The speech is in English, or a mix of English and Hebrew (e.g. an English sentence with a word or two in Hebrew where the speaker didn't know the English word). 
 Transcribe it as spoken — grammar and phrasing correction happen in a later step, not here.
 
-## Step 2: Identify Individual Phrases
-${audioRecordingSection}
-
-## Step 3: Translate Each Phrase into Two Levels
-${variantGuidance}
-
-## Step 4: Suggest One Tag for the Whole Recording
-Recordings are usually one coherent topic/activity throughout, so pick at most ONE tag for the entire recording — never a different tag per phrase.
-${existingTagsSection}
-If the recording clearly covers more than one unrelated topic, or no single tag fits confidently across the whole thing, put null instead of guessing.
-
 ## Output
 Respond ONLY with valid JSON in this exact format, no other text:
-{"transcript": "the cleaned transcript as continuous text", "tag": "..." or null, "phrases": [{"hebrewText": "...", "variant1": "...", "variant2": "..."}]}
+{"transcript": "the cleaned transcript as continuous text"}

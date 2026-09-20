@@ -1,6 +1,6 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
-import { createTranscript, getTranscripts, deleteTranscript, saveSentence } from '../../database.js';
+import { createTranscript, getTranscripts, deleteTranscript } from '../../database.js';
 import { processRecording } from '../audio/audioEngine.js';
 import { RATE_LIMIT_WINDOW_MS, TRANSLATE_RATE_LIMIT_MAX } from '../limitsConfig.js';
 
@@ -16,9 +16,12 @@ const recordingLimiter = rateLimit({
     message: { error: 'Too many recordings processed recently. Please wait a bit and try again.' }
 });
 
-// Body: { audioBase64, mimeType, spaceId }. Processes the
-// recording, saves the cleaned transcript as a backup, then saves each
-// extracted phrase the same way a typed phrase gets saved.
+// Body: { audioBase64, mimeType, spaceId }. Transcribes the recording and
+// saves the transcript — that's the whole job now. No phrases are created
+// here: the person picks what's worth keeping from the transcript itself
+// (see the selection-to-input flow in captureTab.js), and each pick is
+// translated one at a time through the normal /phrases POST, same as
+// anything typed by hand.
 router.post('/recordings', recordingLimiter, async (req, res) => {
     const { audioBase64, mimeType, spaceId, mode } = req.body;
     if (!audioBase64 || !spaceId) {
@@ -26,29 +29,16 @@ router.post('/recordings', recordingLimiter, async (req, res) => {
     }
     try {
         const audioBuffer = Buffer.from(audioBase64, 'base64');
-        const { transcript, phrases } = await processRecording(
+        const { transcript } = await processRecording(
             audioBuffer,
             mimeType || 'audio/mp4',
             spaceId,
             mode
         );
 
-        await createTranscript({ spaceId, content: transcript });
+        const saved = await createTranscript({ spaceId, content: transcript });
 
-        const savedPhrases = [];
-        for (const p of phrases) {
-            const saved = await saveSentence({
-                hebrewText: p.hebrewText,
-                variant1: p.variant1,
-                variant2: p.variant2,
-                spaceId,
-                tagId: p.tagId,
-                mode
-            });
-            savedPhrases.push(saved);
-        }
-
-        res.json({ phrases: savedPhrases });
+        res.json({ transcript: saved });
     } catch (err) {
         console.error('Recording processing error:', err);
         res.status(400).json({ error: err.message || 'Failed to process recording' });

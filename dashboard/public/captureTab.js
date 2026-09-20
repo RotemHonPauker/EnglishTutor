@@ -16,6 +16,12 @@ captureTextInput.addEventListener('keydown', (e) => {
     }
 });
 
+// Drives the transcript-selection bar (see the Transcripts section below):
+// whenever the person selects text inside an expanded transcript body,
+// show a bar offering to send that exact selection to the input instead of
+// auto-generating a card for it.
+document.addEventListener('selectionchange', handleTranscriptSelectionChange);
+
 // One mode toggle now shared by both the typed and recorded input paths —
 // whichever you use, it's translated/checked the same way.
 function setCaptureMode(mode, btnEl) {
@@ -46,6 +52,7 @@ function toggleCaptureView() {
         loadTranscripts(); // renders into #capture-log, see the Transcripts section below
     } else {
         captureLog.innerHTML = '';
+        hideTranscriptSelectionBar();
     }
 }
 
@@ -71,6 +78,7 @@ function resetCaptureLog() {
     captureViewMode = 'log';
     applyCaptureViewMode();
     captureLog.innerHTML = '';
+    hideTranscriptSelectionBar();
     const captureBtn = document.querySelector('#capture-mode-toggle .mode-toggle-btn[data-mode="capture"]');
     if (captureBtn) setCaptureMode('capture', captureBtn);
     editingPhraseId = null;
@@ -121,7 +129,10 @@ async function submitTypedPhrase() {
 }
 
 // ===== Recorded input =====
-
+// A recording only ever gets transcribed — no phrases are created
+// automatically from it. As soon as the transcript is back, the view
+// flips straight to the transcript list (see the selection-to-input flow
+// below) so the person can start picking lines right away.
 async function handleRecordingFileSelected(inputEl) {
     const file = inputEl.files[0];
     inputEl.value = ''; // allow picking the same file again later
@@ -130,9 +141,9 @@ async function handleRecordingFileSelected(inputEl) {
     const uploadBtn = document.getElementById('recording-upload-btn');
     const originalText = uploadBtn.textContent;
     uploadBtn.disabled = true;
-    uploadBtn.textContent = 'Processing... this can take a minute';
+    uploadBtn.textContent = 'Transcribing... this can take a minute';
 
-    addCaptureMessage('Uploading and processing your recording...');
+    addCaptureMessage('Uploading and transcribing your recording...');
 
     try {
         const audioBase64 = await fileToBase64(file);
@@ -152,15 +163,11 @@ async function handleRecordingFileSelected(inputEl) {
             const data = await res.json().catch(() => ({}));
             throw new Error(data.error || 'Failed to process recording');
         }
-        const data = await res.json();
 
-        if (!data.phrases || data.phrases.length === 0) {
-            addCaptureMessage("Didn't find any phrases worth capturing in that recording.");
-        } else {
-            data.phrases.forEach(addCaptureResult);
-        }
-
-        await loadTable(); // the new phrases are already saved — refresh Practice too
+        // Straight into the transcript list, expanded on the fresh one,
+        // ready to select from.
+        captureViewMode = 'log'; // toggleCaptureView flips log <-> transcripts
+        toggleCaptureView();
     } catch (err) {
         addCaptureMessage(err.message || "Something went wrong processing that recording — try again.");
     } finally {
@@ -250,6 +257,68 @@ async function deleteTranscriptRow(id) {
     } catch (err) {
         alert('Failed to delete transcript');
     }
+}
+
+// ===== Transcript selection → input =====
+// The person picks whatever's actually worth translating with the phone's
+// normal long-press text selection, taps "Add to input", edits it if
+// needed, then Send — same one-phrase-at-a-time path as typing it fresh.
+// Repeat per phrase; nothing in the transcript is translated automatically.
+
+let pendingTranscriptSelection = '';
+
+function handleTranscriptSelectionChange() {
+    if (captureViewMode !== 'transcripts') {
+        hideTranscriptSelectionBar();
+        return;
+    }
+
+    const selection = window.getSelection();
+    const text = selection && !selection.isCollapsed ? selection.toString().trim() : '';
+    if (!text) {
+        hideTranscriptSelectionBar();
+        return;
+    }
+
+    // Only react to selections actually inside a transcript's (expanded)
+    // body — not, say, the date header or the delete button next to it.
+    let node = selection.anchorNode;
+    const anchorEl = node && node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+    if (!anchorEl || !anchorEl.closest('.transcript-card-body')) {
+        hideTranscriptSelectionBar();
+        return;
+    }
+
+    pendingTranscriptSelection = text;
+    const bar = document.getElementById('transcript-selection-bar');
+    const preview = document.getElementById('transcript-selection-preview');
+    if (preview) preview.textContent = text;
+    if (bar) bar.style.display = 'flex';
+}
+
+function hideTranscriptSelectionBar() {
+    pendingTranscriptSelection = '';
+    const bar = document.getElementById('transcript-selection-bar');
+    if (bar) bar.style.display = 'none';
+}
+
+// Switches back to the normal capture log with the selected text already
+// sitting in the input, ready to edit and Send — the input is disabled
+// while browsing transcripts, so leaving that view is what re-enables it.
+function addTranscriptSelectionToInput() {
+    if (!pendingTranscriptSelection) return;
+    const text = pendingTranscriptSelection;
+
+    window.getSelection().removeAllRanges();
+    captureViewMode = 'log';
+    applyCaptureViewMode();
+    captureLog.innerHTML = '';
+    hideTranscriptSelectionBar();
+
+    captureTextInput.value = text;
+    captureTextInput.style.height = 'auto';
+    captureTextInput.style.height = captureTextInput.scrollHeight + 'px';
+    captureTextInput.focus();
 }
 
 // ===== Editing an existing phrase (✎ on a Practice card) =====

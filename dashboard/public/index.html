@@ -124,22 +124,6 @@
                             </div>
                         </div>
                     </div>
-                    <div class="space-rules-item" data-field="audio">
-                        <button type="button" class="space-rules-item-header" onclick="toggleSpaceRuleItem('audio')">
-                            <span class="space-rules-item-title">Audio Recording</span>
-                            <span class="space-rules-item-chevron">▾</span>
-                        </button>
-                        <div class="space-rules-item-body">
-                            <textarea id="space-rules-audio" rows="6" placeholder="How to split/clean phrases from a recording..."></textarea>
-                            <div class="space-rules-copy-area" id="space-rules-copy-audio"></div>
-                            <div class="space-rules-item-actions">
-                                <button type="button" onclick="toggleCopyPicker('audio')">Copy from...</button>
-                                <span class="space-rules-item-status" id="space-rules-status-audio"></span>
-                                <button type="button" onclick="cancelSpaceRuleField('audio')">Cancel</button>
-                                <button type="button" class="primary space-rules-save-btn" onclick="saveSpaceRuleField('audio')">Save</button>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
             <div id="tag-sidebar">
@@ -181,6 +165,10 @@
                 <button id="capture-history-btn" onclick="toggleCaptureView()" title="Recording logs">📄</button>
             </div>
             <div id="capture-log"></div>
+            <div id="transcript-selection-bar" style="display:none">
+                <span id="transcript-selection-preview" dir="auto"></span>
+                <button class="primary" onclick="addTranscriptSelectionToInput()">➤ Add to input</button>
+            </div>
             <div id="capture-input-area">
                 <div id="capture-editing-banner" style="display:none">
                     <span class="capture-editing-text"></span>
@@ -194,7 +182,7 @@
                         <button class="primary" id="capture-send-btn" title="Send" onclick="submitTypedPhrase()">➤</button>
                     </div>
                 </div>
-                <div id="recording-limit-note">Recordings are limited to about 30 minutes.<br>Tip: each recording gets one tag for all its phrases — for best results, split into separate recordings by topic rather than mixing a few unrelated ones together.</div>
+                <div id="recording-limit-note">Recordings are limited to about 30 minutes.<br>A recording only gets transcribed — open 📄 afterward to select whichever lines you want to translate.</div>
             </div>
         </div>
     </div>

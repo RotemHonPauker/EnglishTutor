@@ -56,6 +56,40 @@
     font-size: 0.8125rem;
 }
 
+/* ===== Transcript-selection bar ===== */
+/* Appears above the (disabled, while browsing transcripts) input area
+   whenever a person has an active text selection inside a transcript
+   card body — lets them hand-pick which lines are worth translating
+   instead of auto-generating a card for everything Gemini transcribed. */
+
+#transcript-selection-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    margin: 0 12px;
+    background: rgba(37, 99, 235, 0.12);
+    border: 1px solid rgba(37, 99, 235, 0.3);
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+
+#transcript-selection-preview {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.8125rem;
+    color: #93c5fd;
+}
+
+#transcript-selection-bar button {
+    flex-shrink: 0;
+    font-size: 0.8125rem;
+    white-space: nowrap;
+}
+
 #capture-input-area {
     padding: 12px;
     border-top: 1px solid #222;
