@@ -73,6 +73,17 @@
     flex-shrink: 0;
 }
 
+#analytics-chart-note {
+    flex-shrink: 0;
+    font-size: 0.6875rem;
+    line-height: 1.5;
+    color: #666;
+}
+
+#analytics-chart-note::before {
+    content: "* ";
+}
+
 .chart-legend-item {
     display: flex;
     align-items: center;
