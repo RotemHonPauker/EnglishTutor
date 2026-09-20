@@ -22,6 +22,16 @@ const buildSpaceRulesSection = (spaceFields) => {
         : '';
 };
 
+// Space-specific transcription notes — background noise to clean up or
+// ignore, long silences to expect, anything else particular to how this
+// space's recordings sound. Omitted entirely (not even an empty heading)
+// when the space hasn't filled this in, same as aboutThisSpace above.
+const buildAudioRecordingSection = (spaceFields) => {
+    return spaceFields.audioRecordingNotes
+        ? `## Notes On This Space's Recordings\n${spaceFields.audioRecordingNotes}\n`
+        : '';
+};
+
 // Gemini's inline request limit is 100MB total (prompt text + audio,
 // base64-encoded). 60MB of raw audio keeps the base64-encoded size (~33%
 // larger) comfortably under that — roughly half an hour of recording,
@@ -48,7 +58,8 @@ export const processRecording = async (audioBuffer, mimeType, spaceId, mode = 'c
 
     const promptText = baseTemplate
         .replace('${mode}', mode)
-        .replace('${spaceRulesSection}', buildSpaceRulesSection(spaceFields));
+        .replace('${spaceRulesSection}', buildSpaceRulesSection(spaceFields))
+        .replace('${audioRecordingSection}', buildAudioRecordingSection(spaceFields));
 
     const audioPart = {
         inlineData: {

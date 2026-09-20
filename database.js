@@ -120,7 +120,7 @@ export const createSpace = async ({ name }) => {
     return result.rows[0];
 };
 
-export const updateSpace = async ({ id, name, aboutThisSpace, variant1Notes, variant2Notes }) => {
+export const updateSpace = async ({ id, name, aboutThisSpace, variant1Notes, variant2Notes, audioRecordingNotes }) => {
     // Only touch the columns actually passed in, so a plain rename never
     // overwrites the rule fields (and vice versa for a Setup-tab save).
     const fields = [];
@@ -142,6 +142,10 @@ export const updateSpace = async ({ id, name, aboutThisSpace, variant1Notes, var
     if (variant2Notes !== undefined) {
         fields.push(`variant_2_notes = $${i++}`);
         values.push(variant2Notes || null);
+    }
+    if (audioRecordingNotes !== undefined) {
+        fields.push(`audio_recording_notes = $${i++}`);
+        values.push(audioRecordingNotes || null);
     }
 
     if (!fields.length) {
@@ -272,7 +276,7 @@ export const migrateSpace = async ({ sourceId, targetId, dropSourceTranscripts =
 
 export const getSpaceRuleFields = async (spaceId) => {
     const { rows } = await pool.query(
-        `SELECT about_this_space, variant_1_notes, variant_2_notes
+        `SELECT about_this_space, variant_1_notes, variant_2_notes, audio_recording_notes
          FROM spaces WHERE id = $1`,
         [spaceId]
     );
@@ -280,7 +284,8 @@ export const getSpaceRuleFields = async (spaceId) => {
     return {
         aboutThisSpace: row.about_this_space ?? null,
         variant1Notes: row.variant_1_notes ?? null,
-        variant2Notes: row.variant_2_notes ?? null
+        variant2Notes: row.variant_2_notes ?? null,
+        audioRecordingNotes: row.audio_recording_notes ?? null
     };
 };
 

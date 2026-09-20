@@ -28,7 +28,7 @@ router.post('/spaces', async (req, res) => {
 });
 
 router.put('/spaces/:id', async (req, res) => {
-    const { name, aboutThisSpace, variant1Notes, variant2Notes } = req.body;
+    const { name, aboutThisSpace, variant1Notes, variant2Notes, audioRecordingNotes } = req.body;
     if (name !== undefined && !name.trim()) {
         return res.status(400).json({ error: 'Name cannot be empty' });
     }
@@ -38,7 +38,8 @@ router.put('/spaces/:id', async (req, res) => {
             name: name !== undefined ? name.trim() : undefined,
             aboutThisSpace,
             variant1Notes,
-            variant2Notes
+            variant2Notes,
+            audioRecordingNotes
         });
         res.json(space);
     } catch (err) {

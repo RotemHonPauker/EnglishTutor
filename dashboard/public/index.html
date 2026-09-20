@@ -124,6 +124,22 @@
                             </div>
                         </div>
                     </div>
+                    <div class="space-rules-item" data-field="audio">
+                        <button type="button" class="space-rules-item-header" onclick="toggleSpaceRuleItem('audio')">
+                            <span class="space-rules-item-title">Audio Recording</span>
+                            <span class="space-rules-item-chevron">▾</span>
+                        </button>
+                        <div class="space-rules-item-body">
+                            <textarea id="space-rules-audio" rows="6" placeholder="Notes for transcribing this space's recordings — background noise to expect, long silences, anything else particular to how they sound..."></textarea>
+                            <div class="space-rules-copy-area" id="space-rules-copy-audio"></div>
+                            <div class="space-rules-item-actions">
+                                <button type="button" onclick="toggleCopyPicker('audio')">Copy from...</button>
+                                <span class="space-rules-item-status" id="space-rules-status-audio"></span>
+                                <button type="button" onclick="cancelSpaceRuleField('audio')">Cancel</button>
+                                <button type="button" class="primary space-rules-save-btn" onclick="saveSpaceRuleField('audio')">Save</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div id="tag-sidebar">
