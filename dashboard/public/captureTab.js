@@ -186,7 +186,6 @@ function addCaptureResult(phrase) {
     div.innerHTML = `
         <div class="phrase-hebrew" dir="auto">${phrase.hebrew_text || ''}</div>
         <div class="phrase-variant">${phrase.variant_1 || ''}</div>
-        <div class="phrase-variant">${phrase.variant_2 || ''}</div>
     `;
     captureLog.appendChild(div);
     captureLog.scrollTop = captureLog.scrollHeight;

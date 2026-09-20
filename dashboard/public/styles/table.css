@@ -277,7 +277,7 @@
 
 .phrase-card-icons {
     display: flex;
-    gap: 12px;
+    gap: 4px;
 }
 
 .phrase-card-icons button {

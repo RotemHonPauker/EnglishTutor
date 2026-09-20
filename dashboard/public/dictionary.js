@@ -185,12 +185,18 @@ function addDictionaryOptions(options, kind, query, hebrewQuery) {
     captureLog.scrollTop = captureLog.scrollHeight;
 }
 
+// Shows the resolved entry the same way it'll look in Practice — word,
+// part of speech, synonyms, example — instead of a bare "added" line, so
+// the person can see (and sanity-check) the actual translation right away.
 function addDictionarySavedMessage(entry) {
     const div = document.createElement('div');
     div.className = 'capture-log-item';
     div.innerHTML = `
-        <div class="dictionary-word" dir="auto">✓ ${entry.word || ''}</div>
-        <div class="dictionary-example">Added to your dictionary</div>
+        <div class="dictionary-word" dir="auto">${entry.word || ''}</div>
+        ${entry.part_of_speech ? `<span class="dictionary-pos">${entry.part_of_speech}</span>` : ''}
+        ${entry.hebrew_synonyms ? `<div class="dictionary-synonyms" dir="auto">${entry.hebrew_synonyms}</div>` : ''}
+        ${entry.example_sentence ? `<div class="dictionary-example">${entry.example_sentence}</div>` : ''}
+        ${entry.english_synonyms ? `<div class="dictionary-synonyms">${entry.english_synonyms}</div>` : ''}
     `;
     captureLog.appendChild(div);
     captureLog.scrollTop = captureLog.scrollHeight;
