@@ -14,6 +14,10 @@
     gap: 8px;
 }
 
+#tag-list .tag-chip.none {
+    cursor: default;
+}
+
 #sidebar-header {
     display: flex;
     justify-content: space-between;

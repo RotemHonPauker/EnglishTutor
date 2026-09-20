@@ -27,12 +27,28 @@ async function loadTags() {
 function renderSidebar() {
     const container = document.getElementById('tag-list');
 
-    container.innerHTML = tags.map(tag => {
+    const tagChips = tags.map(tag => {
         const contrast = getContrastColor(tag.color);
         return `
             <div class="tag-chip" style="background:${tag.color || '#333'}; color:${contrast}" onclick="openTagEditModal('${tag.id}')">${tag.name} <span class="tag-phrase-count">${getPhraseCountForTag(tag)}</span></div>
         `;
     }).join('');
+
+    // Same dark/neutral "none" styling already used for the "No tag" chip
+    // in the filter and tag-picker modals — not clickable, since there's
+    // no tag here to open an edit modal for.
+    const noTagChip = `
+        <div class="tag-chip none">No tag <span class="tag-phrase-count">${getUntaggedPhraseCount()}</span></div>
+    `;
+
+    container.innerHTML = tagChips + noTagChip;
+}
+
+// Relies on allPhrases (from phrasesTable.js) already being loaded — same
+// as getPhraseCountForTag below.
+function getUntaggedPhraseCount() {
+    if (typeof allPhrases === 'undefined') return 0;
+    return allPhrases.filter(p => !p.tag_id).length;
 }
 
 // Relies on allPhrases (from phrasesTable.js) already being loaded —
