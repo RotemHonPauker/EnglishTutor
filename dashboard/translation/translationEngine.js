@@ -60,12 +60,13 @@ const buildSpaceRulesSection = (spaceFields) => {
         : '';
 };
 
-// mode is 'capture' (default, Hebrew input) or 'check' (English/mixed
-// input — grammar and phrasing correction instead of translation).
-// translationPrompt.txt contains instructions for both; only the mode word
-// itself is injected, and the model follows whichever branch applies.
-// Returns { correctedHebrew, variant1, variant2, tagId }.
-export const translatePhrase = async (hebrewText, spaceId, mode = 'capture') => {
+// Language (Hebrew vs. English/mixed) is now detected by the model itself
+// from the phrase text — see translationPrompt.txt Step 1 — rather than
+// declared up front by the caller. The detected mode still comes back in
+// the result (used for the phrases.mode column, same as before) so
+// anything reading it later doesn't need to change.
+// Returns { correctedHebrew, variant1, variant2, tagId, mode }.
+export const translatePhrase = async (hebrewText, spaceId) => {
     const baseTemplate = readFileSync(basePromptPath, 'utf-8');
     const variantGuidanceBase = readFileSync(variantGuidancePath, 'utf-8');
     const [spaceFields, spaceTags] = await Promise.all([
@@ -74,7 +75,6 @@ export const translatePhrase = async (hebrewText, spaceId, mode = 'capture') => 
     ]);
 
     const content = baseTemplate
-        .replace('${mode}', mode)
         .replace('${variantGuidance}', buildVariantGuidanceSection(variantGuidanceBase, spaceFields))
         .replace('${spaceRulesSection}', buildSpaceRulesSection(spaceFields))
         .replace('${existingTagsSection}', buildExistingTagsSection(spaceTags))
@@ -95,6 +95,7 @@ export const translatePhrase = async (hebrewText, spaceId, mode = 'capture') => 
         correctedHebrew: result.correctedHebrew,
         variant1: result.variant1,
         variant2: result.variant2,
-        tagId: resolveTagId(result.tag, spaceTags)
+        tagId: resolveTagId(result.tag, spaceTags),
+        mode: result.mode === 'check' ? 'check' : 'capture'
     };
 };

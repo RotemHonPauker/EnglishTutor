@@ -72,22 +72,21 @@ function applyDictionaryModeUI() {
         if (btn) btn.disabled = isDictionaryMode;
     });
 
-    // Add tab — only the typed-word input + Send stay usable. The mode
-    // toggle keeps its existing labels (still makes sense as a hint —
-    // "Hebrew" / English word both apply), just disabled, same as the
-    // transcripts-view treatment already used for #capture-input-area.
-    document.querySelectorAll('#capture-mode-toggle .mode-toggle-btn').forEach(btn => {
+    // Add tab — only the typed-word input + Send stay usable. Forces the
+    // 3-way Type/Dictionary/Record selector onto "Dictionary" and disables
+    // switching away from it entirely, since nothing else applies while
+    // this whole context is dictionary lookups. Only forces the mode when
+    // entering/active — leaving it alone (not resetting to "Type") is
+    // resetCaptureLog's job on the way out, so a manual "Dictionary" pick
+    // made in a normal space isn't clobbered by an unrelated re-render here.
+    document.querySelectorAll('#capture-mode-icons .capture-mode-icon-btn, #capture-history-btn').forEach(btn => {
         btn.disabled = isDictionaryMode;
     });
+    if (isDictionaryMode && typeof setAddInputMode === 'function') {
+        setAddInputMode('dictionary');
+    }
     const historyBtn = document.getElementById('capture-history-btn');
     if (historyBtn) historyBtn.disabled = isDictionaryMode;
-    const recordBtn = document.getElementById('recording-upload-btn');
-    if (recordBtn) recordBtn.disabled = isDictionaryMode;
-    if (typeof captureTextInput !== 'undefined' && captureTextInput) {
-        captureTextInput.placeholder = isDictionaryMode
-            ? 'Type a Hebrew or English word...'
-            : 'Type a Hebrew phrase...';
-    }
 
     // Practice — tags don't apply to dictionary entries.
     const tagsBtn = document.getElementById('practice-tags-btn');

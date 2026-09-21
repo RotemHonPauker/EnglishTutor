@@ -22,15 +22,64 @@ captureTextInput.addEventListener('keydown', (e) => {
 // auto-generating a card for it.
 document.addEventListener('selectionchange', handleTranscriptSelectionChange);
 
-// One mode toggle now shared by both the typed and recorded input paths —
-// whichever you use, it's translated/checked the same way.
-function setCaptureMode(mode, btnEl) {
+// ===== Add-tab input mode: Type / Dictionary / Record =====
+// Three small icon buttons live in the input box's own footer, next to
+// Send — always visible regardless of which mode is picked, so there's
+// always a way back. Only the content above the footer (the textarea, or
+// the two record-language buttons) swaps out. The icon itself is
+// intentionally bare (no text label): the clarification is the
+// placeholder text/buttons that appear the moment you tap one, not the
+// button itself.
+
+let addInputMode = 'type'; // 'type' | 'dictionary' | 'record'
+
+function setAddInputMode(mode, btnEl) {
+    const previousMode = addInputMode;
+    addInputMode = mode;
+    document.querySelectorAll('#capture-mode-icons .capture-mode-icon-btn[data-mode]').forEach(b => b.classList.remove('active'));
+    const activeBtn = btnEl || document.querySelector(`#capture-mode-icons .capture-mode-icon-btn[data-mode="${mode}"]`);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    const recordButtons = document.getElementById('capture-record-buttons');
+    const sendBtn = document.getElementById('capture-send-btn');
+    const isRecord = mode === 'record';
+
+    if (captureTextInput) captureTextInput.style.display = isRecord ? 'none' : '';
+    if (recordButtons) recordButtons.style.display = isRecord ? 'flex' : 'none';
+    if (sendBtn) sendBtn.style.display = isRecord ? 'none' : '';
+
+    if (captureTextInput && !isRecord) {
+        captureTextInput.placeholder = mode === 'dictionary'
+            ? 'Look up a word in the dictionary'
+            : 'Translate from Hebrew, or polish your English';
+    }
+
+    refreshCaptureLog(previousMode);
+}
+
+// The recording note lives in the main log area (center of the screen,
+// room to actually read it). previousMode lets this be a no-op when switching between
+// Type and Dictionary, so it never clobbers real capture results sitting
+// in the log — it only touches the log when Record is actually being
+// entered or left (or when returning from the transcripts view, which
+// passes 'record' regardless so the log always matches whatever mode is
+// current).
+function refreshCaptureLog(previousMode) {
+    if (addInputMode === 'record') {
+        captureLog.innerHTML = `<div class="recording-info-note">🎙️<br>Recordings are limited to about 30 minutes.<br>Once it's processed, you'll land straight on its transcript — just select whichever lines you want to translate.</div>`;
+    } else if (previousMode === 'record') {
+        captureLog.innerHTML = '';
+    }
+}
+
+// The two "Recording in Hebrew" / "Recording in English" buttons shown
+// once Record is picked — each one sets which language Gemini should
+// expect (audioPrompt.txt still needs an explicit hint for transcription,
+// unlike typed text) and only then opens the file picker. Nothing opens
+// until one of these two is actually tapped.
+function startRecordingUpload(mode) {
     captureMode = mode;
-    document.querySelectorAll('#capture-mode-toggle .mode-toggle-btn').forEach(b => b.classList.remove('active'));
-    btnEl.classList.add('active');
-    captureTextInput.placeholder = mode === 'check'
-        ? 'Type a phrase in English (or mixed English/Hebrew)...'
-        : 'Type a Hebrew phrase...';
+    document.getElementById('recording-file-input').click();
 }
 
 // Entering the Add tab always starts with a clean, empty log — anything
@@ -51,20 +100,23 @@ function toggleCaptureView() {
     if (captureViewMode === 'transcripts') {
         loadTranscripts(); // renders into #capture-log, see the Transcripts section below
     } else {
-        captureLog.innerHTML = '';
+        refreshCaptureLog('record'); // restores the recording note if Record is still the active mode, else clears
         hideTranscriptSelectionBar();
     }
 }
 
 function applyCaptureViewMode() {
     const btn = document.getElementById('capture-history-btn');
-    const inputArea = document.getElementById('capture-input-area');
+    const contentArea = document.getElementById('capture-content-area');
+    const sendBtn = document.getElementById('capture-send-btn');
     if (captureViewMode === 'transcripts') {
-        if (btn) { btn.textContent = '✏️'; btn.title = 'Back to capture'; }
-        if (inputArea) inputArea.classList.add('disabled');
+        if (btn) { btn.textContent = 'Back'; btn.title = 'Back to capture'; btn.classList.add('active'); }
+        if (contentArea) contentArea.classList.add('disabled');
+        if (sendBtn) sendBtn.disabled = true;
     } else {
-        if (btn) { btn.textContent = '📄'; btn.title = 'Recording logs'; }
-        if (inputArea) inputArea.classList.remove('disabled');
+        if (btn) { btn.textContent = 'Transcriptions'; btn.title = 'View past recording transcripts'; btn.classList.remove('active'); }
+        if (contentArea) contentArea.classList.remove('disabled');
+        if (sendBtn) sendBtn.disabled = false;
     }
 }
 
@@ -79,8 +131,7 @@ function resetCaptureLog() {
     applyCaptureViewMode();
     captureLog.innerHTML = '';
     hideTranscriptSelectionBar();
-    const captureBtn = document.querySelector('#capture-mode-toggle .mode-toggle-btn[data-mode="capture"]');
-    if (captureBtn) setCaptureMode('capture', captureBtn);
+    setAddInputMode((typeof isDictionaryMode !== 'undefined' && isDictionaryMode) ? 'dictionary' : 'type');
     editingPhraseId = null;
     hideEditingBanner();
 }
@@ -91,7 +142,7 @@ async function submitTypedPhrase() {
     const text = captureTextInput.value.trim();
     if (!text) return;
 
-    if (typeof isDictionaryMode !== 'undefined' && isDictionaryMode) {
+    if ((typeof isDictionaryMode !== 'undefined' && isDictionaryMode) || addInputMode === 'dictionary') {
         await submitDictionaryLookup(text);
         return;
     }
@@ -112,7 +163,7 @@ async function submitTypedPhrase() {
         const res = await fetch('/phrases', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ hebrewText: text, spaceId: activeSpaceId, mode: captureMode })
+            body: JSON.stringify({ hebrewText: text, spaceId: activeSpaceId })
         });
         if (!res.ok) throw new Error('Failed to translate phrase');
         const phrase = await res.json();
@@ -138,10 +189,8 @@ async function handleRecordingFileSelected(inputEl) {
     inputEl.value = ''; // allow picking the same file again later
     if (!file) return;
 
-    const uploadBtn = document.getElementById('recording-upload-btn');
-    const originalText = uploadBtn.textContent;
-    uploadBtn.disabled = true;
-    uploadBtn.textContent = 'Transcribing... this can take a minute';
+    const langBtns = document.querySelectorAll('#capture-record-buttons .record-lang-btn');
+    langBtns.forEach(b => b.disabled = true);
 
     addCaptureMessage('Uploading and transcribing your recording...');
 
@@ -166,13 +215,14 @@ async function handleRecordingFileSelected(inputEl) {
 
         // Straight into the transcript list, expanded on the fresh one,
         // ready to select from.
-        captureViewMode = 'log'; // toggleCaptureView flips log <-> transcripts
-        toggleCaptureView();
+        captureViewMode = 'transcripts';
+        applyCaptureViewMode();
+        await loadTranscripts();
+        if (transcripts.length) toggleTranscript(transcripts[0].id);
     } catch (err) {
         addCaptureMessage(err.message || "Something went wrong processing that recording — try again.");
     } finally {
-        uploadBtn.disabled = false;
-        uploadBtn.textContent = originalText;
+        langBtns.forEach(b => b.disabled = false);
     }
 }
 
@@ -314,6 +364,7 @@ function addTranscriptSelectionToInput() {
     applyCaptureViewMode();
     captureLog.innerHTML = '';
     hideTranscriptSelectionBar();
+    setAddInputMode('type');
 
     captureTextInput.value = text;
     captureTextInput.style.height = 'auto';
@@ -336,12 +387,7 @@ let editingPhraseId = null;
 function startEditingPhrase(phrase) {
     navigateToTab('add'); // enterCaptureTab -> resetCaptureLog() clears editingPhraseId first
     editingPhraseId = phrase.id;
-
-    // No column remembers which mode created older phrases — default those
-    // to 'capture'. Phrases saved from now on carry their real mode.
-    const editMode = phrase.mode === 'check' ? 'check' : 'capture';
-    const modeBtn = document.querySelector(`#capture-mode-toggle .mode-toggle-btn[data-mode="${editMode}"]`);
-    if (modeBtn) setCaptureMode(editMode, modeBtn);
+    setAddInputMode('type');
 
     captureTextInput.value = phrase.hebrew_text || '';
     captureTextInput.style.height = 'auto';
@@ -388,7 +434,7 @@ async function submitPhraseEdit(text) {
         const res = await fetch(`/phrases/${id}/retranslate`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ hebrewText: text, spaceId: activeSpaceId, mode: captureMode })
+            body: JSON.stringify({ hebrewText: text, spaceId: activeSpaceId })
         });
         if (!res.ok) throw new Error('Failed to update phrase');
         const phrase = await res.json();

@@ -167,8 +167,8 @@
             <div id="analytics-chart-bars"></div>
             <div id="analytics-chart-legend"></div>
             <div id="analytics-chart-notes">
-                <div id="analytics-chart-note">Shows only the last 30 periods.</div>
-                <div id="analytics-chart-note-2">Bars are grouped by creation date. The color indicates their current status.</div>
+                <div id="analytics-chart-note">Bars are grouped by creation date. The color indicates their current status.</div>
+                <div id="analytics-chart-note-2">Only the last 30 periods appear here.</div>
             </div>
         </div>
     </div>
@@ -176,13 +176,6 @@
     <!-- ADD VIEW -->
     <div id="view-add" class="view">
         <div id="capture-section">
-            <div id="capture-header-row">
-                <div class="mode-toggle" id="capture-mode-toggle">
-                    <button class="mode-toggle-btn active" data-mode="capture" onclick="setCaptureMode('capture', this)">Hebrew phrase</button>
-                    <button class="mode-toggle-btn" data-mode="check" onclick="setCaptureMode('check', this)">Check my English</button>
-                </div>
-                <button id="capture-history-btn" onclick="toggleCaptureView()" title="Recording logs">📄</button>
-            </div>
             <div id="capture-log"></div>
             <div id="transcript-selection-bar" style="display:none">
                 <span id="transcript-selection-preview" dir="auto"></span>
@@ -194,14 +187,24 @@
                     <button onclick="cancelEditingPhrase()">✕ Cancel</button>
                 </div>
                 <div id="capture-text-row">
-                    <textarea id="capture-text-input" dir="auto" rows="1" placeholder="Type a Hebrew phrase..."></textarea>
+                    <div id="capture-content-area">
+                        <textarea id="capture-text-input" dir="auto" rows="1"></textarea>
+                        <div id="capture-record-buttons" style="display:none">
+                            <button class="record-lang-btn" onclick="startRecordingUpload('capture')">🎙️ Recording in Hebrew</button>
+                            <button class="record-lang-btn" onclick="startRecordingUpload('check')">🎙️ Recording in English</button>
+                        </div>
+                    </div>
                     <div id="capture-text-footer">
-                        <input type="file" id="recording-file-input" accept="audio/*,video/mp4,.mp4,.m4a,.aac,.wav,.mp3,.ogg" style="display:none" onchange="handleRecordingFileSelected(this)">
-                        <button id="recording-upload-btn" title="Choose recording (up to ~30 minutes)" onclick="document.getElementById('recording-file-input').click()">🎙️</button>
+                        <div id="capture-mode-icons">
+                            <button class="capture-mode-icon-btn active" data-mode="type" title="Type a phrase" onclick="setAddInputMode('type', this)">⌨️</button>
+                            <button class="capture-mode-icon-btn" data-mode="dictionary" title="Look up a dictionary word" onclick="setAddInputMode('dictionary', this)">📖</button>
+                            <button class="capture-mode-icon-btn" data-mode="record" title="Upload a recording" onclick="setAddInputMode('record', this)">🎙️</button>
+                            <button id="capture-history-btn" title="View past recording transcripts" onclick="toggleCaptureView()">Transcriptions</button>
+                        </div>
                         <button class="primary" id="capture-send-btn" title="Send" onclick="submitTypedPhrase()">➤</button>
                     </div>
                 </div>
-                <div id="recording-limit-note">Recordings are limited to about 30 minutes.<br>A recording only gets transcribed. Open 📄 afterward to select whichever lines you want to translate.</div>
+                <input type="file" id="recording-file-input" accept="audio/*,video/mp4,.mp4,.m4a,.aac,.wav,.mp3,.ogg" style="display:none" onchange="handleRecordingFileSelected(this)">
             </div>
         </div>
     </div>

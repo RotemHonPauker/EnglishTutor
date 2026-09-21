@@ -1,18 +1,19 @@
 ## Input
-You will receive a phrase and a mode.
+You will receive a phrase.
 
-## Step 1: Process the Input
-The mode for this request is: "${mode}"
+## Step 1: Detect Language and Process
+Look at the phrase itself and decide which of these two cases it is — do not rely on anything except the phrase's own text.
 
-If mode is "capture": 
-The input is in Hebrew. It may contain typos or awkward phrasing — silently correct any errors, preserving the original meaning exactly, and put the corrected Hebrew in "correctedHebrew". 
+If it is in Hebrew (may contain typos or awkward phrasing):
+Silently correct any errors, preserving the original meaning exactly, and put the corrected Hebrew in "correctedHebrew".
 Then translate it into English for "variant1" and "variant2" below.
+Set "mode" to "capture".
 
-If mode is "check": 
-The input is already in English, or a mix of English and Hebrew (e.g. an English sentence with a word or two in Hebrew where the writer didn't know the English word). 
-Put the input as-is, with only obvious typos fixed, into "correctedHebrew" — do not translate it there. 
-Then produce two corrected, natural English versions of it for "variant1" and "variant2" below, fixing grammar and phrasing while preserving the original meaning and intent. 
+If it is already in English, or a mix of English and Hebrew (e.g. an English sentence with a word or two in Hebrew where the writer didn't know the English word):
+Put the input as-is, with only obvious typos fixed, into "correctedHebrew" — do not translate it there.
+Then produce two corrected, natural English versions of it for "variant1" and "variant2" below, fixing grammar and phrasing while preserving the original meaning and intent.
 If any Hebrew words are mixed in, translate just those words into English as part of the correction.
+Set "mode" to "check".
 
 ## Step 2: Translate into Two Levels
 ${variantGuidance}
@@ -26,4 +27,4 @@ ${existingTagsSection}
 
 ## Output
 Respond ONLY with valid JSON in this exact format, no other text:
-{"correctedHebrew": "...", "variant1": "...", "variant2": "...", "tag": "..." or null}
+{"correctedHebrew": "...", "variant1": "...", "variant2": "...", "tag": "..." or null, "mode": "capture" or "check"}

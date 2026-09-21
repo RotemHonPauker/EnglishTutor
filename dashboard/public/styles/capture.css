@@ -5,30 +5,6 @@
     overflow: hidden;
 }
 
-#capture-header-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 12px 0;
-}
-
-#capture-header-row .mode-toggle {
-    flex: 1;
-    padding: 0;
-}
-
-#capture-history-btn {
-    flex-shrink: 0;
-    padding: 8px 10px;
-    font-size: 1rem;
-}
-
-#capture-history-btn:disabled {
-    opacity: 0.35;
-    cursor: default;
-    pointer-events: none;
-}
-
 #capture-log {
     flex: 1;
     overflow-y: auto;
@@ -125,9 +101,14 @@
     font-size: 0.75rem;
 }
 
-#capture-input-area.disabled {
+#capture-content-area.disabled {
     opacity: 0.35;
     pointer-events: none;
+}
+
+#capture-send-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
 }
 
 #capture-text-row {
@@ -144,10 +125,10 @@
 
 #capture-text-footer {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: center;
-    gap: 6px;
-    padding: 0 14px 14px;
+    gap: 8px;
+    padding: 0 10px 10px 14px;
 }
 
 #capture-send-btn {
@@ -157,16 +138,72 @@
     line-height: 1;
 }
 
-#recording-upload-btn {
-    flex-shrink: 0;
-    padding: 6px 10px;
-    font-size: 1rem;
+/* ===== Content area (inside the box, above the footer) ===== */
+/* Swaps between the textarea (Type/Dictionary) and the two record-language
+   buttons (Record) — the footer below it (icons + Send) never moves. */
+
+#capture-record-buttons {
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 14px 4px;
+}
+
+.record-lang-btn {
+    width: 100%;
+    padding: 10px;
+    font-size: 0.9375rem;
     line-height: 1;
 }
 
-#recording-upload-btn:disabled {
-    opacity: 0.6;
+/* ===== Type/Dictionary/Record icon strip ===== */
+/* Lives in the box's own footer, next to Send — always visible regardless
+   of mode, so there's always a way back to Type. Icons only (no label):
+   the clarification is the placeholder text/buttons that appear above the
+   moment you tap one, not the icon itself. */
+
+#capture-mode-icons {
+    display: flex;
+    gap: 6px;
+}
+
+.capture-mode-icon-btn {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 0.9375rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.capture-mode-icon-btn.active {
+    background: #2563eb;
+    border-color: #2563eb;
+}
+
+.capture-mode-icon-btn:disabled {
+    opacity: 0.3;
     cursor: default;
+    pointer-events: none;
+}
+
+#capture-history-btn {
+    flex-shrink: 0;
+    padding: 6px 10px;
+    font-size: 0.75rem;
+}
+
+#capture-history-btn.active {
+    background: #2563eb;
+    border-color: #2563eb;
+}
+
+#capture-history-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+    pointer-events: none;
 }
 
 #capture-text-input {
@@ -182,10 +219,16 @@
     font-family: inherit;
 }
 
-#recording-limit-note {
-    font-size: 0.75rem;
-    color: #666;
+.recording-info-note {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     text-align: center;
+    font-size: 1rem;
+    line-height: 1.8;
+    color: #999;
+    padding: 24px;
 }
 
 
