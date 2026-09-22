@@ -7,12 +7,12 @@ ${spaceRulesSection}
 The mode for this request is: "${mode}"
 
 If mode is "capture": 
-Transcribe the audio into Hebrew text, focusing on the primary/main speaker. 
+Transcribe the audio into ${sourceLanguage} text, focusing on the primary/main speaker. 
 Treat other voices or background sound as context, not something to transcribe verbatim.
 
 If mode is "check": 
 Transcribe the audio, focusing on the primary/main speaker. 
-The speech is in English, or a mix of English and Hebrew (e.g. an English sentence with a word or two in Hebrew where the speaker didn't know the English word). 
+The speech is in ${targetLanguage}, or a mix of ${targetLanguage} and ${sourceLanguage} (e.g. a ${targetLanguage} sentence with a word or two in ${sourceLanguage} where the speaker didn't know the ${targetLanguage} word). 
 Transcribe it as spoken — grammar and phrasing correction happen in a later step, not here.
 
 ${audioRecordingSection}

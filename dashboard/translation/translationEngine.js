@@ -38,19 +38,6 @@ const resolveTagId = (tagName, spaceTags) => {
     return match ? match.id : null;
 };
 
-// Appends this space's own Level 1 / Level 2 notes (if any) onto the
-// generic variantGuidance.txt content, so space-specific voice/style sits
-// right alongside the general guidance instead of buried in one big blob.
-const buildVariantGuidanceSection = (baseGuidance, spaceFields) => {
-    if (!spaceFields.variant1Notes && !spaceFields.variant2Notes) {
-        return baseGuidance;
-    }
-    let section = `${baseGuidance}\n\n## This Space's Level Guidance\n`;
-    if (spaceFields.variant1Notes) section += `Level 1: ${spaceFields.variant1Notes}\n`;
-    if (spaceFields.variant2Notes) section += `Level 2: ${spaceFields.variant2Notes}\n`;
-    return section;
-};
-
 // A space with nothing filled in under "About this space" yet is a normal
 // state — the section is simply omitted rather than left as an empty
 // heading.
@@ -60,12 +47,39 @@ const buildSpaceRulesSection = (spaceFields) => {
         : '';
 };
 
-// Language (Hebrew vs. English/mixed) is now detected by the model itself
-// from the phrase text — see translationPrompt.txt Step 1 — rather than
-// declared up front by the caller. The detected mode still comes back in
-// the result (used for the phrases.mode column, same as before) so
-// anything reading it later doesn't need to change.
+// Builds Step 2 of the prompt — what "variant1"/"variant2" actually mean —
+// which differs by space type:
+//   - progression (the original model): both variants are the target
+//     language, variant2 a step up in fluency from variant1. Uses the
+//     shared variantGuidance.txt, with this space's own Level 1/Level 2
+//     notes appended, same mechanism as before.
+//   - bridge: variant1 is the target language, variant2 is a THIRD
+//     language (the bridge language) shown purely for reference/
+//     comparison — not a more advanced version of anything. This space's
+//     "Level 1/2" notes are repurposed as target/bridge-language notes.
+const buildTranslationStep = (variantGuidanceBase, spaceFields) => {
+    if (spaceFields.spaceType === 'bridge') {
+        let section = `Produce two translations of the corrected text:\n- "variant1": a natural translation into ${spaceFields.targetLanguage}.\n- "variant2": a natural translation into ${spaceFields.bridgeLanguage}, included purely as a reference/comparison language. It is a separate language, not a more advanced or different version of ${spaceFields.targetLanguage} — translate independently into it.\nDo not use dashes in either translation.`;
+        if (spaceFields.variant1Notes) section += `\n\n${spaceFields.targetLanguage} notes: ${spaceFields.variant1Notes}`;
+        if (spaceFields.variant2Notes) section += `\n\n${spaceFields.bridgeLanguage} notes: ${spaceFields.variant2Notes}`;
+        return section;
+    }
+
+    // progression (default)
+    const resolvedGuidance = variantGuidanceBase.replace(/\$\{targetLanguage\}/g, spaceFields.targetLanguage);
+    if (!spaceFields.variant1Notes && !spaceFields.variant2Notes) {
+        return resolvedGuidance;
+    }
+    let section = `${resolvedGuidance}\n\n## This Space's Level Guidance\n`;
+    if (spaceFields.variant1Notes) section += `Level 1: ${spaceFields.variant1Notes}\n`;
+    if (spaceFields.variant2Notes) section += `Level 2: ${spaceFields.variant2Notes}\n`;
+    return section;
+};
+
 // Returns { correctedHebrew, variant1, variant2, tagId, mode }.
+// (correctedHebrew keeps its original key name here — the field itself is
+// now language-agnostic content, just an unchanged name so callers
+// throughout the app didn't all need touching for a rename.)
 export const translatePhrase = async (hebrewText, spaceId) => {
     const baseTemplate = readFileSync(basePromptPath, 'utf-8');
     const variantGuidanceBase = readFileSync(variantGuidancePath, 'utf-8');
@@ -75,7 +89,9 @@ export const translatePhrase = async (hebrewText, spaceId) => {
     ]);
 
     const content = baseTemplate
-        .replace('${variantGuidance}', buildVariantGuidanceSection(variantGuidanceBase, spaceFields))
+        .replace(/\$\{sourceLanguage\}/g, spaceFields.sourceLanguage)
+        .replace(/\$\{targetLanguage\}/g, spaceFields.targetLanguage)
+        .replace('${translationStep}', buildTranslationStep(variantGuidanceBase, spaceFields))
         .replace('${spaceRulesSection}', buildSpaceRulesSection(spaceFields))
         .replace('${existingTagsSection}', buildExistingTagsSection(spaceTags))
         .replace('${phrase}', hebrewText);
@@ -92,7 +108,7 @@ export const translatePhrase = async (hebrewText, spaceId) => {
     const result = parseTranslationResponse(rawText);
 
     return {
-        correctedHebrew: result.correctedHebrew,
+        correctedHebrew: result.correctedSource,
         variant1: result.variant1,
         variant2: result.variant2,
         tagId: resolveTagId(result.tag, spaceTags),

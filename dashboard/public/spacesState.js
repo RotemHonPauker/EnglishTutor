@@ -30,17 +30,17 @@ function getActiveSpace() {
 }
 
 function renderSpaceHeader() {
-    if (typeof isDictionaryMode !== 'undefined' && isDictionaryMode) {
-        const nameEl = document.getElementById('space-header-name');
-        if (nameEl) nameEl.textContent = '📖 Dictionary';
-        const dot = document.getElementById('space-health-dot');
-        if (dot) dot.style.display = 'none';
-        return;
-    }
     const label = document.getElementById('space-header-name');
     if (!label) return;
     const active = getActiveSpace();
+    const dot = document.getElementById('space-health-dot');
+    if (active && active.space_type === 'dictionary') {
+        label.textContent = `📖 ${active.name}`;
+        if (dot) dot.style.display = 'none';
+        return;
+    }
     label.textContent = active ? active.name : 'Select a space';
+    if (dot) dot.style.display = '';
     renderSpaceHealthIndicator();
     if (typeof renderSpaceRulesForm === 'function') renderSpaceRulesForm();
 }
@@ -76,10 +76,9 @@ function renderSpaceHealthIndicator() {
 // list and the phrase table — same as a fresh page load would, just
 // without actually reloading the page.
 async function setActiveSpace(id) {
-    if (typeof exitDictionaryModeIfNeeded === 'function') exitDictionaryModeIfNeeded();
-    if (typeof applyDictionaryModeUI === 'function') applyDictionaryModeUI();
     activeSpaceId = id;
     persistActiveSpace();
+    if (typeof applyDictionaryModeUI === 'function') applyDictionaryModeUI();
     renderSpaceHeader();
     closeSpacePicker();
     if (typeof resetTagFilter === 'function') resetTagFilter();
@@ -109,23 +108,16 @@ function closeSpacePicker() {
 
 function renderSpacePickerList() {
     const list = document.getElementById('space-picker-list');
-    const dictionaryRow = `
-        <div class="space-picker-row">
-            <div class="space-picker-item ${isDictionaryMode ? 'active' : ''}" onclick="enterDictionaryMode()">
-                📖 Dictionary
-            </div>
-        </div>
-    `;
     const spaceRows = spaces.map(s => `
         <div class="space-picker-row">
-            <div class="space-picker-item ${!isDictionaryMode && s.id === activeSpaceId ? 'active' : ''}" onclick="requestSpaceSwitch('${s.id}')">
-                ${s.name}
+            <div class="space-picker-item ${s.id === activeSpaceId ? 'active' : ''}" onclick="requestSpaceSwitch('${s.id}')">
+                ${s.space_type === 'dictionary' ? '📖 ' : ''}${s.name}
             </div>
             <button class="space-picker-edit-btn" onclick="event.stopPropagation(); showRenameSpaceForm('${s.id}')" title="Rename">✎</button>
             <button class="space-picker-edit-btn" onclick="event.stopPropagation(); showMigrateSpaceForm('${s.id}')" title="Migrate into another space">⇄</button>
         </div>
     `).join('');
-    list.innerHTML = dictionaryRow + spaceRows;
+    list.innerHTML = spaceRows;
 }
 
 function showRenameSpaceForm(id) {
@@ -165,10 +157,25 @@ async function submitRenameSpace(id) {
     renderSpaceHeader();
 }
 
+// Space type decides what the language fields mean: Progression is the
+// original model (Level 1/2 = two levels of the same target language);
+// Bridge adds a third, reference-only language shown alongside the main
+// translation; Dictionary is a standalone word-lookup list rather than a
+// phrase-practice space. All three still just live in `spaces` — the type
+// only changes how Setup/Add/Practice interpret that space's rows.
 function showNewSpaceForm() {
+    newSpaceNameEdited = false;
     const form = document.getElementById('space-picker-new-form');
     form.innerHTML = `
-        <input id="new-space-name-input" type="text" placeholder="Space name" autocomplete="off" />
+        <select id="new-space-type" onchange="onNewSpaceTypeChange()">
+            <option value="progression">Progression (Level 1 / Level 2)</option>
+            <option value="bridge">Bridge (with a reference language)</option>
+            <option value="dictionary">Dictionary</option>
+        </select>
+        <select id="new-space-source-lang" onchange="onNewSpaceLanguageChange()">${languageOptionsHtml('Hebrew')}</select>
+        <select id="new-space-target-lang" onchange="onNewSpaceLanguageChange()">${languageOptionsHtml('English')}</select>
+        <select id="new-space-bridge-lang" style="display:none">${languageOptionsHtml('English')}</select>
+        <input id="new-space-name-input" type="text" placeholder="Space name" autocomplete="off" oninput="newSpaceNameEdited = true" />
         <div class="form-buttons">
             <button onclick="document.getElementById('space-picker-new-form').innerHTML = ''">Cancel</button>
             <button class="primary" onclick="submitNewSpace()">Create</button>
@@ -176,14 +183,45 @@ function showNewSpaceForm() {
     `;
 }
 
+function onNewSpaceTypeChange() {
+    const type = document.getElementById('new-space-type').value;
+    const bridgeSelect = document.getElementById('new-space-bridge-lang');
+    if (bridgeSelect) bridgeSelect.style.display = type === 'bridge' ? '' : 'none';
+    updateSuggestedSpaceName();
+}
+
+function onNewSpaceLanguageChange() {
+    updateSuggestedSpaceName();
+}
+
+// Only Dictionary spaces get an auto-filled name (so a picker full of
+// dictionaries stays distinguishable by language pair without typing) —
+// and only until the person actually types their own, tracked with a
+// simple flag rather than trying to guess intent from the input's value.
+let newSpaceNameEdited = false;
+
+function updateSuggestedSpaceName() {
+    const type = document.getElementById('new-space-type')?.value;
+    if (type !== 'dictionary' || newSpaceNameEdited) return;
+    const nameInput = document.getElementById('new-space-name-input');
+    if (!nameInput) return;
+    const sourceCode = codeForLanguage(document.getElementById('new-space-source-lang').value);
+    const targetCode = codeForLanguage(document.getElementById('new-space-target-lang').value);
+    nameInput.value = `Dictionary (${sourceCode}→${targetCode})`;
+}
+
 async function submitNewSpace() {
     const name = document.getElementById('new-space-name-input').value.trim();
     if (!name) return;
+    const spaceType = document.getElementById('new-space-type').value;
+    const sourceLanguage = document.getElementById('new-space-source-lang').value;
+    const targetLanguage = document.getElementById('new-space-target-lang').value;
+    const bridgeLanguage = spaceType === 'bridge' ? document.getElementById('new-space-bridge-lang').value : undefined;
 
     const res = await fetch('/spaces', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name })
+        body: JSON.stringify({ name, spaceType, sourceLanguage, targetLanguage, bridgeLanguage })
     });
 
     if (!res.ok) {
@@ -191,6 +229,7 @@ async function submitNewSpace() {
         return;
     }
 
+    newSpaceNameEdited = false;
     const space = await res.json();
     spaces.push(space);
     await setActiveSpace(space.id);

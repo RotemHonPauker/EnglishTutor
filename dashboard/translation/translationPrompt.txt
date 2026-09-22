@@ -4,19 +4,19 @@ You will receive a phrase.
 ## Step 1: Detect Language and Process
 Look at the phrase itself and decide which of these two cases it is — do not rely on anything except the phrase's own text.
 
-If it is in Hebrew (may contain typos or awkward phrasing):
-Silently correct any errors, preserving the original meaning exactly, and put the corrected Hebrew in "correctedHebrew".
-Then translate it into English for "variant1" and "variant2" below.
+If it is in ${sourceLanguage}:
+Silently correct any errors, preserving the original meaning exactly, and put the corrected text in "correctedSource".
+Then translate it into ${targetLanguage} for "variant1" and "variant2" below.
 Set "mode" to "capture".
 
-If it is already in English, or a mix of English and Hebrew (e.g. an English sentence with a word or two in Hebrew where the writer didn't know the English word):
-Put the input as-is, with only obvious typos fixed, into "correctedHebrew" — do not translate it there.
-Then produce two corrected, natural English versions of it for "variant1" and "variant2" below, fixing grammar and phrasing while preserving the original meaning and intent.
-If any Hebrew words are mixed in, translate just those words into English as part of the correction.
+If it is already in ${targetLanguage}, or a mix of ${targetLanguage} and ${sourceLanguage} (e.g. a ${targetLanguage} sentence with a word or two in ${sourceLanguage} where the writer didn't know the ${targetLanguage} word):
+Put the input as-is, with only obvious typos fixed, into "correctedSource" — do not translate it there.
+Then produce two corrected, natural ${targetLanguage} versions of it for "variant1" and "variant2" below, fixing grammar and phrasing while preserving the original meaning and intent.
+If any ${sourceLanguage} words are mixed in, translate just those words into ${targetLanguage} as part of the correction.
 Set "mode" to "check".
 
-## Step 2: Translate into Two Levels
-${variantGuidance}
+## Step 2: Translate
+${translationStep}
 ${spaceRulesSection}
 
 ## Step 3: Suggest a Tag
@@ -27,4 +27,4 @@ ${existingTagsSection}
 
 ## Output
 Respond ONLY with valid JSON in this exact format, no other text:
-{"correctedHebrew": "...", "variant1": "...", "variant2": "...", "tag": "..." or null, "mode": "capture" or "check"}
+{"correctedSource": "...", "variant1": "...", "variant2": "...", "tag": "..." or null, "mode": "capture" or "check"}

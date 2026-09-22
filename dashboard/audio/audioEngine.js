@@ -57,6 +57,8 @@ export const processRecording = async (audioBuffer, mimeType, spaceId, mode = 'c
     const spaceFields = await getSpaceRuleFields(spaceId);
 
     const promptText = baseTemplate
+        .replace(/\$\{sourceLanguage\}/g, spaceFields.sourceLanguage)
+        .replace(/\$\{targetLanguage\}/g, spaceFields.targetLanguage)
         .replace('${mode}', mode)
         .replace('${spaceRulesSection}', buildSpaceRulesSection(spaceFields))
         .replace('${audioRecordingSection}', buildAudioRecordingSection(spaceFields));

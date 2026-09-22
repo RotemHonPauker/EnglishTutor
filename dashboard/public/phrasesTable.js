@@ -116,8 +116,8 @@ function resetLearnedFilter() {
 }
 
 async function loadTable() {
-    if (typeof isDictionaryMode !== 'undefined' && isDictionaryMode) {
-        if (typeof loadDictionaryEntries === 'function') await loadDictionaryEntries();
+    if (typeof isDictionarySpace === 'function' && isDictionarySpace()) {
+        if (typeof loadDictionaryEntries === 'function') await loadDictionaryEntries(activeSpaceId);
         return;
     }
     const res = await fetch(`/phrases?spaceId=${activeSpaceId}`);
@@ -135,7 +135,7 @@ const DAY_MS = 24 * 60 * 60 * 1000; // also used by practiceDateScroll.js
 function renderTable() {
     stopCurrentAudio();
 
-    if (typeof isDictionaryMode !== 'undefined' && isDictionaryMode) {
+    if (typeof isDictionarySpace === 'function' && isDictionarySpace()) {
         if (typeof renderDictionaryCards === 'function') renderDictionaryCards();
         return;
     }
@@ -150,6 +150,15 @@ function renderTable() {
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     document.getElementById('phrase-count').textContent = sorted.length;
+
+    // Bridge spaces show the actual language codes on the badge (there's
+    // no "advanced version" concept there — variant_2 is a different
+    // language entirely, not a step up); every other type keeps "Level 1"/
+    // "Level 2". Looked up once per render, not per card.
+    const activeSpace = typeof getActiveSpace === 'function' ? getActiveSpace() : null;
+    const isBridge = activeSpace?.space_type === 'bridge';
+    const targetCode = isBridge && typeof codeForLanguage === 'function' ? codeForLanguage(activeSpace.target_language) : null;
+    const bridgeCode = isBridge && typeof codeForLanguage === 'function' ? codeForLanguage(activeSpace.bridge_language) : null;
 
     tableBody.innerHTML = sorted.map(p => {
         const tag = tags.find(t => t.id === p.tag_id);
@@ -170,8 +179,8 @@ function renderTable() {
         const isLearned = !!p.learned_at;
         const level = p.level === 2 ? 2 : 1;
         const displayedVariant = level === 2 ? p.variant_2 : p.variant_1;
-        const levelLabel = isLearned ? '👑' : `Level ${level}`;
-        const levelClass = isLearned ? 'learned' : `level-${level}`;
+        const levelBadgeLabel = isBridge ? (level === 2 ? bridgeCode : targetCode) : `Level ${level}`;
+        const levelBadgeTitle = isBridge ? 'Tap to switch language' : 'Tap to switch level';
         const cardClasses = ['phrase-card', tagColor ? 'has-color' : '', isLearned ? 'learned' : ''].filter(Boolean).join(' ');
         return `
         <div class="${cardClasses}" style="${cardStyle}">
@@ -179,9 +188,10 @@ function renderTable() {
                 <div class="phrase-card-icons">
                     <button style="${iconBg ? `background:${iconBg};` : ''}" title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑️</button>
                     <button style="${iconBg ? `background:${iconBg};` : ''}" title="Edit phrase" onclick="editPhraseRow('${p.id}')">✏️</button>
+                    <button class="learned-btn ${isLearned ? 'active' : ''}" style="${iconBg ? `background:${iconBg};` : ''}" title="${isLearned ? 'Learned — tap to unmark' : 'Mark as learned'}" onclick="toggleLearned('${p.id}')">👑</button>
                 </div>
                 <div class="phrase-card-badges">
-                    <button class="level-badge ${levelClass}" style="${badgeStyle}" title="Tap to advance: Level 1 → Level 2 → Learned" onclick="cyclePhraseProgress('${p.id}')">${levelLabel}</button>
+                    <button class="level-badge level-${level}" style="${badgeStyle}" title="${levelBadgeTitle}" onclick="toggleLevel('${p.id}')">${levelBadgeLabel}</button>
                     <button class="tag-badge" style="${badgeStyle}" onclick="openTagPicker('${p.id}')">${badgeLabel}</button>
                 </div>
             </div>
@@ -329,53 +339,55 @@ async function updatePhraseTagAssignment(id, tagId) {
     }
 }
 
-// Optimistic-ish cycle: Level 1 -> Level 2 -> Learned -> Level 1 ...
-// Advances the local state immediately so the badge responds right away,
-// re-rendering from the server's answer only to correct it if the request
-// actually failed. Level and learned move together as a single target
-// state — see updatePhraseProgress (database.js) — so a card is always in
-// exactly one of the three positions, never "learned at level 1" etc.
-async function cyclePhraseProgress(id) {
+// Simple binary toggle, independent of learned state.
+async function toggleLevel(id) {
     const phrase = allPhrases.find(p => p.id === id);
     if (!phrase) return;
-
-    const wasLearned = !!phrase.learned_at;
     const wasLevel = phrase.level === 2 ? 2 : 1;
-
-    let nextLevel, nextLearned;
-    if (wasLearned) {
-        nextLevel = 1;
-        nextLearned = false;
-    } else if (wasLevel === 1) {
-        nextLevel = 2;
-        nextLearned = false;
-    } else {
-        nextLevel = 2;
-        nextLearned = true;
-    }
-
+    const nextLevel = wasLevel === 1 ? 2 : 1;
     phrase.level = nextLevel;
-    phrase.learned_at = nextLearned ? new Date().toISOString() : null;
     renderTable();
-
     try {
-        const res = await fetch(`/phrases/${id}/progress`, {
+        const res = await fetch(`/phrases/${id}/level`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ level: nextLevel, learned: nextLearned })
+            body: JSON.stringify({ level: nextLevel })
         });
-        if (!res.ok) throw new Error('Failed to update progress');
+        if (!res.ok) throw new Error('Failed to update level');
         const updated = await res.json();
         phrase.level = updated.level;
+        renderTable();
+    } catch (err) {
+        phrase.level = wasLevel;
+        renderTable();
+        alert('Failed to update level');
+    }
+}
+
+// Optimistic-ish toggle: flips the local flag immediately so the crown and
+// card shading respond right away, re-rendering from the server's answer
+// only to correct it if the request actually failed. Independent of level.
+async function toggleLearned(id) {
+    const phrase = allPhrases.find(p => p.id === id);
+    if (!phrase) return;
+    const nextLearned = !phrase.learned_at;
+    phrase.learned_at = nextLearned ? new Date().toISOString() : null;
+    renderTable();
+    try {
+        const res = await fetch(`/phrases/${id}/learned`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ learned: nextLearned })
+        });
+        if (!res.ok) throw new Error('Failed to update learned status');
+        const updated = await res.json();
         phrase.learned_at = updated.learned_at;
         renderTable();
         if (typeof renderSidebar === 'function') renderSidebar();
     } catch (err) {
-        // Roll back on failure.
-        phrase.level = wasLevel;
-        phrase.learned_at = wasLearned ? new Date().toISOString() : null;
+        phrase.learned_at = nextLearned ? null : new Date().toISOString();
         renderTable();
-        alert('Failed to update progress');
+        alert('Failed to update learned status');
     }
 }
 

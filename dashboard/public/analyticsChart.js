@@ -14,8 +14,7 @@ let analyticsGranularity = 'day'; // 'day' | 'week' | 'month'
 let analyticsMode = 'tag';        // 'tag' | 'learned'
 
 const LEARNED_COLOR = '#f2c14e';
-const LEVEL2_COLOR = '#2563eb';
-const LEVEL1_COLOR = '#3a4a6b';
+const UNLEARNED_COLOR = '#3a4a6b';
 const NO_TAG_COLOR = '#444';
 
 function computeAnalyticsBuckets() {
@@ -84,14 +83,10 @@ function renderAnalyticsChart() {
                 return `<div class="chart-segment" style="flex:${count}; background:${color};" title="${name}: ${count}"></div>`;
             }).join('');
         } else {
-            // Same "current status of what was created in this period"
-            // logic as before — just 3 states now instead of 2.
-            const level1Count = b.phrases.filter(p => !p.learned_at && p.level !== 2).length;
-            const level2Count = b.phrases.filter(p => !p.learned_at && p.level === 2).length;
             const learnedCount = b.phrases.filter(p => p.learned_at).length;
+            const unlearnedCount = total - learnedCount;
             segments = [
-                level1Count ? `<div class="chart-segment" style="flex:${level1Count}; background:${LEVEL1_COLOR};" title="Level 1: ${level1Count}"></div>` : '',
-                level2Count ? `<div class="chart-segment" style="flex:${level2Count}; background:${LEVEL2_COLOR};" title="Level 2: ${level2Count}"></div>` : '',
+                unlearnedCount ? `<div class="chart-segment" style="flex:${unlearnedCount}; background:${UNLEARNED_COLOR};" title="Not learned: ${unlearnedCount}"></div>` : '',
                 learnedCount ? `<div class="chart-segment" style="flex:${learnedCount}; background:${LEARNED_COLOR};" title="Learned: ${learnedCount}"></div>` : ''
             ].join('');
         }
@@ -121,9 +116,8 @@ function renderAnalyticsLegend() {
         legend.innerHTML = tagDots + `<span class="chart-legend-item"><span class="chart-legend-dot" style="background:${NO_TAG_COLOR}"></span>No tag</span>`;
     } else {
         legend.innerHTML = `
-            <span class="chart-legend-item"><span class="chart-legend-dot" style="background:${LEVEL1_COLOR}"></span>Level 1</span>
-            <span class="chart-legend-item"><span class="chart-legend-dot" style="background:${LEVEL2_COLOR}"></span>Level 2</span>
             <span class="chart-legend-item"><span class="chart-legend-dot" style="background:${LEARNED_COLOR}"></span>Learned</span>
+            <span class="chart-legend-item"><span class="chart-legend-dot" style="background:${UNLEARNED_COLOR}"></span>Not learned</span>
         `;
     }
 }

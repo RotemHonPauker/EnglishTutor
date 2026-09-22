@@ -1,5 +1,8 @@
 import express from 'express';
 import { getSpaces, createSpace, updateSpace, migrateSpace } from '../../database.js';
+import { LANGUAGES } from '../../languages.js';
+
+const VALID_LANGUAGE_NAMES = new Set(LANGUAGES.map(l => l.name));
 
 const router = express.Router();
 
@@ -14,12 +17,30 @@ router.get('/spaces', async (req, res) => {
 });
 
 router.post('/spaces', async (req, res) => {
-    const { name } = req.body;
+    const { name, spaceType, sourceLanguage, targetLanguage, bridgeLanguage } = req.body;
     if (!name || !name.trim()) {
         return res.status(400).json({ error: 'Name is required' });
     }
+    if (!sourceLanguage || !targetLanguage) {
+        return res.status(400).json({ error: 'Source and target language are required' });
+    }
+    if (!VALID_LANGUAGE_NAMES.has(sourceLanguage) || !VALID_LANGUAGE_NAMES.has(targetLanguage)) {
+        return res.status(400).json({ error: 'Source and target language must be from the supported list' });
+    }
+    if (spaceType === 'bridge' && !bridgeLanguage) {
+        return res.status(400).json({ error: 'Bridge language is required for a Bridge space' });
+    }
+    if (spaceType === 'bridge' && !VALID_LANGUAGE_NAMES.has(bridgeLanguage)) {
+        return res.status(400).json({ error: 'Bridge language must be from the supported list' });
+    }
     try {
-        const space = await createSpace({ name: name.trim() });
+        const space = await createSpace({
+            name: name.trim(),
+            spaceType: spaceType || 'progression',
+            sourceLanguage,
+            targetLanguage,
+            bridgeLanguage: spaceType === 'bridge' ? bridgeLanguage : null
+        });
         res.json(space);
     } catch (err) {
         console.error('Error creating space:', err);

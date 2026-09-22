@@ -49,10 +49,14 @@ function setAddInputMode(mode, btnEl) {
     if (sendBtn) sendBtn.style.display = isRecord ? 'none' : '';
 
     if (captureTextInput && !isRecord) {
+        const space = typeof getActiveSpace === 'function' ? getActiveSpace() : null;
+        const source = space?.source_language || 'the source language';
+        const target = space?.target_language || 'the target language';
         captureTextInput.placeholder = mode === 'dictionary'
-            ? 'Look up a word in the dictionary'
-            : 'Translate from Hebrew, or polish your English';
+            ? `Look up a word in the ${source}-${target} dictionary...`
+            : `Translate from ${source}, or polish your ${target}...`;
     }
+    if (isRecord) updateRecordButtonLabels();
 
     refreshCaptureLog(previousMode);
 }
@@ -80,6 +84,18 @@ function refreshCaptureLog(previousMode) {
 function startRecordingUpload(mode) {
     captureMode = mode;
     document.getElementById('recording-file-input').click();
+}
+
+// Labels the two record buttons with the active space's actual languages
+// instead of hardcoded names.
+function updateRecordButtonLabels() {
+    const space = typeof getActiveSpace === 'function' ? getActiveSpace() : null;
+    const source = space?.source_language || 'source language';
+    const target = space?.target_language || 'target language';
+    const sourceBtn = document.getElementById('record-lang-source-btn');
+    const targetBtn = document.getElementById('record-lang-target-btn');
+    if (sourceBtn) sourceBtn.textContent = `🎙️ Recording in ${source}`;
+    if (targetBtn) targetBtn.textContent = `🎙️ Recording in ${target}`;
 }
 
 // Entering the Add tab always starts with a clean, empty log — anything
@@ -131,7 +147,7 @@ function resetCaptureLog() {
     applyCaptureViewMode();
     captureLog.innerHTML = '';
     hideTranscriptSelectionBar();
-    setAddInputMode((typeof isDictionaryMode !== 'undefined' && isDictionaryMode) ? 'dictionary' : 'type');
+    setAddInputMode((typeof isDictionarySpace === 'function' && isDictionarySpace()) ? 'dictionary' : 'type');
     editingPhraseId = null;
     hideEditingBanner();
 }
@@ -142,8 +158,12 @@ async function submitTypedPhrase() {
     const text = captureTextInput.value.trim();
     if (!text) return;
 
-    if ((typeof isDictionaryMode !== 'undefined' && isDictionaryMode) || addInputMode === 'dictionary') {
-        await submitDictionaryLookup(text);
+    if ((typeof isDictionarySpace === 'function' && isDictionarySpace()) || addInputMode === 'dictionary') {
+        captureTextInput.value = '';
+        captureTextInput.style.height = 'auto';
+        if (typeof resolveDictionarySpaceIdAndProceed === 'function') {
+            resolveDictionarySpaceIdAndProceed((spaceId) => submitDictionaryLookup(text, null, null, spaceId));
+        }
         return;
     }
 

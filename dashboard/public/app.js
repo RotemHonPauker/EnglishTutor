@@ -33,11 +33,12 @@ if (window.visualViewport) {
 
 window.onload = async () => {
     await loadSpaces();
-    // If a previous session left the app in dictionary mode, restore all
-    // the tab/Add-tab restrictions it implies before anything else loads —
+    // Restores the tab/Add-tab restrictions if the active space happens to
+    // be a dictionary space — derived fresh from that space's type, so
+    // this is always safe to call regardless of what kind of space it is.
     // loadTable() below already knows to fetch dictionary entries instead
-    // of phrases once this has run.
-    if (typeof isDictionaryMode !== 'undefined' && isDictionaryMode && typeof applyDictionaryModeUI === 'function') {
+    // of phrases when that's the case.
+    if (typeof applyDictionaryModeUI === 'function') {
         applyDictionaryModeUI();
     }
     await loadTags();

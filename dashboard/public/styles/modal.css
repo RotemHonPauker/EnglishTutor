@@ -178,3 +178,19 @@
 #space-picker-new-form input[type="text"]:focus {
     border-color: #2563eb;
 }
+
+#space-picker-new-form select {
+    background: #0f0f0f;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 8px 10px;
+    color: #e8e8e8;
+    font-size: 1rem;
+    outline: none;
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+#space-picker-new-form select:focus {
+    border-color: #2563eb;
+}

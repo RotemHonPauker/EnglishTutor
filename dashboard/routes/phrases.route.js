@@ -1,6 +1,6 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
-import { getPhrases, getPhraseById, saveSentence, updatePhrase, updatePhraseTag, updatePhraseProgress, updatePhraseTtsUrl, deletePhrase } from '../../database.js';
+import { getPhrases, getPhraseById, saveSentence, updatePhrase, updatePhraseTag, updatePhraseLevel, updatePhraseLearned, updatePhraseTtsUrl, deletePhrase } from '../../database.js';
 import { translatePhrase } from '../translation/translationEngine.js';
 import { generateSpeech, deleteSpeechFile } from '../tts/ttsEngine.js';
 import { RATE_LIMIT_WINDOW_MS, TRANSLATE_RATE_LIMIT_MAX } from '../limitsConfig.js';
@@ -75,23 +75,33 @@ router.patch('/phrases/:id/tag', async (req, res) => {
     }
 });
 
-// The 3-way level/learned cycle badge (next to the tag on each card) sends
-// the exact target state it's moving to — { level: 1 | 2, learned: bool }
-// — rather than asking the server to compute "next", since the client
-// already knows which of the three positions it's currently on.
-router.patch('/phrases/:id/progress', async (req, res) => {
+// The level badge on a card — a simple 1<->2 toggle, independent of
+// whether the phrase is learned.
+router.patch('/phrases/:id/level', async (req, res) => {
     const { id } = req.params;
     const level = Number(req.body.level);
-    const learned = !!req.body.learned;
     if (![1, 2].includes(level)) {
         return res.status(400).json({ error: 'level must be 1 or 2' });
     }
     try {
-        const phrase = await updatePhraseProgress({ id, level, learned });
+        const phrase = await updatePhraseLevel({ id, level });
         res.json(phrase);
     } catch (err) {
-        console.error('Error updating phrase progress:', err);
-        res.status(500).json({ error: 'Failed to update progress' });
+        console.error('Error updating phrase level:', err);
+        res.status(500).json({ error: 'Failed to update level' });
+    }
+});
+
+// The 👑 crown — independent of level.
+router.patch('/phrases/:id/learned', async (req, res) => {
+    const { id } = req.params;
+    const { learned } = req.body;
+    try {
+        const phrase = await updatePhraseLearned({ id, learned: !!learned });
+        res.json(phrase);
+    } catch (err) {
+        console.error('Error updating learned status:', err);
+        res.status(500).json({ error: 'Failed to update learned status' });
     }
 });
 

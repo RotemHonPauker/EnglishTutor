@@ -270,11 +270,6 @@
     color: #dbeafe;
 }
 
-.level-badge.learned {
-    background: rgba(242, 193, 78, 0.2);
-    color: #f2c14e;
-}
-
 .phrase-card-icons {
     display: flex;
     gap: 4px;

@@ -1,6 +1,6 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
-import { getDictionaryEntries, saveDictionaryEntry, updateDictionaryEntryLearned, deleteDictionaryEntry } from '../../database.js';
+import { getDictionaryEntries, saveDictionaryEntry, updateDictionaryEntryLearned, deleteDictionaryEntry, getSpaceRuleFields } from '../../database.js';
 import { lookupWord } from '../dictionary/dictionaryEngine.js';
 import { RATE_LIMIT_WINDOW_MS, TRANSLATE_RATE_LIMIT_MAX } from '../limitsConfig.js';
 
@@ -16,9 +16,16 @@ const lookupLimiter = rateLimit({
     message: { error: 'Too many lookups recently. Please wait a bit and try again.' }
 });
 
+// Dictionaries are space-scoped now (space_type = 'dictionary') — more
+// than one can exist, each with its own language pair — so every route
+// here needs to know which one.
 router.get('/dictionary', async (req, res) => {
+    const { spaceId } = req.query;
+    if (!spaceId) {
+        return res.status(400).json({ error: 'spaceId is required' });
+    }
     try {
-        const entries = await getDictionaryEntries();
+        const entries = await getDictionaryEntries(spaceId);
         res.json(entries);
     } catch (err) {
         console.error('Error fetching dictionary entries:', err);
@@ -26,28 +33,36 @@ router.get('/dictionary', async (req, res) => {
     }
 });
 
-// Body: { query, hebrewQuery? }. hebrewQuery is only passed when this call
-// is resolving a word the person picked from an earlier options list, so
-// the original Hebrew search stays attached to the entry that gets saved.
+// Body: { spaceId, query, sourceQuery? }. sourceQuery is only passed when
+// this call is resolving a word the person picked from an earlier options
+// list, so the original source-language search stays attached to the
+// entry that gets saved. spaceId's own source/target language (fetched via
+// getSpaceRuleFields, same helper the translation routes use) tells
+// lookupWord which two languages this dictionary is between.
 router.post('/dictionary/lookup', lookupLimiter, async (req, res) => {
-    const { query, hebrewQuery, partOfSpeechHint } = req.body;
+    const { spaceId, query, sourceQuery, partOfSpeechHint } = req.body;
+    if (!spaceId) {
+        return res.status(400).json({ error: 'spaceId is required' });
+    }
     if (!query || !query.trim()) {
         return res.status(400).json({ error: 'query is required' });
     }
     try {
-        const result = await lookupWord(query.trim(), partOfSpeechHint || null);
+        const spaceFields = await getSpaceRuleFields(spaceId);
+        const result = await lookupWord(query.trim(), spaceFields.sourceLanguage, spaceFields.targetLanguage, partOfSpeechHint || null);
 
         if (result.type === 'options') {
             return res.json({ type: 'options', kind: result.kind, options: result.options || [] });
         }
 
         const entry = await saveDictionaryEntry({
-            hebrewQuery: hebrewQuery || null,
+            spaceId,
+            sourceQuery: sourceQuery || null,
             word: result.word,
             partOfSpeech: result.partOfSpeech,
-            hebrewSynonyms: (result.hebrewSynonyms || []).join(', '),
+            sourceSynonyms: (result.sourceSynonyms || []).join(', '),
             exampleSentence: result.exampleSentence,
-            englishSynonyms: (result.englishSynonyms || []).join(', ')
+            targetSynonyms: (result.targetSynonyms || []).join(', ')
         });
         res.json({ type: 'saved', entry });
     } catch (err) {

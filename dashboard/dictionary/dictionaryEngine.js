@@ -12,18 +12,25 @@ const parseResponse = (rawText) => {
     return JSON.parse(cleaned);
 };
 
-// Looks up a single word/term — no space, no mode, the model auto-detects
-// Hebrew vs English by script alone. partOfSpeechHint, when given, comes
-// from a sense-disambiguation option the person just picked (see Rule 4 in
-// the prompt) — it skips straight to defining the word as that specific
-// part of speech instead of re-triggering the same ambiguity. Returns one of:
-//   { type: 'options', kind: 'translations', options: [{ word, context }] }  — Hebrew input, needs a word chosen
-//   { type: 'options', kind: 'senses', options: [{ partOfSpeech, context }] } — English input, needs a sense chosen
-//   { type: 'detail', word, partOfSpeech, hebrewSynonyms, exampleSentence, englishSynonyms } — resolved, ready to save
+// Looks up a single word/term against a specific dictionary space's own
+// source/target language pair — no more hardcoded Hebrew/English, and no
+// script-based auto-detection either, since a script check (Hebrew vs.
+// Latin letters) doesn't generalize to language pairs that share a script
+// (e.g. French/German). The model is told explicitly which two languages
+// this dictionary is between (see dictionaryPrompt.txt's Role line) and
+// decides which side the query is on from that context.
+// partOfSpeechHint, when given, comes from a sense-disambiguation option
+// the person just picked (see Rule 4 in the prompt) — it skips straight to
+// defining the word as that specific part of speech instead of
+// re-triggering the same ambiguity. Returns one of:
+//   { type: 'options', kind: 'translations', options: [{ word, context }] }  — source-language input, needs a word chosen
+//   { type: 'options', kind: 'senses', options: [{ partOfSpeech, context }] } — target-language input, needs a sense chosen
+//   { type: 'detail', word, partOfSpeech, sourceSynonyms, exampleSentence, targetSynonyms } — resolved, ready to save
 // Enforces the app's word display convention regardless of what the model
-// happened to return — capitalized first letter, and verbs never prefixed
-// with "to" (just the verb itself). Applied in code rather than relying on
-// the prompt alone, since that's a request, not a guarantee.
+// happened to return — capitalized first letter, and (for languages that
+// mark it, like English "to run") no leading infinitive marker. Applied in
+// code rather than relying on the prompt alone, since that's a request,
+// not a guarantee.
 const normalizeWord = (word) => {
     if (!word) return word;
     const trimmed = word.trim().replace(/^to\s+/i, '');
@@ -31,12 +38,14 @@ const normalizeWord = (word) => {
     return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
 };
 
-export const lookupWord = async (query, partOfSpeechHint) => {
+export const lookupWord = async (query, sourceLanguage, targetLanguage, partOfSpeechHint) => {
     const baseTemplate = readFileSync(promptPath, 'utf-8');
     const hintSection = partOfSpeechHint
         ? `The person has already specified this should be defined as a: ${partOfSpeechHint}. Skip disambiguation and define it directly as that part of speech.`
         : '';
     const content = baseTemplate
+        .replace(/\$\{sourceLanguage\}/g, sourceLanguage)
+        .replace(/\$\{targetLanguage\}/g, targetLanguage)
         .replace('${query}', query)
         .replace('${partOfSpeechHintSection}', hintSection);
 

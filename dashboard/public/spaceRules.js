@@ -67,6 +67,20 @@ function renderSpaceRulesForm() {
         setFieldStatus(field, '');
     });
 
+    // Level 1/2 mean something different in a Bridge space — variant_2 is
+    // a separate reference language, not a more advanced version of
+    // variant_1 — so the labels (and what the notes field is even for)
+    // need to say that instead of "Level 1"/"Level 2".
+    const title1 = document.getElementById('space-rules-title-level1');
+    const title2 = document.getElementById('space-rules-title-level2');
+    if (active?.space_type === 'bridge') {
+        if (title1) title1.textContent = active.target_language;
+        if (title2) title2.textContent = `${active.bridge_language} (bridge)`;
+    } else {
+        if (title1) title1.textContent = 'Level 1';
+        if (title2) title2.textContent = 'Level 2';
+    }
+
     closeAllSpaceRuleItems();
 }
 
@@ -216,12 +230,7 @@ function requestOpenSpacePicker() {
 // there shouldn't be a dirty field left to catch (requestOpenSpacePicker
 // already would have blocked getting here).
 function requestSpaceSwitch(id) {
-    // In dictionary mode, activeSpaceId still holds whatever space was
-    // active before entering it — so this "already there" shortcut must
-    // not fire even if id happens to match, or picking that exact space
-    // back would silently do nothing instead of actually leaving
-    // dictionary mode.
-    if (!isDictionaryMode && id === activeSpaceId) {
+    if (id === activeSpaceId) {
         closeSpacePicker();
         return;
     }

@@ -80,7 +80,7 @@ function bucketLabelFor(id, granularity) {
 // strip's shape stays stable as filters change.
 function matchesActiveFilters(item) {
     if (typeof phraseMatchesLearnedFilter === 'function' && !phraseMatchesLearnedFilter(item)) return false;
-    if (typeof isDictionaryMode !== 'undefined' && !isDictionaryMode
+    if (!(typeof isDictionarySpace === 'function' && isDictionarySpace())
         && typeof phraseMatchesTagFilter === 'function' && !phraseMatchesTagFilter(item)) return false;
     return true;
 }

@@ -94,7 +94,7 @@
                     </div>
                     <div class="space-rules-item" data-field="level1">
                         <button type="button" class="space-rules-item-header" onclick="toggleSpaceRuleItem('level1')">
-                            <span class="space-rules-item-title">Level 1</span>
+                            <span class="space-rules-item-title" id="space-rules-title-level1">Level 1</span>
                             <span class="space-rules-item-chevron">▾</span>
                         </button>
                         <div class="space-rules-item-body">
@@ -110,7 +110,7 @@
                     </div>
                     <div class="space-rules-item" data-field="level2">
                         <button type="button" class="space-rules-item-header" onclick="toggleSpaceRuleItem('level2')">
-                            <span class="space-rules-item-title">Level 2</span>
+                            <span class="space-rules-item-title" id="space-rules-title-level2">Level 2</span>
                             <span class="space-rules-item-chevron">▾</span>
                         </button>
                         <div class="space-rules-item-body">
@@ -162,7 +162,7 @@
             </div>
             <div class="mode-toggle" id="analytics-mode-toggle">
                 <button class="mode-toggle-btn active" data-mode="tag" onclick="setAnalyticsMode('tag', this)">By tag</button>
-                <button class="mode-toggle-btn" data-mode="learned" onclick="setAnalyticsMode('learned', this)">Progress</button>
+                <button class="mode-toggle-btn" data-mode="learned" onclick="setAnalyticsMode('learned', this)">Learned</button>
             </div>
             <div id="analytics-chart-bars"></div>
             <div id="analytics-chart-legend"></div>
@@ -190,8 +190,8 @@
                     <div id="capture-content-area">
                         <textarea id="capture-text-input" dir="auto" rows="2"></textarea>
                         <div id="capture-record-buttons" style="display:none">
-                            <button class="record-lang-btn" onclick="startRecordingUpload('capture')">🎙️ Recording in Hebrew</button>
-                            <button class="record-lang-btn" onclick="startRecordingUpload('check')">🎙️ Recording in English</button>
+                            <button id="record-lang-source-btn" class="record-lang-btn" onclick="startRecordingUpload('capture')">🎙️ Recording in Hebrew</button>
+                            <button id="record-lang-target-btn" class="record-lang-btn" onclick="startRecordingUpload('check')">🎙️ Recording in English</button>
                         </div>
                     </div>
                     <div id="capture-text-footer">
@@ -318,6 +318,7 @@
 </div>
 
 <script src="loadingOverlay.js"></script>
+<script src="languagesData.js"></script>
 <script src="spacesState.js"></script>
 <script src="spaceRules.js"></script>
 <script src="dictionary.js"></script>

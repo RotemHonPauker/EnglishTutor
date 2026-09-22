@@ -54,16 +54,23 @@ export const updatePhraseTag = async ({ id, tagId }) => {
     return result.rows[0];
 };
 
-// ===== Level / learned progress =====
-// A single tri-state cycle per phrase now drives both fields at once:
-// level 1 -> level 2 -> learned -> level 1 ... The client always sends the
-// exact target state it's moving to (it already knows the current one),
-// so this just writes both columns together rather than trying to infer
-// "next" server-side.
-export const updatePhraseProgress = async ({ id, level, learned }) => {
+// Table-driven: flips which of the two variants is shown (1 <-> 2).
+// Independent of learned_at — a card's level and its learned state are
+// two separate axes now, not one 3-state cycle.
+export const updatePhraseLevel = async ({ id, level }) => {
     const result = await pool.query(
-        `UPDATE phrases SET level = $1, learned_at = $2 WHERE id = $3 RETURNING *`,
-        [level, learned ? new Date() : null, id]
+        `UPDATE phrases SET level = $1 WHERE id = $2 RETURNING *`,
+        [level, id]
+    );
+    return result.rows[0];
+};
+
+// Toggles "learned" — stores a timestamp (not just true/false) so it can
+// later feed an analytics timeline of when things were learned.
+export const updatePhraseLearned = async ({ id, learned }) => {
+    const result = await pool.query(
+        `UPDATE phrases SET learned_at = $1 WHERE id = $2 RETURNING *`,
+        [learned ? new Date() : null, id]
     );
     return result.rows[0];
 };
@@ -112,10 +119,11 @@ export const getSpaces = async () => {
     return result.rows;
 };
 
-export const createSpace = async ({ name }) => {
+export const createSpace = async ({ name, spaceType, sourceLanguage, targetLanguage, bridgeLanguage }) => {
     const result = await pool.query(
-        `INSERT INTO spaces (name) VALUES ($1) RETURNING *`,
-        [name]
+        `INSERT INTO spaces (name, space_type, source_language, target_language, bridge_language)
+         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+        [name, spaceType || 'progression', sourceLanguage, targetLanguage, bridgeLanguage || null]
     );
     return result.rows[0];
 };
@@ -219,8 +227,7 @@ export const migrateSpace = async ({ sourceId, targetId, dropSourceTranscripts =
         } else {
             await client.query(`UPDATE transcripts SET space_id = $1::uuid WHERE space_id = $2::uuid`, [targetId, sourceId]);
         }
-        // Move tags, resolving name/color collisions against the target's
-        // existing tags as we go.
+
         const { rows: sourceTags } = await client.query(`SELECT * FROM tags WHERE space_id = $1::uuid`, [sourceId]);
         const { rows: targetTags } = await client.query(`SELECT * FROM tags WHERE space_id = $1::uuid`, [targetId]);
         const usedNames = new Set(targetTags.map(t => t.name.toLowerCase()));
@@ -276,7 +283,8 @@ export const migrateSpace = async ({ sourceId, targetId, dropSourceTranscripts =
 
 export const getSpaceRuleFields = async (spaceId) => {
     const { rows } = await pool.query(
-        `SELECT about_this_space, variant_1_notes, variant_2_notes, audio_recording_notes
+        `SELECT about_this_space, variant_1_notes, variant_2_notes, audio_recording_notes,
+                space_type, source_language, target_language, bridge_language
          FROM spaces WHERE id = $1`,
         [spaceId]
     );
@@ -285,7 +293,11 @@ export const getSpaceRuleFields = async (spaceId) => {
         aboutThisSpace: row.about_this_space ?? null,
         variant1Notes: row.variant_1_notes ?? null,
         variant2Notes: row.variant_2_notes ?? null,
-        audioRecordingNotes: row.audio_recording_notes ?? null
+        audioRecordingNotes: row.audio_recording_notes ?? null,
+        spaceType: row.space_type ?? 'progression',
+        sourceLanguage: row.source_language ?? 'Hebrew',
+        targetLanguage: row.target_language ?? 'English',
+        bridgeLanguage: row.bridge_language ?? null
     };
 };
 
@@ -412,18 +424,24 @@ export const deleteTranscript = async (id) => {
 // A standalone vocabulary list, global across the whole app — no space_id,
 // no tag_id, entirely independent of spaces.
 
-export const getDictionaryEntries = async () => {
+// --- Dictionary ---
+// Now a space-scoped list (space_type = 'dictionary') rather than one
+// global list — more than one can exist, each with its own source/target
+// language pair, same as any other space.
+
+export const getDictionaryEntries = async (spaceId) => {
     const result = await pool.query(
-        `SELECT * FROM dictionary ORDER BY created_at DESC`
+        `SELECT * FROM dictionary WHERE space_id = $1 ORDER BY created_at DESC`,
+        [spaceId]
     );
     return result.rows;
 };
 
-export const saveDictionaryEntry = async ({ hebrewQuery, word, partOfSpeech, hebrewSynonyms, exampleSentence, englishSynonyms }) => {
+export const saveDictionaryEntry = async ({ spaceId, sourceQuery, word, partOfSpeech, sourceSynonyms, exampleSentence, targetSynonyms }) => {
     const result = await pool.query(
-        `INSERT INTO dictionary (hebrew_query, word, part_of_speech, hebrew_synonyms, example_sentence, english_synonyms)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-        [hebrewQuery || null, word, partOfSpeech, hebrewSynonyms, exampleSentence, englishSynonyms]
+        `INSERT INTO dictionary (space_id, source_query, word, part_of_speech, source_synonyms, example_sentence, target_synonyms)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+        [spaceId, sourceQuery || null, word, partOfSpeech, sourceSynonyms, exampleSentence, targetSynonyms]
     );
     return result.rows[0];
 };

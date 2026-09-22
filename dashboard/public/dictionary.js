@@ -1,108 +1,127 @@
-// ===== Dictionary mode =====
-// A parallel "context" alongside spaces — entered via the space picker
-// (a "📖 Dictionary" row next to the space list), not tied to any space.
-// Rather than a separate screen, it repurposes Practice (own data source +
-// card template, sharing the date-scroll/learned-filter machinery already
-// built for phrases) and Add (Send becomes a word lookup instead of a
-// phrase capture). Analytics and Setup don't apply and are disabled while
-// active.
+// ===== Dictionary spaces =====
+// Dictionary is a space_type now (alongside 'progression' and 'bridge'),
+// not a separate global mode — a dictionary space is picked from the
+// normal space picker exactly like any other space, and its id lives in
+// the same activeSpaceId as everything else. This file just supplies the
+// behavior that's specific to that type: word lookup instead of phrase
+// capture, and a different Practice card shape. It repurposes Practice
+// (own data source + card template, sharing the date-scroll/learned-filter
+// machinery already built for phrases) and Add (Send becomes a word lookup
+// instead of a phrase capture). Analytics and Setup don't apply and are
+// disabled while a dictionary space is active.
 
-let isDictionaryMode = localStorage.getItem('isDictionaryMode') === 'true';
 let allDictionaryEntries = [];
 
+function isDictionarySpace() {
+    const space = typeof getActiveSpace === 'function' ? getActiveSpace() : null;
+    return !!space && space.space_type === 'dictionary';
+}
+
 // The single source of truth Practice/date-scroll/learned-filter read
-// from — swaps between the active space's phrases and the global
-// dictionary list depending on mode, so that shared machinery (built
-// around allPhrases) works unchanged on either one.
+// from — swaps between the active space's phrases and its dictionary
+// entries depending on type, so that shared machinery (built around
+// allPhrases) works unchanged on either one.
 function getPracticeItems() {
-    return isDictionaryMode ? allDictionaryEntries : allPhrases;
+    return isDictionarySpace() ? allDictionaryEntries : allPhrases;
 }
 
-function enterDictionaryMode() {
-    isDictionaryMode = true;
-    localStorage.setItem('isDictionaryMode', 'true');
-    closeSpacePicker();
-    applyDictionaryModeUI();
-
-    // Analytics and Setup just became disabled — if either was the active
-    // view, there's nothing there to show anymore. Land on Practice,
-    // rather than leaving the person stranded on a tab they can no longer
-    // reach via the tab bar.
-    const activeView = document.querySelector('.view.active')?.id;
-    if (activeView === 'view-analytics' || activeView === 'view-tags') {
-        navigateToTab('practice');
-    }
-
-    if (typeof resetCaptureLog === 'function') resetCaptureLog();
-    if (typeof resetDateScroll === 'function') resetDateScroll();
-    if (typeof resetLearnedFilter === 'function') resetLearnedFilter();
-    if (typeof resetTagFilter === 'function') resetTagFilter();
-    loadTable();
-}
-
-// Called from setActiveSpace (spacesState.js) whenever a real space is
-// picked — leaving dictionary mode is just "picking a space" like any
-// other switch, not a separate action.
-function exitDictionaryModeIfNeeded() {
-    if (!isDictionaryMode) return;
-    isDictionaryMode = false;
-    localStorage.setItem('isDictionaryMode', 'false');
-}
-
-// Applies (or lifts) every UI restriction dictionary mode implies. Called
-// on entry, and once on page load if a previous session left the app in
-// dictionary mode.
+// Applies (or lifts) every UI restriction a dictionary space implies.
+// Called on page load and on every space switch (setActiveSpace) — always
+// derived fresh from the active space's type rather than a separate flag,
+// so there's no "enter/exit" step to keep in sync with space switching.
 function applyDictionaryModeUI() {
-    // Header — "📖 Dictionary" instead of the space name; no health dot,
-    // it's not a space.
-    const nameEl = document.getElementById('space-header-name');
-    const dot = document.getElementById('space-health-dot');
-    if (isDictionaryMode) {
-        if (nameEl) nameEl.textContent = '📖 Dictionary';
-        if (dot) dot.style.display = 'none';
-    } else {
-        if (dot) dot.style.display = '';
-        if (typeof renderSpaceHeader === 'function') renderSpaceHeader();
-    }
+    const dict = isDictionarySpace();
 
-    // Tab bar — Analytics (phrase-only) and Setup (space-only) don't apply.
+    // Tab bar — Analytics (phrase-only) and Setup (space-rules only) don't
+    // apply to a dictionary space.
     const analyticsBtn = document.querySelector('.tab-btn[data-view="analytics"]');
     const setupBtn = document.querySelector('.tab-btn[data-view="tags"]');
     [analyticsBtn, setupBtn].forEach(btn => {
-        if (btn) btn.disabled = isDictionaryMode;
+        if (btn) btn.disabled = dict;
     });
 
     // Add tab — only the typed-word input + Send stay usable. Forces the
-    // 3-way Type/Dictionary/Record selector onto "Dictionary" and disables
+    // Type/Dictionary/Record icon selector onto "Dictionary" and disables
     // switching away from it entirely, since nothing else applies while
-    // this whole context is dictionary lookups. Only forces the mode when
-    // entering/active — leaving it alone (not resetting to "Type") is
-    // resetCaptureLog's job on the way out, so a manual "Dictionary" pick
-    // made in a normal space isn't clobbered by an unrelated re-render here.
+    // this whole space is dictionary lookups. Only forces the mode while
+    // active — leaving it alone on the way out is resetCaptureLog's job,
+    // so a manual "Dictionary" pick made in a normal space isn't clobbered
+    // by an unrelated re-render here.
     document.querySelectorAll('#capture-mode-icons .capture-mode-icon-btn, #capture-history-btn').forEach(btn => {
-        btn.disabled = isDictionaryMode;
+        btn.disabled = dict;
     });
-    if (isDictionaryMode && typeof setAddInputMode === 'function') {
+    if (dict && typeof setAddInputMode === 'function') {
         setAddInputMode('dictionary');
     }
-    const historyBtn = document.getElementById('capture-history-btn');
-    if (historyBtn) historyBtn.disabled = isDictionaryMode;
 
     // Practice — tags don't apply to dictionary entries.
     const tagsBtn = document.getElementById('practice-tags-btn');
-    if (tagsBtn) tagsBtn.style.display = isDictionaryMode ? 'none' : '';
+    if (tagsBtn) tagsBtn.style.display = dict ? 'none' : '';
 }
 
-// ===== Word lookup (triggered from Add's Send button when in dictionary mode) =====
+// ===== Quick lookup from a non-dictionary space =====
+// Picking 📖 from any regular space's Add tab still routes Send to a
+// dictionary lookup — but now that needs a specific dictionary SPACE to
+// save into (entries carry a space_id). If the active space already is
+// one, use it directly (dict spaces lock straight onto this path via
+// applyDictionaryModeUI above). Otherwise: exactly one dictionary space
+// existing is an easy default; more than one needs the person to pick
+// which; none existing means there's nowhere to save yet.
 
-// query: what's being looked up right now. hebrewQuery: the *original*
-// Hebrew search, carried through when this call is resolving a word
-// chosen from an earlier options list, so the saved entry remembers what
-// was actually searched for.
-async function submitDictionaryLookup(query, hebrewQuery, partOfSpeechHint) {
+function resolveDictionarySpaceIdAndProceed(onResolved) {
+    if (isDictionarySpace()) {
+        onResolved(activeSpaceId);
+        return;
+    }
+    const dictSpaces = (typeof spaces !== 'undefined' ? spaces : []).filter(s => s.space_type === 'dictionary');
+    if (dictSpaces.length === 0) {
+        addCaptureMessage('No dictionary space yet — create one from the space picker first.');
+        return;
+    }
+    if (dictSpaces.length === 1) {
+        onResolved(dictSpaces[0].id);
+        return;
+    }
+    renderDictionarySpacePicker(dictSpaces, onResolved);
+}
+
+function renderDictionarySpacePicker(dictSpaces, onResolved) {
+    const container = document.createElement('div');
+    container.className = 'capture-log-item';
+
+    const prompt = document.createElement('div');
+    prompt.className = 'dictionary-options-prompt';
+    prompt.textContent = 'Which dictionary?';
+    container.appendChild(prompt);
+
+    const chipList = document.createElement('div');
+    chipList.className = 'dictionary-option-list';
+
+    dictSpaces.forEach(s => {
+        const chip = document.createElement('div');
+        chip.className = 'dictionary-option-chip';
+        chip.textContent = s.name;
+        chip.addEventListener('click', () => {
+            chipList.querySelectorAll('.dictionary-option-chip').forEach(c => c.style.pointerEvents = 'none');
+            onResolved(s.id);
+        });
+        chipList.appendChild(chip);
+    });
+
+    container.appendChild(chipList);
+    captureLog.appendChild(container);
+    captureLog.scrollTop = captureLog.scrollHeight;
+}
+
+// ===== Word lookup (triggered from Add's Send button when in a dictionary space) =====
+
+// query: what's being looked up right now. sourceQuery: the *original*
+// source-language search, carried through when this call is resolving a
+// word chosen from an earlier options list, so the saved entry remembers
+// what was actually searched for. spaceId: which dictionary this lookup
+// (and its language pair) belongs to.
+async function submitDictionaryLookup(query, sourceQuery, partOfSpeechHint, spaceId) {
     const sendBtn = document.getElementById('capture-send-btn');
-    captureTextInput.value = '';
-    captureTextInput.style.height = 'auto';
     captureTextInput.disabled = true;
     sendBtn.disabled = true;
     sendBtn.textContent = '...';
@@ -111,16 +130,16 @@ async function submitDictionaryLookup(query, hebrewQuery, partOfSpeechHint) {
         const res = await fetch('/dictionary/lookup', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query, hebrewQuery: hebrewQuery || null, partOfSpeechHint: partOfSpeechHint || null })
+            body: JSON.stringify({ spaceId, query, sourceQuery: sourceQuery || null, partOfSpeechHint: partOfSpeechHint || null })
         });
         if (!res.ok) throw new Error('Failed to look up word');
         const data = await res.json();
 
         if (data.type === 'options') {
-            addDictionaryOptions(data.options, data.kind, query, hebrewQuery);
+            addDictionaryOptions(data.options, data.kind, query, sourceQuery, spaceId);
         } else {
             addDictionarySavedMessage(data.entry);
-            allDictionaryEntries.unshift(data.entry);
+            if (spaceId === activeSpaceId) allDictionaryEntries.unshift(data.entry);
         }
     } catch (err) {
         addCaptureMessage("Couldn't look that up — try again.");
@@ -132,11 +151,11 @@ async function submitDictionaryLookup(query, hebrewQuery, partOfSpeechHint) {
     }
 }
 
-// Built with DOM methods rather than an HTML string — English words can
-// contain apostrophes ("don't", "it's"), which would break naive
+// Built with DOM methods rather than an HTML string — words can contain
+// apostrophes ("don't", "it's"), which would break naive
 // string-interpolated onclick attributes. Event listeners with closures
 // sidestep that entirely.
-function addDictionaryOptions(options, kind, query, hebrewQuery) {
+function addDictionaryOptions(options, kind, query, sourceQuery, spaceId) {
     const container = document.createElement('div');
     container.className = 'capture-log-item';
 
@@ -171,9 +190,9 @@ function addDictionaryOptions(options, kind, query, hebrewQuery) {
                 // Same word, resubmitted with a part-of-speech hint so the
                 // model locks onto this sense instead of re-triggering the
                 // same ambiguity.
-                submitDictionaryLookup(query, hebrewQuery, o.partOfSpeech);
+                submitDictionaryLookup(query, sourceQuery, o.partOfSpeech, spaceId);
             } else {
-                submitDictionaryLookup(o.word, hebrewQuery);
+                submitDictionaryLookup(o.word, sourceQuery, null, spaceId);
             }
         });
         chipList.appendChild(chip);
@@ -193,27 +212,27 @@ function addDictionarySavedMessage(entry) {
     div.innerHTML = `
         <div class="dictionary-word" dir="auto">${entry.word || ''}</div>
         ${entry.part_of_speech ? `<span class="dictionary-pos">${entry.part_of_speech}</span>` : ''}
-        ${entry.hebrew_synonyms ? `<div class="dictionary-synonyms" dir="auto">${entry.hebrew_synonyms}</div>` : ''}
+        ${entry.source_synonyms ? `<div class="dictionary-synonyms" dir="auto">${entry.source_synonyms}</div>` : ''}
         ${entry.example_sentence ? `<div class="dictionary-example">${entry.example_sentence}</div>` : ''}
-        ${entry.english_synonyms ? `<div class="dictionary-synonyms">${entry.english_synonyms}</div>` : ''}
+        ${entry.target_synonyms ? `<div class="dictionary-synonyms">${entry.target_synonyms}</div>` : ''}
     `;
     captureLog.appendChild(div);
     captureLog.scrollTop = captureLog.scrollHeight;
 }
 
-// ===== Dictionary data + card rendering (Practice, in dictionary mode) =====
+// ===== Dictionary data + card rendering (Practice, in a dictionary space) =====
 
-async function loadDictionaryEntries() {
-    const res = await fetch('/dictionary');
+async function loadDictionaryEntries(spaceId) {
+    const res = await fetch(`/dictionary?spaceId=${spaceId}`);
     allDictionaryEntries = await res.json();
     if (typeof generateDateBuckets === 'function') generateDateBuckets();
     if (typeof renderDateScroll === 'function') renderDateScroll();
     renderTable();
 }
 
-// Called from renderTable() (phrasesTable.js) when isDictionaryMode is on
-// — a different card shape (word / part of speech / synonyms / example),
-// no tag badge, no 🔊. Reuses .phrase-card/.phrase-card-header/
+// Called from renderTable() (phrasesTable.js) when the active space is a
+// dictionary — a different card shape (word / part of speech / synonyms /
+// example), no tag badge, no 🔊. Reuses .phrase-card/.phrase-card-header/
 // .phrase-card-icons/.phrase-card-main and the learned-state styling
 // as-is, so only the dictionary-specific inner pieces need their own CSS.
 function renderDictionaryCards() {
@@ -238,9 +257,9 @@ function renderDictionaryCards() {
             </div>
             <div class="phrase-card-main">
                 <div class="dictionary-word" dir="auto">${e.word || ''}</div>
-                ${e.hebrew_synonyms ? `<div class="dictionary-synonyms" dir="auto">${e.hebrew_synonyms}</div>` : ''}
+                ${e.source_synonyms ? `<div class="dictionary-synonyms" dir="auto">${e.source_synonyms}</div>` : ''}
                 ${e.example_sentence ? `<div class="dictionary-example">${e.example_sentence}</div>` : ''}
-                ${e.english_synonyms ? `<div class="dictionary-synonyms">${e.english_synonyms}</div>` : ''}
+                ${e.target_synonyms ? `<div class="dictionary-synonyms">${e.target_synonyms}</div>` : ''}
             </div>
         </div>
         `;
