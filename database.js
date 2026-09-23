@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import pg from 'pg';
+import { COLORS as TAG_COLORS } from './colors.js';
 
 const pool = new pg.Pool({ 
   connectionString: process.env.DATABASE_URI_SESSION, 
@@ -176,15 +177,6 @@ export const updateSpace = async ({ id, name, aboutThisSpace, variant1Notes, var
 // if that collides with something already in the target. Phrases keep
 // referencing the same tag_id throughout, since the tags themselves never
 // change identity, only which space they belong to.
-
-// Same palette as the frontend's tag color picker (tags.js) — kept in sync
-// manually since colors rarely change.
-const TAG_COLORS = [
-    '#AD1457', '#D81B60', '#E67C73', '#F4511E',
-    '#F09300', '#F6BF26', '#7CB342', '#0B8043',
-    '#009688', '#33B679', '#039BE5', '#3F51B5',
-    '#B39DDB', '#9E69AF', '#8E24AA', '#795548'
-];
 
 // A hard cap distinct from the app's existing ">3 saved transcripts"
 // nudge (that one's just a soft cleanup reminder) — this one actually

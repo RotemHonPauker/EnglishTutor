@@ -16,6 +16,13 @@ router.get('/spaces', async (req, res) => {
     }
 });
 
+// The single source of truth for supported languages — the frontend
+// fetches this once at load instead of keeping its own hardcoded copy, so
+// there's nothing to keep in sync by hand.
+router.get('/languages', (req, res) => {
+    res.json(LANGUAGES);
+});
+
 router.post('/spaces', async (req, res) => {
     const { name, spaceType, sourceLanguage, targetLanguage, bridgeLanguage } = req.body;
     if (!name || !name.trim()) {

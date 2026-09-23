@@ -32,7 +32,11 @@ if (window.visualViewport) {
 }
 
 window.onload = async () => {
-    await loadSpaces();
+    // Languages and colors don't depend on the active space, so both load
+    // in parallel with it — needed before the space picker's create form,
+    // any Bridge-space badge (phrasesTable.js), or the tag color picker
+    // (tags.js) renders.
+    await Promise.all([loadSpaces(), loadLanguages(), loadColors()]);
     // Restores the tab/Add-tab restrictions if the active space happens to
     // be a dictionary space — derived fresh from that space's type, so
     // this is always safe to call regardless of what kind of space it is.

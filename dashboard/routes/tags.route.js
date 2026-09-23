@@ -1,7 +1,14 @@
 import express from 'express';
 import { getTags, createTag, updateTag, deleteTag, mergeTags } from '../../database.js';
+import { COLORS } from '../../colors.js';
 
 const router = express.Router();
+
+// The single source of truth for the tag-color palette — the frontend
+// fetches this once at load instead of keeping its own hardcoded copy.
+router.get('/colors', (req, res) => {
+    res.json(COLORS);
+});
 
 router.get('/tags', async (req, res) => {
     const { spaceId } = req.query;

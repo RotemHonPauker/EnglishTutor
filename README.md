@@ -61,7 +61,7 @@ Postgres via Supabase. Five tables:
   - `id` (PK)
   - `name`
   - `space_type` — text, `'progression'` (default), `'bridge'`, or `'dictionary'`. Set once at creation, not editable after — changing a space's language pair midway would make its existing phrases meaningless. Decides what `variant_1`/`variant_2` on this space's phrases even mean, and which UI restrictions apply (see [How it works](#how-it-works))
-  - `source_language` / `target_language` — text, e.g. `"Hebrew"`, `"English"`. Chosen at creation from a fixed list (`languages.js` / `languagesData.js`), never free text, so every space's language name and code stay consistent everywhere they're used (prompts, badges, dictionary space names)
+  - `source_language` / `target_language` — text, e.g. `"Hebrew"`, `"English"`. Chosen at creation from a fixed list (`languages.js` — the frontend fetches it via `GET /languages` rather than keeping its own copy), never free text, so every space's language name and code stay consistent everywhere they're used (prompts, badges, dictionary space names)
   - `bridge_language` — text, `NULL` unless `space_type = 'bridge'`. A third, reference-only language shown alongside the main translation — not a "more advanced" version of anything, just a different language for comparison
   - `about_this_space` — text, `NULL` until set. General background for this space (who's speaking, common topics, terminology)
   - `variant_1_notes` / `variant_2_notes` — text, `NULL` until set. What these mean depends on `space_type`: in a **progression** space, guidance for how Level 1 / Level 2 should specifically sound, layered on top of the shared `variantGuidance.txt`; in a **bridge** space, notes for the target language and the bridge language respectively (the Setup tab relabels the fields accordingly)
@@ -184,7 +184,7 @@ EnglishTutor/
 │   |   ├── colorUtils.js
 │   |   ├── dictionary.js
 │   |   ├── index.html
-│   |   ├── languagesData.js     (mirrors ../../languages.js — the frontend's copy of the language list)
+│   |   ├── languagesUtils.js
 │   |   ├── loadingOverlay.js
 │   |   ├── manifest.json        (PWA — app name, icons, install behavior)
 │   |   ├── phrasesTable.js
@@ -208,8 +208,9 @@ EnglishTutor/
 │   ├── limitsConfig.js
 │   └── server.js
 ├── .env
+├── colors.js
 ├── database.js
-├── languages.js                 (shared list of supported languages + codes — imported by spaces.route.js to validate a new space's language choices)
+├── languages.js
 ├── package.json
 └── README.md
 ```

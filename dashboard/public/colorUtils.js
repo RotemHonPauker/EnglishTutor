@@ -1,14 +1,20 @@
 const DEFAULT_TAG_COLOR = '#ccc';
 
-// The fixed palette offered when picking a tag's color (used by tags.js) —
-// lives here now instead of duplicated next to the color-adjacent
-// functions below.
-const COLORS = [
-    '#AD1457', '#D81B60', '#E67C73', '#F4511E', 
-    '#F09300', '#F6BF26', '#7CB342', '#0B8043', 
-    '#009688', '#33B679', '#039BE5', '#3F51B5', 
-    '#B39DDB', '#9E69AF', '#8E24AA', '#795548'
-];
+// The fixed palette offered when picking a tag's color (used by tags.js).
+// Fetched once from the backend (the actual source of truth, colors.js)
+// rather than kept as a second hardcoded copy here — same pattern as
+// languagesUtils.js's LANGUAGES. Starts empty and is filled in by
+// loadColors(), called once from app.js's window.onload.
+let COLORS = [];
+
+async function loadColors() {
+    try {
+        const res = await fetch('/colors');
+        COLORS = await res.json();
+    } catch (err) {
+        console.error('Failed to load colors:', err);
+    }
+}
 
 function getContrastColor(hex) {
     if (!hex) return '#ccc';
