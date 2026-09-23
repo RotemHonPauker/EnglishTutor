@@ -70,7 +70,7 @@ function setAddInputMode(mode, btnEl) {
 // current).
 function refreshCaptureLog(previousMode) {
     if (addInputMode === 'record') {
-        captureLog.innerHTML = `<div class="recording-info-note">🎙️<br>Recordings are limited to about 30 minutes.<br>Once it's processed, you'll land straight on its transcript — just select whichever lines you want to translate.</div>`;
+        captureLog.innerHTML = `<div class="recording-info-note">🎙️<br>Recordings are limited to about 30 minutes.<br>Once it's processed, you'll land straight on its transcript. Just select whichever lines you want to translate.</div>`;
     } else if (previousMode === 'record') {
         captureLog.innerHTML = '';
     }

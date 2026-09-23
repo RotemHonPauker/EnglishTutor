@@ -33,43 +33,12 @@ function renderSpaceHeader() {
     const label = document.getElementById('space-header-name');
     if (!label) return;
     const active = getActiveSpace();
-    const dot = document.getElementById('space-health-dot');
     if (active && active.space_type === 'dictionary') {
         label.textContent = `📖 ${active.name}`;
-        if (dot) dot.style.display = 'none';
         return;
     }
     label.textContent = active ? active.name : 'Select a space';
-    if (dot) dot.style.display = '';
-    renderSpaceHealthIndicator();
     if (typeof renderSpaceRulesForm === 'function') renderSpaceRulesForm();
-}
-
-// A lightweight, purely visual nudge — never enforced anywhere. Compares
-// this space's phrases from the last 7 days against a loose 2–3/week
-// target. Depends on allPhrases (from phrasesTable.js), so this is also
-// called from loadTable() whenever that data refreshes.
-function renderSpaceHealthIndicator() {
-    const dot = document.getElementById('space-health-dot');
-    if (!dot) return;
-
-    if (!getActiveSpace() || typeof allPhrases === 'undefined') {
-        dot.className = 'space-health-dot';
-        dot.title = '';
-        return;
-    }
-
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    const recentCount = allPhrases.filter(p => new Date(p.created_at) >= weekAgo).length;
-
-    let level, label;
-    if (recentCount >= 3) { level = 'good'; label = 'Active this week'; }
-    else if (recentCount >= 1) { level = 'low'; label = 'Below the weekly goal (2–3 phrases)'; }
-    else { level = 'none'; label = 'No activity this week'; }
-
-    dot.className = `space-health-dot health-${level}`;
-    dot.title = label;
 }
 
 // Switching spaces reloads everything that's scoped to a space — the tag
@@ -108,7 +77,14 @@ function closeSpacePicker() {
 
 function renderSpacePickerList() {
     const list = document.getElementById('space-picker-list');
-    const spaceRows = spaces.map(s => `
+    // Dictionaries first, everything else after — stable within each
+    // group (doesn't reorder beyond that).
+    const ordered = [...spaces].sort((a, b) => {
+        const aDict = a.space_type === 'dictionary' ? 0 : 1;
+        const bDict = b.space_type === 'dictionary' ? 0 : 1;
+        return aDict - bDict;
+    });
+    const spaceRows = ordered.map(s => `
         <div class="space-picker-row">
             <div class="space-picker-item ${s.id === activeSpaceId ? 'active' : ''}" onclick="requestSpaceSwitch('${s.id}')">
                 ${s.space_type === 'dictionary' ? '📖 ' : ''}${s.name}
@@ -144,7 +120,8 @@ async function submitRenameSpace(id) {
     });
 
     if (!res.ok) {
-        alert('Failed to rename space');
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Failed to rename space');
         return;
     }
 
@@ -163,30 +140,75 @@ async function submitRenameSpace(id) {
 // translation; Dictionary is a standalone word-lookup list rather than a
 // phrase-practice space. All three still just live in `spaces` — the type
 // only changes how Setup/Add/Practice interpret that space's rows.
-function showNewSpaceForm() {
+
+const SPACE_TYPE_DESCRIPTIONS = {
+    progression: 'Practice one language at two levels of fluency: simple and advanced. Good for steady, ongoing vocabulary building in a single target language.',
+    bridge: 'Translate into your target language, plus a separate reference language. Useful when you\'re starting a new language and want extra help from another one you know.',
+    dictionary: 'Look up individual words and save their definitions, synonyms, and an example sentence.'
+};
+
+// Own modal, separate from the space picker — opening it closes the
+// picker first, so the list of existing spaces isn't sitting there while
+// creating a new one.
+function openSpaceCreateModal() {
+    closeSpacePicker();
     newSpaceNameEdited = false;
-    const form = document.getElementById('space-picker-new-form');
+    renderSpaceCreateForm();
+    document.getElementById('space-create-modal-overlay').style.display = 'flex';
+}
+
+function closeSpaceCreateModal() {
+    document.getElementById('space-create-modal-overlay').style.display = 'none';
+    document.getElementById('space-create-form').innerHTML = '';
+}
+
+function renderSpaceCreateForm() {
+    const form = document.getElementById('space-create-form');
     form.innerHTML = `
-        <select id="new-space-type" onchange="onNewSpaceTypeChange()">
-            <option value="progression">Progression (Level 1 / Level 2)</option>
-            <option value="bridge">Bridge (with a reference language)</option>
-            <option value="dictionary">Dictionary</option>
-        </select>
-        <select id="new-space-source-lang" onchange="onNewSpaceLanguageChange()">${languageOptionsHtml('Hebrew')}</select>
-        <select id="new-space-target-lang" onchange="onNewSpaceLanguageChange()">${languageOptionsHtml('English')}</select>
-        <select id="new-space-bridge-lang" style="display:none">${languageOptionsHtml('English')}</select>
-        <input id="new-space-name-input" type="text" placeholder="Space name" autocomplete="off" oninput="newSpaceNameEdited = true" />
+        <div class="space-create-field">
+            <label class="space-create-label" for="new-space-type">Type</label>
+            <select id="new-space-type" onchange="onNewSpaceTypeChange()">
+                <option value="progression">Progression (Level 1 / Level 2)</option>
+                <option value="bridge">Bridge (with a reference language)</option>
+                <option value="dictionary">Dictionary</option>
+            </select>
+            <div id="new-space-type-description" class="space-create-description"></div>
+        </div>
+        <div class="space-create-field">
+            <label class="space-create-label" for="new-space-source-lang">Source language</label>
+            <select id="new-space-source-lang" onchange="onNewSpaceLanguageChange()">${languageOptionsHtml('Hebrew')}</select>
+        </div>
+        <div class="space-create-field">
+            <label class="space-create-label" for="new-space-target-lang">Target language</label>
+            <select id="new-space-target-lang" onchange="onNewSpaceLanguageChange()">${languageOptionsHtml('English')}</select>
+        </div>
+        <div class="space-create-field" id="new-space-bridge-field" style="display:none">
+            <label class="space-create-label" for="new-space-bridge-lang">Bridge language</label>
+            <select id="new-space-bridge-lang">${languageOptionsHtml('English')}</select>
+        </div>
+        <div class="space-create-field">
+            <label class="space-create-label" for="new-space-name-input">Name</label>
+            <input id="new-space-name-input" type="text" placeholder="Space name" autocomplete="off" oninput="newSpaceNameEdited = true" />
+        </div>
         <div class="form-buttons">
-            <button onclick="document.getElementById('space-picker-new-form').innerHTML = ''">Cancel</button>
+            <button onclick="closeSpaceCreateModal()">Cancel</button>
             <button class="primary" onclick="submitNewSpace()">Create</button>
         </div>
     `;
+    updateSpaceTypeDescription();
+}
+
+function updateSpaceTypeDescription() {
+    const type = document.getElementById('new-space-type')?.value;
+    const el = document.getElementById('new-space-type-description');
+    if (el) el.textContent = SPACE_TYPE_DESCRIPTIONS[type] || '';
 }
 
 function onNewSpaceTypeChange() {
     const type = document.getElementById('new-space-type').value;
-    const bridgeSelect = document.getElementById('new-space-bridge-lang');
-    if (bridgeSelect) bridgeSelect.style.display = type === 'bridge' ? '' : 'none';
+    const bridgeField = document.getElementById('new-space-bridge-field');
+    if (bridgeField) bridgeField.style.display = type === 'bridge' ? '' : 'none';
+    updateSpaceTypeDescription();
     updateSuggestedSpaceName();
 }
 
@@ -225,13 +247,15 @@ async function submitNewSpace() {
     });
 
     if (!res.ok) {
-        alert('Failed to create space');
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Failed to create space');
         return;
     }
 
     newSpaceNameEdited = false;
     const space = await res.json();
     spaces.push(space);
+    closeSpaceCreateModal();
     await setActiveSpace(space.id);
 }
 

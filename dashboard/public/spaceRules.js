@@ -73,12 +73,18 @@ function renderSpaceRulesForm() {
     // need to say that instead of "Level 1"/"Level 2".
     const title1 = document.getElementById('space-rules-title-level1');
     const title2 = document.getElementById('space-rules-title-level2');
+    const textarea1 = document.getElementById('space-rules-level1');
+    const textarea2 = document.getElementById('space-rules-level2');
     if (active?.space_type === 'bridge') {
         if (title1) title1.textContent = active.target_language;
         if (title2) title2.textContent = `${active.bridge_language} (bridge)`;
+        if (textarea1) textarea1.placeholder = `How the ${active.target_language} translation should sound...`;
+        if (textarea2) textarea2.placeholder = `How the ${active.bridge_language} should sound, so it helps you learn ${active.target_language}...`;
     } else {
         if (title1) title1.textContent = 'Level 1';
         if (title2) title2.textContent = 'Level 2';
+        if (textarea1) textarea1.placeholder = 'How Level 1 should sound...';
+        if (textarea2) textarea2.placeholder = 'How Level 2 should sound (a step up from Level 1)...';
     }
 
     closeAllSpaceRuleItems();

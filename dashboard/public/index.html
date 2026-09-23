@@ -38,7 +38,6 @@
 <!-- SPACE HEADER: shown above every tab, always. Tapping it opens the
      space picker/create modal. -->
 <header id="space-header" onclick="requestOpenSpacePicker()">
-    <span id="space-health-dot" class="space-health-dot"></span>
     <span id="space-header-name">Select a space</span>
     <span class="space-header-chevron">▾</span>
 </header>
@@ -75,6 +74,7 @@
         <div id="setup-scroll">
             <div id="space-rules-section">
                 <div id="space-rules-header">Space Setup</div>
+                <div id="space-rules-intro">This is where you help sharpen the translations.<br>These fields become part of the AI prompt.</div>
                 <div class="space-rules-accordion">
                     <div class="space-rules-item" data-field="about">
                         <button type="button" class="space-rules-item-header" onclick="toggleSpaceRuleItem('about')">
@@ -130,7 +130,7 @@
                             <span class="space-rules-item-chevron">▾</span>
                         </button>
                         <div class="space-rules-item-body">
-                            <textarea id="space-rules-audio" rows="6" placeholder="Notes for transcribing this space's recordings — background noise to expect, long silences, anything else particular to how they sound..."></textarea>
+                            <textarea id="space-rules-audio" rows="6" placeholder="Anything that helps transcribe recordings accurately and skip unwanted noise or content..."></textarea>
                             <div class="space-rules-copy-area" id="space-rules-copy-audio"></div>
                             <div class="space-rules-item-actions">
                                 <button type="button" onclick="toggleCopyPicker('audio')">Copy from...</button>
@@ -287,8 +287,18 @@
         <div id="space-picker-new-form"></div>
         <div class="modal-footer">
             <button onclick="closeSpacePicker()">Cancel</button>
-            <button class="primary" onclick="showNewSpaceForm()">+ New space</button>
+            <button class="primary" onclick="openSpaceCreateModal()">+ New space</button>
         </div>
+    </div>
+</div>
+
+<div id="space-create-modal-overlay" style="display:none">
+    <div id="space-create-modal" class="confirm-modal">
+        <div class="modal-header">
+            <span>New Space</span>
+            <button onclick="closeSpaceCreateModal()">✕</button>
+        </div>
+        <div id="space-create-form"></div>
     </div>
 </div>
 

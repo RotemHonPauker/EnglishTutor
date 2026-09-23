@@ -57,6 +57,7 @@
 #tag-filter-modal-overlay,
 #tag-edit-modal-overlay,
 #space-picker-modal-overlay,
+#space-create-modal-overlay,
 #unsaved-rules-modal-overlay {
     position: fixed;
     inset: 0;
@@ -193,4 +194,48 @@
 
 #space-picker-new-form select:focus {
     border-color: #2563eb;
+}
+
+/* ===== Space create modal (own modal, separate from the picker) ===== */
+
+.space-create-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+}
+
+.space-create-field:last-of-type {
+    margin-bottom: 10px;
+}
+
+.space-create-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.space-create-field select,
+.space-create-field input[type="text"] {
+    background: #0f0f0f;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 8px 10px;
+    color: #e8e8e8;
+    font-size: 1rem;
+    outline: none;
+    width: 100%;
+}
+
+.space-create-field select:focus,
+.space-create-field input[type="text"]:focus {
+    border-color: #2563eb;
+}
+
+.space-create-description {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: #999;
 }

@@ -34,6 +34,10 @@ router.post('/spaces', async (req, res) => {
         return res.status(400).json({ error: 'Bridge language must be from the supported list' });
     }
     try {
+        const existing = await getSpaces();
+        if (existing.some(s => s.name.trim().toLowerCase() === name.trim().toLowerCase())) {
+            return res.status(409).json({ error: 'A space with this name already exists' });
+        }
         const space = await createSpace({
             name: name.trim(),
             spaceType: spaceType || 'progression',
@@ -54,6 +58,12 @@ router.put('/spaces/:id', async (req, res) => {
         return res.status(400).json({ error: 'Name cannot be empty' });
     }
     try {
+        if (name !== undefined) {
+            const existing = await getSpaces();
+            if (existing.some(s => s.id !== req.params.id && s.name.trim().toLowerCase() === name.trim().toLowerCase())) {
+                return res.status(409).json({ error: 'A space with this name already exists' });
+            }
+        }
         const space = await updateSpace({
             id: req.params.id,
             name: name !== undefined ? name.trim() : undefined,
