@@ -146,6 +146,12 @@
     background: none;
 }
 
+.space-picker-edit-btn-placeholder {
+    display: inline-block;
+    width: 27px; /* matches .space-picker-edit-btn's rendered width (icon + padding) */
+    flex-shrink: 0;
+}
+
 .space-picker-item {
     padding: 10px 14px;
     border-radius: 8px;

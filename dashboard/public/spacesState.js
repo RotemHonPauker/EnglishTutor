@@ -89,8 +89,8 @@ function renderSpacePickerList() {
             <div class="space-picker-item ${s.id === activeSpaceId ? 'active' : ''}" onclick="requestSpaceSwitch('${s.id}')">
                 ${s.space_type === 'dictionary' ? '📖 ' : ''}${s.name}
             </div>
-            ${s.space_type === 'dictionary' ? '' : `<button class="space-picker-edit-btn" onclick="event.stopPropagation(); showRenameSpaceForm('${s.id}')" title="Rename">✎</button>`}
             <button class="space-picker-edit-btn" onclick="event.stopPropagation(); showMigrateSpaceForm('${s.id}')" title="Migrate into another space">⇄</button>
+            ${s.space_type === 'dictionary' ? '<span class="space-picker-edit-btn-placeholder"></span>' : `<button class="space-picker-edit-btn" onclick="event.stopPropagation(); showRenameSpaceForm('${s.id}')" title="Rename">✎</button>`}
         </div>
     `).join('');
     list.innerHTML = spaceRows;
@@ -215,7 +215,10 @@ function onNewSpaceLanguageChange() {
     updateSuggestedSpaceName();
 }
 
-// A dictionary space's name is always "Dictionary (XX→YY)" — locked, not freely editable
+// A dictionary space's name is always "Dictionary (XX→YY)" — locked, not
+// freely editable, so it can't drift out of sync with whatever languages
+// are actually selected (which happened when this was just a one-time
+// suggestion: switching spaces or clearing the field left it stale).
 // Every other type keeps a normal, freely-typed name.
 function updateSuggestedSpaceName() {
     const type = document.getElementById('new-space-type')?.value;
