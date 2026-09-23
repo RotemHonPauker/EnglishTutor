@@ -60,6 +60,10 @@ router.put('/spaces/:id', async (req, res) => {
     try {
         if (name !== undefined) {
             const existing = await getSpaces();
+            const current = existing.find(s => s.id === req.params.id);
+            if (current?.space_type === 'dictionary') {
+                return res.status(400).json({ error: "A dictionary space's name can't be changed — it stays locked to its language pair" });
+            }
             if (existing.some(s => s.id !== req.params.id && s.name.trim().toLowerCase() === name.trim().toLowerCase())) {
                 return res.status(409).json({ error: 'A space with this name already exists' });
             }

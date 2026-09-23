@@ -89,7 +89,7 @@ function renderSpacePickerList() {
             <div class="space-picker-item ${s.id === activeSpaceId ? 'active' : ''}" onclick="requestSpaceSwitch('${s.id}')">
                 ${s.space_type === 'dictionary' ? '📖 ' : ''}${s.name}
             </div>
-            <button class="space-picker-edit-btn" onclick="event.stopPropagation(); showRenameSpaceForm('${s.id}')" title="Rename">✎</button>
+            ${s.space_type === 'dictionary' ? '' : `<button class="space-picker-edit-btn" onclick="event.stopPropagation(); showRenameSpaceForm('${s.id}')" title="Rename">✎</button>`}
             <button class="space-picker-edit-btn" onclick="event.stopPropagation(); showMigrateSpaceForm('${s.id}')" title="Migrate into another space">⇄</button>
         </div>
     `).join('');
@@ -152,7 +152,6 @@ const SPACE_TYPE_DESCRIPTIONS = {
 // creating a new one.
 function openSpaceCreateModal() {
     closeSpacePicker();
-    newSpaceNameEdited = false;
     renderSpaceCreateForm();
     document.getElementById('space-create-modal-overlay').style.display = 'flex';
 }
@@ -188,7 +187,7 @@ function renderSpaceCreateForm() {
         </div>
         <div class="space-create-field">
             <label class="space-create-label" for="new-space-name-input">Name</label>
-            <input id="new-space-name-input" type="text" placeholder="Space name" autocomplete="off" oninput="newSpaceNameEdited = true" />
+            <input id="new-space-name-input" type="text" placeholder="Space name" autocomplete="off" />
         </div>
         <div class="form-buttons">
             <button onclick="closeSpaceCreateModal()">Cancel</button>
@@ -216,20 +215,21 @@ function onNewSpaceLanguageChange() {
     updateSuggestedSpaceName();
 }
 
-// Only Dictionary spaces get an auto-filled name (so a picker full of
-// dictionaries stays distinguishable by language pair without typing) —
-// and only until the person actually types their own, tracked with a
-// simple flag rather than trying to guess intent from the input's value.
-let newSpaceNameEdited = false;
-
+// A dictionary space's name is always "Dictionary (XX→YY)" — locked, not freely editable
+// Every other type keeps a normal, freely-typed name.
 function updateSuggestedSpaceName() {
     const type = document.getElementById('new-space-type')?.value;
-    if (type !== 'dictionary' || newSpaceNameEdited) return;
     const nameInput = document.getElementById('new-space-name-input');
     if (!nameInput) return;
-    const sourceCode = codeForLanguage(document.getElementById('new-space-source-lang').value);
-    const targetCode = codeForLanguage(document.getElementById('new-space-target-lang').value);
-    nameInput.value = `Dictionary (${sourceCode}→${targetCode})`;
+    if (type === 'dictionary') {
+        const sourceCode = codeForLanguage(document.getElementById('new-space-source-lang').value);
+        const targetCode = codeForLanguage(document.getElementById('new-space-target-lang').value);
+        nameInput.value = `Dictionary (${sourceCode}→${targetCode})`;
+        nameInput.disabled = true;
+    } else {
+        if (nameInput.disabled) nameInput.value = ''; // was locked to the auto-generated name — clear now that it's editable again
+        nameInput.disabled = false;
+    }
 }
 
 async function submitNewSpace() {
@@ -252,7 +252,6 @@ async function submitNewSpace() {
         return;
     }
 
-    newSpaceNameEdited = false;
     const space = await res.json();
     spaces.push(space);
     closeSpaceCreateModal();

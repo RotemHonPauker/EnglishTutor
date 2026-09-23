@@ -234,6 +234,11 @@
     border-color: #2563eb;
 }
 
+.space-create-field input[type="text"]:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
 .space-create-description {
     font-size: 0.8125rem;
     line-height: 1.5;
