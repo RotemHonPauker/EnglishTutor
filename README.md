@@ -105,7 +105,7 @@ Not shown at all for a dictionary space.
 | ------------------------------ | -------------------------------------------------- |
 | Translation & audio processing | Google Gemini (`gemini-3.6-flash`)                 |
 | Text-to-speech                 | Google Gemini TTS (`gemini-3.1-flash-tts-preview`) |
-| Database                       | Postgres via Supabase (pgvector enabled)           |
+| Database                       | Postgres via Supabase                              |
 | Server                         | DigitalOcean VPS                                   |
 | Process manager                | PM2 (keeps the app alive, restarts on reboot)      |
 | Reverse proxy                  | Nginx                                              |
@@ -115,19 +115,19 @@ Not shown at all for a dictionary space.
 
 ---
 
-## Text-to-speech & recording
+## Text-to-speech & recording privacy
 
 - Tapping 🔊 next to a variant generates spoken audio via Gemini TTS (voice: **Achernar**) the first time only — the file is saved to `dashboard/public/audio-cache/` on whichever machine's server handled the request, and its path is stored in `phrases.tts_url_variant1`/`tts_url_variant2`. Every play after that just serves the cached file, no API call. Deleting a phrase deletes its cached audio files too, so nothing lingers with no phrase pointing to it.
-- While recording is sent no audio is ever stored. Only the resulting transcript text (saved to `transcripts`) survives past the request — nothing else, until a person selects something from it.
+- A recording itself is never stored — only the resulting transcript text (saved to `transcripts`) survives past the request, and nothing else, until you select something from it.
 
 ---
 
 ## Rate limiting & usage caps
 
-A layer protects the Gemini API usage from runaway cost (abuse, a bug, or an abandoned browser tab):
+A layer protects Gemini API usage from runaway cost (abuse, a bug, or an abandoned browser tab):
 
-- **per-route rate limits** (`express-rate-limit`) on `/phrases` (translation), `/recordings` (transcription), and `/dictionary/lookup` (word lookups) — capped requests per IP per time window.
-- **~30 minute recording limit** Requests are sent inline (embedded directly in the API call) rather than through a separate upload step, which is simpler but size-capped — 60MB of raw audio is the ceiling, comfortably under Gemini's 100MB inline request limit once base64 overhead is factored in. Based on this app's actual recording weight (~1.5MB/minute), that's roughly half an hour. Oversized files are rejected with a clear message rather than silently failing.
+- **Per-route rate limits** (`express-rate-limit`) on `/phrases` (translation), `/recordings` (transcription), and `/dictionary/lookup` (word lookups) — capped requests per IP per time window.
+- **~30-minute recording cap** — recordings are sent inline (embedded directly in the API call) rather than through a separate upload step, which is simpler but size-capped: 60MB of raw audio is the ceiling, comfortably under Gemini's 100MB inline-request limit once base64 overhead is factored in. Based on this app's actual recording weight (~1.5MB/minute), that's roughly half an hour. Oversized files are rejected with a clear message rather than silently failing.
 
 ---
 
