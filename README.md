@@ -33,8 +33,9 @@ This app is deliberately not built for use in the moment itself — not while yo
 - [🧱 Stack](#-stack)
 - [🔊 Text-to-speech & recording privacy](#-text-to-speech--recording-privacy)
 - [🚦 Rate limiting & usage caps](#-rate-limiting--usage-caps)
+- [📁 Project structure](#-project-structure)
 - [🚀 Deploying from scratch](#-deploying-from-scratch)
-  - [1. Create the database (Supabase)](#1-create-the-database-supabase)
+  - [1. Create the database](#1-create-the-database)
   - [2. Create the VPS](#2-create-the-vps)
   - [3. Generate an SSH key](#3-generate-an-ssh-key-on-your-own-computer-one-time-only)
   - [4. Connect to the server](#4-connect-to-the-server)
@@ -159,6 +160,8 @@ A layer protects Gemini API usage from runaway cost (abuse, a bug, or an abandon
 
 ---
 
+## 📁 Project structure
+
 ```
 EnglishTutor/
 ├── dashboard/
@@ -215,7 +218,7 @@ EnglishTutor/
 
 This is the exact sequence used to get from nothing to the live app on your phone. Total time: roughly one hour.
 
-### 1. Create the database (Supabase)
+### 1. Create the database
 
 - Provider: supabase.com → New project
 - Choose a project name, a strong database password (save it — this becomes part of `DATABASE_URI_SESSION` in a later step), and a region close to your server
