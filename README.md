@@ -24,60 +24,78 @@ This app is deliberately not built for use in the moment itself — not while yo
 
 ## How it works
 
-1. **Spaces** — the app always shows exactly one active space, named in the header at the top of every tab. Tap the name to switch to another space, or create a new one. Creating a space asks for its:
-   - **type**:
-     - **Progression**: learning language in 2 levels of difficulty.
-     - **Bridge**: adds a third, reference-only language.
-     - **Dictionary**: a standalone word-lookup list.
-   - **source/target language** (plus a **bridge language** for Bridge spaces), each chosen from a fixed list so every language's name and code stay consistent everywhere.
-   - You can also migrate one space into another — moves its phrases, tags, and transcripts into the target.
+### Spaces
 
-2. **Add tab** — a single text input, with three small icon buttons (**⌨️ 📖 🎙️**) plus a **Transcriptions**:
-   - **⌨️** (the default):
-     - write in the space's source or target language (or a mix — a phrase, a sentence, a short paragraph) and hit Send.
-     - which language is detected automatically, so there's nothing to pick beforehand: source-language text gets translated, target-language (or mixed) text gets grammar/phrasing-corrected instead.
-     - Saved right away into the shared log.
-     - the same AI call also tries to match it to one of the space's existing tags, only when confident (otherwise it's left untagged, and you can always tag or retag it yourself from Practice).
-   - **📖**:
-     - look up a word in the space's source or target language.
-     - doesn't require switching to a dictionary space at all.
-     - if more than one dictionary space exists, a quick picker asks which one first (if there's only one, it's used directly; if there are none yet, you're told to create one).
-   - **🎙️**:
-     - swaps the text input out for two buttons — "Recording in {source language}" and "Recording in {target language}" — telling Gemini up front which language to expect (the one language hint left in the app; typed text doesn't need one).
-     - then opens the file picker (up to ~30 minutes).
-     - As soon as a recording finishes processing, the view jumps straight to **Transcriptions** with that fresh transcript already expanded.
-   - **Transcriptions**:
-     - swaps the whole log area over to a list of past recording transcripts
-     - tap one to expand/collapse, delete once you're done with it; a nudge appears once more than 3 are saved.
-     - Selecting text inside an expanded transcript surfaces an "Add to input" bar — tap it to drop that exact selection into the input (switching to ⌨️ automatically), edit if needed, then Send, same as typing it fresh.
-     - Repeat per phrase.
+The app always shows exactly one active space, named in the header at the top of every tab. Tap the name to switch to another space, or create a new one. Creating a space asks for:
 
-3. **Practice tab** — your full phrase list as cards (progression/bridge spaces only — a dictionary space shows its word list here instead).
-   - **A horizontal date strip up top**: (Daily / Weekly / Monthly) jumps to a specific day, week, or month — periods with nothing in them aren't shown, and an "Older" bucket covers anything further back;
-   - **Filter by tag**: picking one filters the cards below, combined with the tag filter and a learned/not-learned filter.
-   - Each card contains this buttons:
-     - **Tag**: Tap to tag your card, applies color to the card.
-     - **LeveL/Language code**: Each card shows only its current level's wording — a badge next to the tag toggles which one, independent of learned state: "Level 1"/"Level 2" in a progression space, or the actual language code (e.g. "EN"/"CS") in a bridge space, since there variant_2 is a different language, not a more advanced version of variant_1.
-     - 👑: Tap to mark a phrase learned — it stays in the list, just dimmed with a gold accent, nothing disappears.
-       repeat listens never call the API again.
-     - ✏️: Tap to edit a phrase's wording. Overwrites that phrase in place - same `id`, same `created_at`, same tag. Cached audio is cleared.
-     - 🗑️: Tap to delete.
-     - 🔊: Tap to hear the shown variant spoken aloud — generated once on first play and cached from then on, so
+- **Type**:
+  - **Progression** — practice one language at two levels of fluency, simple and advanced. Good for steady, ongoing vocabulary building in a single target language.
+  - **Bridge** — translate into your target language, plus a separate reference language. Useful when you're starting a new language and want extra help from another one you already know.
+  - **📖 Dictionary** — a standalone word-lookup list: look up individual words and save their definitions, synonyms, and an example sentence.
+- **Source/target language** (plus a **bridge language** for Bridge spaces), each chosen from a fixed list so every language's name and code stay consistent everywhere.
 
-4. **Analytics tab** — a horizontal stacked-bar chart:
-   - one row per day/week/month (same Daily / Weekly / Monthly toggle as Practice), scrolling vertically with the most recent period at the top.
-   - A second toggle switches what each bar breaks down by:
-     - **By tag**: color-coded per tag, plus a "no tag" segment.
-     - **Learned**: how much of what was created in that period is now marked learned vs. not, as of right now.
-   - Both toggles group phrases by _when they were added_, not by when they reached their current status.
-   - Not shown at all for a dictionary space.
+You can also **⇄ migrate** one space into another — this moves its phrases, tags, and transcripts into the target space.
 
-5. **Setup tab** —
-   - **Space Setup**: shapes how this space's phrases get transcribed and translated: contains four fields. Each opening one at a time with its own Save/Cancel and a "Copy from..." option to pull that field's content from another space. Not shown at all for a dictionary space
-     - _About this space_,
-     - two variant-notes fields (labeled _Level 1_/_Level 2_ in a progression space, or the actual target/bridge language names in a bridge space),
-     - _Audio Recording_ (transcription notes — background noise, long silences, anything particular to how this space's recordings sound)
-   - A flat set of tags per space (chip cloud, each with a color and phrase count; tap one to edit, merge into another tag, or delete).
+### Add tab
+
+A single text input, with three small icon buttons (**⌨️ 📖 🎙️**) plus a **Transcriptions** toggle.
+
+- **⌨️ Type** (the default):
+  - Write in the space's source or target language (or a mix — a phrase, a sentence, a short paragraph) and hit Send.
+  - The language is detected automatically, so there's nothing to pick beforehand: source-language text gets translated, target-language (or mixed) text gets grammar/phrasing-corrected instead.
+  - Saved right away into the **capture log**.
+  - The same AI call also tries to match it to one of the space's existing tags, only when confident — otherwise it's left untagged, and you can always tag or retag it yourself from Practice.
+- **📖 Dictionary**:
+  - Look up a word in the space's source or target language.
+  - Doesn't require switching to a dictionary space at all.
+  - If more than one dictionary space exists, a quick picker asks which one first (if there's only one, it's used directly; if there are none yet, you're told to create one).
+- **🎙️ Record**:
+  - Swaps the text input out for two buttons — "Recording in {source language}" and "Recording in {target language}" — telling Gemini up front which language to expect, making it easier to identify correctly in audio. Typed text doesn't need this hint, since the language is already obvious from the text itself.
+  - Then opens the file picker to select a recording of up to ~30 minutes.
+  - As soon as a recording finishes processing, the view jumps straight to **Transcriptions** with that fresh transcript already expanded.
+- **Transcriptions**:
+  - Swaps the whole capture log area over to a list of past recording transcripts.
+  - Tap one to expand/collapse it, or delete it once you're done; a nudge appears once more than 3 are saved.
+  - Selecting text inside an expanded transcript surfaces an "Add to input" bar — tap it to drop that exact selection into the input (switching to ⌨️ automatically), edit if needed, then Send, same as typing it fresh.
+  - Repeat per phrase.
+
+### Practice tab
+
+Your full phrase list as cards — in a dictionary space, each card is a looked-up word instead of a phrase.
+
+- **A horizontal date strip up top** (Daily / Weekly / Monthly): jumps to a specific day, week, or month. The strip covers the most recent 30 days/weeks/months (periods with nothing in them are skipped, so it's not always a full 30 pills) — anything before that falls into a single "Older" bucket at the start. Works the same in a dictionary space.
+- **Filters**: a learned/not-learned filter always applies; a tag filter is layered on top of it in progression/bridge spaces (dictionary entries aren't tagged).
+- **Progression/Bridge cards** have these buttons:
+  - **Tag**: tap to tag the card — applies the tag's color to the whole card.
+  - **Level / Language code**: each card shows only its current level's wording. A badge next to the tag toggles which one, independent of learned state — "Level 1"/"Level 2" in a progression space, or the actual language code (e.g. "EN"/"CS") in a bridge space, since there variant 2 is a different language, not a more advanced version of variant 1.
+  - **👑**: tap to mark a phrase learned — it stays in the list, just dimmed with a gold accent; nothing disappears.
+  - **✏️**: tap to edit a phrase's wording. Overwrites that phrase in place — same `id`, same `created_at`, same tag. Cached audio is cleared.
+  - **🗑️**: tap to delete.
+  - **🔊**: tap to hear the shown variant spoken aloud — generated once on first play and cached from then on, so repeat listens never call the API again.
+- **Dictionary cards** show the word itself, its part of speech, synonyms in both languages, and an example sentence — with just two buttons:
+  - **👑**: tap to mark a word learned, same as a phrase.
+  - **🗑️**: tap to delete.
+
+### Analytics tab
+
+A horizontal stacked-bar chart.
+
+- One row per day/week/month (same Daily / Weekly / Monthly toggle as Practice), scrolling vertically with the most recent period at the top.
+- A second toggle switches what each bar breaks down by:
+  - **By tag**: color-coded per tag, plus a "no tag" segment.
+  - **Learned**: how much of what was created in that period is now marked learned vs. not, as of right now.
+- Both toggles group phrases by _when they were added_, not by when they reached their current status.
+- Not shown at all for a dictionary space.
+
+### Setup tab
+
+Not shown at all for a dictionary space.
+
+- **Space Setup** this is where you help sharpen the translations: each field you fill in becomes part of the AI prompt that shapes this space's transcription and translation. Four fields, each opening one at a time with its own Save/Cancel and a "Copy from..." option to pull that field's content from another space:
+  - **About this space** — who's speaking, common topics, and terminology particular to this space, so translations sound like they belong in it.
+  - **Level 1 / Level 2** (labeled with the actual target/bridge language names in a Bridge space) — how each level should sound: Level 1 sets the baseline phrasing, Level 2 a step up in fluency from it. In a Bridge space, the second field shapes how that reference-language translation should sound so that it actually helps you learn the target language.
+  - **Audio Recording** — anything that helps transcribe this space's recordings accurately: background noise to expect, long silences, or other quirks particular to how you record.
+- **Tags** — a flat set of tags per space (a chip cloud, each with a color and phrase count). Tap one to edit it, merge it into another tag, or delete it.
 
 ---
 
@@ -184,19 +202,9 @@ EnglishTutor/
 
 ---
 
-## Deployment (production)
-
-The app runs 24/7 on a DigitalOcean VPS, reachable at:
-
-```
-https://phrase-app.duckdns.org
-```
-
-**Architecture**: Nginx receives all traffic on ports 80/443, terminates HTTPS (via a Let's Encrypt certificate managed by Certbot), and reverse-proxies requests to the Node app running on `localhost:3000`. PM2 keeps the Node process alive and restarts it automatically on crash or server reboot.
-
 ## Full server setup guide (reproducing the deployment from scratch)
 
-This is the exact sequence used to get from a blank VPS to the live app. Useful if the server is ever lost and needs to be rebuilt. Total time: roughly 1–2 hours.
+This is the exact sequence used to get from a blank VPS to the live app on your phone. Total time: roughly one hour.
 
 ### 1. Create the VPS
 
