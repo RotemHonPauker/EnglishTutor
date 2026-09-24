@@ -183,7 +183,7 @@ async function submitTypedPhrase() {
         const res = await fetch('/phrases', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ hebrewText: text, spaceId: activeSpaceId })
+            body: JSON.stringify({ sourceText: text, spaceId: activeSpaceId })
         });
         if (!res.ok) throw new Error('Failed to translate phrase');
         const phrase = await res.json();
@@ -261,7 +261,7 @@ function addCaptureResult(phrase) {
     const div = document.createElement('div');
     div.className = 'capture-log-item';
     div.innerHTML = `
-        <div class="phrase-hebrew" dir="auto">${phrase.hebrew_text || ''}</div>
+        <div class="phrase-source" dir="auto">${phrase.source_text || ''}</div>
         <div class="phrase-variant">${phrase.variant_1 || ''}</div>
     `;
     captureLog.appendChild(div);
@@ -409,7 +409,7 @@ function startEditingPhrase(phrase) {
     editingPhraseId = phrase.id;
     setAddInputMode('type');
 
-    captureTextInput.value = phrase.hebrew_text || '';
+    captureTextInput.value = phrase.source_text || '';
     captureTextInput.style.height = 'auto';
     captureTextInput.style.height = captureTextInput.scrollHeight + 'px';
     captureTextInput.focus();
@@ -420,8 +420,8 @@ function startEditingPhrase(phrase) {
 function showEditingBanner(phrase) {
     const banner = document.getElementById('capture-editing-banner');
     if (!banner) return;
-    const text = (phrase.hebrew_text || '').slice(0, 40);
-    const preview = phrase.hebrew_text && phrase.hebrew_text.length > 40 ? `${text}…` : text;
+    const text = (phrase.source_text || '').slice(0, 40);
+    const preview = phrase.source_text && phrase.source_text.length > 40 ? `${text}…` : text;
     const label = banner.querySelector('.capture-editing-text');
     if (label) label.textContent = preview ? `Editing: "${preview}"` : 'Editing phrase';
     banner.style.display = 'flex';
@@ -454,7 +454,7 @@ async function submitPhraseEdit(text) {
         const res = await fetch(`/phrases/${id}/retranslate`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ hebrewText: text, spaceId: activeSpaceId })
+            body: JSON.stringify({ sourceText: text, spaceId: activeSpaceId })
         });
         if (!res.ok) throw new Error('Failed to update phrase');
         const phrase = await res.json();

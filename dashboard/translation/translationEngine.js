@@ -76,11 +76,8 @@ const buildTranslationStep = (variantGuidanceBase, spaceFields) => {
     return section;
 };
 
-// Returns { correctedHebrew, variant1, variant2, tagId }.
-// (correctedHebrew keeps its original key name here — the field itself is
-// now language-agnostic content, just an unchanged name so callers
-// throughout the app didn't all need touching for a rename.)
-export const translatePhrase = async (hebrewText, spaceId) => {
+// Returns { correctedSource, variant1, variant2, tagId }.
+export const translatePhrase = async (sourceText, spaceId) => {
     const baseTemplate = readFileSync(basePromptPath, 'utf-8');
     const variantGuidanceBase = readFileSync(variantGuidancePath, 'utf-8');
     const [spaceFields, spaceTags] = await Promise.all([
@@ -94,7 +91,7 @@ export const translatePhrase = async (hebrewText, spaceId) => {
         .replace('${translationStep}', buildTranslationStep(variantGuidanceBase, spaceFields))
         .replace('${spaceRulesSection}', buildSpaceRulesSection(spaceFields))
         .replace('${existingTagsSection}', buildExistingTagsSection(spaceTags))
-        .replace('${phrase}', hebrewText);
+        .replace('${phrase}', sourceText);
 
     const response = await ai.models.generateContent({
         model: 'gemini-3.6-flash',
@@ -108,7 +105,7 @@ export const translatePhrase = async (hebrewText, spaceId) => {
     const result = parseTranslationResponse(rawText);
 
     return {
-        correctedHebrew: result.correctedSource,
+        correctedSource: result.correctedSource,
         variant1: result.variant1,
         variant2: result.variant2,
         tagId: resolveTagId(result.tag, spaceTags)

@@ -99,60 +99,20 @@ This app is deliberately not built for use in the moment itself — not while yo
 
 ## Database
 
-Postgres via Supabase. Five tables:
-
 - **`spaces`**
-  - `id` (PK)
-  - `name`
-  - `space_type` — `'progression'` (default), `'bridge'`, or `'dictionary'`.
-  - `source_language`
-  - `target_language`
-  - `bridge_language`
-  - `about_this_space`
-  - `variant_1_notes`
-  - `variant_2_notes`
-  - `audio_recording_notes`
-  - `created_at`
+  `id`, `name`,`space_type`, `source_language`, `target_language`, `bridge_language`, `about_this_space`, `variant_1_notes`, `variant_2_notes`, `audio_recording_notes`, `created_at`.
 
 - **`tags`**
-  - `id` (PK)
-  - `name`
-  - `color`
-  - `space_id`
-  - `created_at`
+  `id`, `name`, `color`, `space_id`, `created_at`.
 
 - **`phrases`**
-  - `id` (PK)
-  - `hebrew_text`
-  - `variant_1`
-  - `variant_2`
-  - `level` — `1` or `2`, default `1`. Which of the two variants the card currently shows
-  - `tag_id`
-  - `mode` — `'capture'` or `'check'`; which of the two language-detection branches produced this phrase's wording.
-  - `learned_at`
-  - `tts_url_variant1`
-  - `tts_url_variant2`
-  - `embedding` — vector, pgvector, not currently used
-  - `space_id`
-  - `created_at`
-
-- **`transcripts`**
-  - `id` (PK)
-  - `space_id`
-  - `content`
-  - `created_at`
+  `id`, `source_text`, `variant_1`, `variant_2`, `level`, `tag_id`, `learned_at`, `tts_url_variant1`, `tts_url_variant2`, `embedding`, `space_id`, `created_at`.
 
 - **`dictionary`**
-  - `id` (PK)
-  - `space_id`
-  - `source_query`
-  - `word`
-  - `part_of_speech`
-  - `source_synonyms`
-  - `target_synonyms`
-  - `example_sentence`
-  - `learned_at`
-  - `created_at`
+  `id`, `space_id`, `source_query`, `word`, `part_of_speech`, `source_synonyms`, `target_synonyms`, `example_sentence`, `learned_at`, `created_at`.
+
+- **`transcripts`**
+  `id`, `space_id`, `content`, `created_at`.
 
 ---
 
@@ -221,37 +181,6 @@ EnglishTutor/
 ├── package.json
 └── README.md
 ```
-
----
-
-## Local development setup
-
-```bash
-npm install
-```
-
-Create a `.env` file:
-
-```
-GEMINI_API_KEY=
-DATABASE_PASSWORD=
-DATABASE_URI_SESSION=
-```
-
-Optional overrides (see [Rate limiting & usage caps](#rate-limiting--usage-caps) — sensible defaults are used if omitted):
-
-```
-RATE_LIMIT_WINDOW_MINUTES=
-TRANSLATE_RATE_LIMIT_MAX=
-```
-
-Run the dashboard locally:
-
-```bash
-node dashboard/server.js
-```
-
-Open `localhost:3000` in your browser to develop and test changes.
 
 ---
 

@@ -32,24 +32,24 @@ router.get('/phrases', async (req, res) => {
     }
 });
 
-// New-phrase capture: takes raw Hebrew or English text, detects which it
-// is, corrects transcription/grammar accordingly, produces two English
-// levels using the active space's own translation prompt, and saves it
-// immediately as uncategorized — no confirmation step, by design. Always
-// starts at level 1 (the level/learned_at columns default to that on
-// insert — see the phrases table).
+// New-phrase capture: takes raw source- or target-language text, detects
+// which it is, corrects transcription/grammar accordingly, produces two
+// target-language variants using the active space's own translation
+// prompt, and saves it immediately as uncategorized — no confirmation
+// step, by design. Always starts at level 1 (the level/learned_at columns
+// default to that on insert — see the phrases table).
 router.post('/phrases', translateLimiter, async (req, res) => {
-    const { hebrewText, spaceId } = req.body;
-    if (!hebrewText || !hebrewText.trim()) {
-        return res.status(400).json({ error: 'Hebrew text is required' });
+    const { sourceText, spaceId } = req.body;
+    if (!sourceText || !sourceText.trim()) {
+        return res.status(400).json({ error: 'Text is required' });
     }
     if (!spaceId) {
         return res.status(400).json({ error: 'spaceId is required' });
     }
     try {
-        const result = await translatePhrase(hebrewText.trim(), spaceId);
+        const result = await translatePhrase(sourceText.trim(), spaceId);
         const phrase = await saveSentence({
-            hebrewText: result.correctedHebrew,
+            sourceText: result.correctedSource,
             variant1: result.variant1,
             variant2: result.variant2,
             spaceId,
@@ -112,9 +112,9 @@ router.patch('/phrases/:id/learned', async (req, res) => {
 // wording, so they're deleted here and cleared in the same update.
 router.patch('/phrases/:id/retranslate', translateLimiter, async (req, res) => {
     const { id } = req.params;
-    const { hebrewText, spaceId } = req.body;
-    if (!hebrewText || !hebrewText.trim()) {
-        return res.status(400).json({ error: 'Hebrew text is required' });
+    const { sourceText, spaceId } = req.body;
+    if (!sourceText || !sourceText.trim()) {
+        return res.status(400).json({ error: 'Text is required' });
     }
     if (!spaceId) {
         return res.status(400).json({ error: 'spaceId is required' });
@@ -125,10 +125,10 @@ router.patch('/phrases/:id/retranslate', translateLimiter, async (req, res) => {
             return res.status(404).json({ error: 'Phrase not found' });
         }
 
-        const result = await translatePhrase(hebrewText.trim(), spaceId);
+        const result = await translatePhrase(sourceText.trim(), spaceId);
         const phrase = await updatePhrase({
             id,
-            hebrewText: result.correctedHebrew,
+            sourceText: result.correctedSource,
             variant1: result.variant1,
             variant2: result.variant2
         });

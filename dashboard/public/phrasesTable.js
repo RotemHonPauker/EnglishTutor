@@ -195,7 +195,7 @@ function renderTable() {
                 </div>
             </div>
             <div class="phrase-card-main">
-                <div class="phrase-hebrew" dir="auto">${p.hebrew_text || ''}</div>
+                <div class="phrase-source" dir="auto">${p.source_text || ''}</div>
                 <div class="phrase-variant"><button class="tts-btn" title="Play" onclick="playPhraseAudio('${p.id}', ${level}, this)">🔊</button> ${displayedVariant || ''}</div>
             </div>
         </div>
@@ -293,7 +293,7 @@ function editPhraseRow(id) {
 
 function deletePhraseRow(id) {
     const phrase = allPhrases.find(p => p.id === id);
-    const preview = phrase ? (phrase.hebrew_text || '').slice(0, 60) : '';
+    const preview = phrase ? (phrase.source_text || '').slice(0, 60) : '';
     pendingDeleteId = id;
     pendingDeleteType = 'phrase';
     document.getElementById('delete-modal-text').innerHTML =
