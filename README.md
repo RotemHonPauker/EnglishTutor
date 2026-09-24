@@ -34,19 +34,24 @@ This app is deliberately not built for use in the moment itself — not while yo
 - [🔊 Text-to-speech & recording privacy](#-text-to-speech--recording-privacy)
 - [🚦 Rate limiting & usage caps](#-rate-limiting--usage-caps)
 - [📁 Project structure](#-project-structure)
-- [🚀 Deploying from scratch](#-deploying-from-scratch)
+- [💻 Test drive](#-test-drive)
   - [1. Create the database](#1-create-the-database)
-  - [2. Create the VPS](#2-create-the-vps)
-  - [3. Generate an SSH key](#3-generate-an-ssh-key-on-your-own-computer-one-time-only)
-  - [4. Connect to the server](#4-connect-to-the-server)
-  - [5. Install core software on the server](#5-install-core-software-on-the-server)
-  - [6. Clone the repo and configure environment](#6-clone-the-repo-and-configure-environment)
-  - [7. Start the app with PM2](#7-start-the-app-with-pm2)
-  - [8. Point a domain at the server](#8-point-a-domain-at-the-server-duckdns-free)
-  - [9. Install and configure Nginx](#9-install-and-configure-nginx-as-a-reverse-proxy)
-  - [10. Add HTTPS with Certbot](#10-add-https-with-certbot)
-  - [11. Add Basic Auth](#11-add-basic-auth-password-protect-the-whole-app)
-  - [12. Verify](#12-verify)
+  - [2. Get a Gemini API key](#2-get-a-gemini-api-key)
+  - [3. Clone the repo and install dependencies](#3-clone-the-repo-and-install-dependencies)
+  - [4. Configure environment](#4-configure-environment)
+  - [5. Run it](#5-run-it)
+- [🚀 Going live](#-going-live)
+  - [1. Create the VPS](#1-create-the-vps)
+  - [2. Generate an SSH key](#2-generate-an-ssh-key-on-your-own-computer-one-time-only)
+  - [3. Connect to the server](#3-connect-to-the-server)
+  - [4. Install core software on the server](#4-install-core-software-on-the-server)
+  - [5. Clone the repo and configure environment](#5-clone-the-repo-and-configure-environment)
+  - [6. Start the app with PM2](#6-start-the-app-with-pm2)
+  - [7. Point a domain at the server](#7-point-a-domain-at-the-server-duckdns-free)
+  - [8. Install and configure Nginx](#8-install-and-configure-nginx-as-a-reverse-proxy)
+  - [9. Add HTTPS with Certbot](#9-add-https-with-certbot)
+  - [10. Add Basic Auth](#10-add-basic-auth-password-protect-the-whole-app)
+  - [11. Verify](#11-verify)
 - [🔄 Updating the live app after making changes](#-updating-the-live-app-after-making-changes)
 
 ---
@@ -214,9 +219,10 @@ EnglishTutor/
 
 ---
 
-## 🚀 Deploying from scratch
+## 💻 Test drive
 
-This is the exact sequence used to get from nothing to the live app on your phone. Total time: roughly one hour.
+Gets the app fully working on your computer — no phone, no VPS, no domain needed. From here you can actually use the app in full, not just try it out — but only on this computer, and only while the `node` command below stays running in a terminal window. Close that terminal (or put your computer to sleep) and the app stops. 
+Total setup time: roughly 15–20 minutes.
 
 ### 1. Create the database
 
@@ -284,61 +290,22 @@ CREATE TABLE transcripts (
 
 - From **Settings → Database → Connection string**, copy the **Session pooler** URI (not Transaction mode — the app keeps a long-lived pool, which needs session mode). This becomes `DATABASE_URI_SESSION` in a later step.
 
-### 2. Create the VPS
+### 2. Get a Gemini API key
 
-- Provider: DigitalOcean → Create → Droplet
-- Image: Ubuntu 24.04 LTS
-- Plan: Basic → Regular SSD → 1GB RAM ($6/mo).
-- Authentication: SSH key (generate locally first if you don't have one — see step 3)
-- Leave Volumes, Backups, IPv6, and Managed Database unchecked
-- Note the assigned public IP address after creation
+- Go to **aistudio.google.com → Get API key → Create API key** (pick or create a Google Cloud project if prompted)
+- Copy the key — this becomes `GEMINI_API_KEY`
 
-### 3. Generate an SSH key (on your own computer, one time only)
-
-Windows PowerShell:
-
-```powershell
-ssh-keygen -t ed25519 -C "phrase-app"
-```
-
-Accept the default file location, empty passphrase is fine for personal use. Copy the public key to add to DigitalOcean:
-
-```powershell
-cat $env:USERPROFILE\.ssh\id_ed25519.pub
-```
-
-**Back this up** — copy the `.ssh` folder somewhere safe (e.g. a password manager or encrypted drive). Losing the private key means losing SSH access (recoverable via DigitalOcean's browser-based Console + adding a new key, but inconvenient).
-
-### 4. Connect to the server
+### 3. Clone the repo and install dependencies
 
 ```bash
-ssh root@<server-ip>
-```
-
-Type `yes` to accept the host fingerprint on first connection.
-
-### 5. Install core software on the server
-
-```bash
-apt update && apt upgrade -y
-# If asked about sshd_config during upgrade: keep the local version currently installed
-
-curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-apt install -y nodejs
-node -v && npm -v   # sanity check
-
-apt install -y git
-npm install -g pm2
-```
-
-### 6. Clone the repo and configure environment
-
-```bash
-cd ~
 git clone https://github.com/<your-username>/EnglishTutor.git
 cd EnglishTutor
 npm install
+```
 
+### 4. Configure environment
+
+```bash
 nano .env
 ```
 
@@ -356,7 +323,92 @@ Save (`Ctrl+O`, Enter) and exit (`Ctrl+X`).
 
 `RATE_LIMIT_WINDOW_MINUTES` and `TRANSLATE_RATE_LIMIT_MAX` are optional — `limitsConfig.js` already falls back to sensible defaults (15 minutes, 30 requests) if they're left out.
 
-### 7. Start the app with PM2
+### 5. Run it
+
+```bash
+node dashboard/server.js
+```
+
+Open `http://localhost:3000` in your browser.
+
+---
+
+## 🚀 Going live
+
+Picks up from the local setup above — same database, same Gemini key — and turns it into something that runs 24/7 on its own server, independent of your computer, installable straight onto your phone's home screen like a native app. 
+Total setup time: roughly one hour.
+
+### 1. Create the VPS
+
+- Provider: DigitalOcean → Create → Droplet
+- Image: Ubuntu 24.04 LTS
+- Plan: Basic → Regular SSD → 1GB RAM ($6/mo).
+- Authentication: SSH key (generate locally first if you don't have one — see step 2)
+- Leave Volumes, Backups, IPv6, and Managed Database unchecked
+- Note the assigned public IP address after creation
+
+### 2. Generate an SSH key (on your own computer, one time only)
+
+Windows PowerShell:
+
+```powershell
+ssh-keygen -t ed25519 -C "phrase-app"
+```
+
+Accept the default file location, empty passphrase is fine for personal use. Copy the public key to add to DigitalOcean:
+
+```powershell
+cat $env:USERPROFILE\.ssh\id_ed25519.pub
+```
+
+**Back this up** — copy the `.ssh` folder somewhere safe (e.g. a password manager or encrypted drive). Losing the private key means losing SSH access (recoverable via DigitalOcean's browser-based Console + adding a new key, but inconvenient).
+
+### 3. Connect to the server
+
+```bash
+ssh root@<server-ip>
+```
+
+Type `yes` to accept the host fingerprint on first connection.
+
+### 4. Install core software on the server
+
+```bash
+apt update && apt upgrade -y
+# If asked about sshd_config during upgrade: keep the local version currently installed
+
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt install -y nodejs
+node -v && npm -v   # sanity check
+
+apt install -y git
+npm install -g pm2
+```
+
+### 5. Clone the repo and configure environment
+
+```bash
+cd ~
+git clone https://github.com/<your-username>/EnglishTutor.git
+cd EnglishTutor
+npm install
+
+nano .env
+```
+
+Same `.env` file as in the local setup above, with the exact same values:
+
+```
+GEMINI_API_KEY=...
+DATABASE_PASSWORD=...
+DATABASE_URI_SESSION=...
+RATE_LIMIT_WINDOW_MINUTES=...
+TRANSLATE_RATE_LIMIT_MAX=...
+```
+
+Save (`Ctrl+O`, Enter) and exit (`Ctrl+X`).
+
+### 6. Start the app with PM2
 
 ```bash
 pm2 start dashboard/server.js --name phrase-app
@@ -365,14 +417,14 @@ pm2 startup              # sets up auto-start on reboot (may run automatically i
 pm2 save                 # freezes the current process list for restart-on-boot
 ```
 
-### 8. Point a domain at the server (DuckDNS, free)
+### 7. Point a domain at the server (DuckDNS, free)
 
 1. Go to duckdns.org, log in, complete the reCAPTCHA
 2. Add a subdomain (e.g. `phrase-app`) → this gives you `phrase-app.duckdns.org`
 3. Set its IP field to the server's public IP, click "update ip"
 4. Verify from your computer: `ping phrase-app.duckdns.org` should resolve to the server IP
 
-### 9. Install and configure Nginx as a reverse proxy
+### 8. Install and configure Nginx as a reverse proxy
 
 ```bash
 apt install -y nginx certbot python3-certbot-nginx
@@ -408,7 +460,7 @@ nginx -t                    # should say "syntax is ok" / "test is successful"
 systemctl restart nginx
 ```
 
-### 10. Add HTTPS with Certbot
+### 9. Add HTTPS with Certbot
 
 ```bash
 certbot --nginx -d phrase-app.duckdns.org
@@ -416,7 +468,7 @@ certbot --nginx -d phrase-app.duckdns.org
 
 Follow the prompts (email, agree to terms, decline EFF email sharing if you like). Certbot automatically rewrites the Nginx config to add the SSL server block and an HTTP→HTTPS redirect, and sets up auto-renewal (certificates renew every 90 days without manual action).
 
-### 11. Add Basic Auth (password-protect the whole app)
+### 10. Add Basic Auth (password-protect the whole app)
 
 ```bash
 apt install -y apache2-utils
@@ -466,7 +518,7 @@ nginx -t
 systemctl restart nginx
 ```
 
-### 12. Verify
+### 11. Verify
 
 Open `https://phrase-app.duckdns.org` in an incognito/private browser window — you should be prompted for the username/password before anything loads.
 
