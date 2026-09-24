@@ -76,7 +76,7 @@ const buildTranslationStep = (variantGuidanceBase, spaceFields) => {
     return section;
 };
 
-// Returns { correctedHebrew, variant1, variant2, tagId, mode }.
+// Returns { correctedHebrew, variant1, variant2, tagId }.
 // (correctedHebrew keeps its original key name here — the field itself is
 // now language-agnostic content, just an unchanged name so callers
 // throughout the app didn't all need touching for a rename.)
@@ -111,7 +111,6 @@ export const translatePhrase = async (hebrewText, spaceId) => {
         correctedHebrew: result.correctedSource,
         variant1: result.variant1,
         variant2: result.variant2,
-        tagId: resolveTagId(result.tag, spaceTags),
-        mode: result.mode === 'check' ? 'check' : 'capture'
+        tagId: resolveTagId(result.tag, spaceTags)
     };
 };

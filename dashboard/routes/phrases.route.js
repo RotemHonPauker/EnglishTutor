@@ -53,8 +53,7 @@ router.post('/phrases', translateLimiter, async (req, res) => {
             variant1: result.variant1,
             variant2: result.variant2,
             spaceId,
-            tagId: result.tagId,
-            mode: result.mode
+            tagId: result.tagId
         });
         res.json(phrase);
     } catch (err) {
@@ -131,8 +130,7 @@ router.patch('/phrases/:id/retranslate', translateLimiter, async (req, res) => {
             id,
             hebrewText: result.correctedHebrew,
             variant1: result.variant1,
-            variant2: result.variant2,
-            mode: result.mode
+            variant2: result.variant2
         });
 
         await deleteSpeechFile(existing.tts_url_variant1);

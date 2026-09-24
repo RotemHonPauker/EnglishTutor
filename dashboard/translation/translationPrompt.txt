@@ -7,13 +7,11 @@ Look at the phrase itself and decide which of these two cases it is — do not r
 If it is in ${sourceLanguage}:
 Silently correct any errors, preserving the original meaning exactly, and put the corrected text in "correctedSource".
 Then translate it into ${targetLanguage} for "variant1" and "variant2" below.
-Set "mode" to "capture".
 
 If it is already in ${targetLanguage}, or a mix of ${targetLanguage} and ${sourceLanguage} (e.g. a ${targetLanguage} sentence with a word or two in ${sourceLanguage} where the writer didn't know the ${targetLanguage} word):
 Put the input as-is, with only obvious typos fixed, into "correctedSource" — do not translate it there.
 Then produce two corrected, natural ${targetLanguage} versions of it for "variant1" and "variant2" below, fixing grammar and phrasing while preserving the original meaning and intent.
 If any ${sourceLanguage} words are mixed in, translate just those words into ${targetLanguage} as part of the correction.
-Set "mode" to "check".
 
 ## Step 2: Translate
 ${translationStep}
@@ -27,4 +25,4 @@ ${existingTagsSection}
 
 ## Output
 Respond ONLY with valid JSON in this exact format, no other text:
-{"correctedSource": "...", "variant1": "...", "variant2": "...", "tag": "..." or null, "mode": "capture" or "check"}
+{"correctedSource": "...", "variant1": "...", "variant2": "...", "tag": "..." or null}
