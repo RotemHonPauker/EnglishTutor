@@ -115,25 +115,6 @@ Not shown at all for a dictionary space.
 
 ---
 
-## Database
-
-- **`spaces`**
-  `id`, `name`,`space_type`, `source_language`, `target_language`, `bridge_language`, `about_this_space`, `variant_1_notes`, `variant_2_notes`, `audio_recording_notes`, `created_at`.
-
-- **`tags`**
-  `id`, `name`, `color`, `space_id`, `created_at`.
-
-- **`phrases`**
-  `id`, `source_text`, `variant_1`, `variant_2`, `level`, `tag_id`, `learned_at`, `tts_url_variant1`, `tts_url_variant2`, `embedding`, `space_id`, `created_at`.
-
-- **`dictionary`**
-  `id`, `space_id`, `source_query`, `word`, `part_of_speech`, `source_synonyms`, `target_synonyms`, `example_sentence`, `learned_at`, `created_at`.
-
-- **`transcripts`**
-  `id`, `space_id`, `content`, `created_at`.
-
----
-
 ## Text-to-speech & recording
 
 - Tapping 🔊 next to a variant generates spoken audio via Gemini TTS (voice: **Achernar**) the first time only — the file is saved to `dashboard/public/audio-cache/` on whichever machine's server handled the request, and its path is stored in `phrases.tts_url_variant1`/`tts_url_variant2`. Every play after that just serves the cached file, no API call. Deleting a phrase deletes its cached audio files too, so nothing lingers with no phrase pointing to it.
@@ -202,20 +183,86 @@ EnglishTutor/
 
 ---
 
-## Full server setup guide (reproducing the deployment from scratch)
+## Deploying from scratch
 
-This is the exact sequence used to get from a blank VPS to the live app on your phone. Total time: roughly one hour.
+This is the exact sequence used to get from nothing to the live app on your phone. Total time: roughly one hour.
 
-### 1. Create the VPS
+### 1. Create the database (Supabase)
+
+- Provider: supabase.com → New project
+- Choose a project name, a strong database password (save it — this becomes part of `DATABASE_URI_SESSION` in a later step), and a region close to your server
+- Once the project is ready, open **SQL Editor → New query**, paste the following, and run it — this creates all five tables the app needs:
+
+```sql
+CREATE TABLE spaces (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    space_type TEXT NOT NULL DEFAULT 'progression',
+    source_language TEXT NOT NULL,
+    target_language TEXT NOT NULL,
+    bridge_language TEXT,
+    about_this_space TEXT,
+    variant_1_notes TEXT,
+    variant_2_notes TEXT,
+    audio_recording_notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE tags (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    space_id UUID NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    color TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE phrases (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    space_id UUID NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
+    tag_id UUID REFERENCES tags(id) ON DELETE SET NULL,
+    source_text TEXT NOT NULL,
+    variant_1 TEXT,
+    variant_2 TEXT,
+    level INTEGER NOT NULL DEFAULT 1,
+    learned_at TIMESTAMPTZ,
+    tts_url_variant1 TEXT,
+    tts_url_variant2 TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE dictionary (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    space_id UUID NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
+    source_query TEXT,
+    word TEXT NOT NULL,
+    part_of_speech TEXT,
+    source_synonyms TEXT,
+    target_synonyms TEXT,
+    example_sentence TEXT,
+    learned_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE transcripts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    space_id UUID NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
+    content TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+- From **Settings → Database → Connection string**, copy the **Session pooler** URI (not Transaction mode — the app keeps a long-lived pool, which needs session mode). This becomes `DATABASE_URI_SESSION` in a later step.
+
+### 2. Create the VPS
 
 - Provider: DigitalOcean → Create → Droplet
 - Image: Ubuntu 24.04 LTS
 - Plan: Basic → Regular SSD → 1GB RAM ($6/mo).
-- Authentication: SSH key (generate locally first if you don't have one — see step 2)
+- Authentication: SSH key (generate locally first if you don't have one — see step 3)
 - Leave Volumes, Backups, IPv6, and Managed Database unchecked
 - Note the assigned public IP address after creation
 
-### 2. Generate an SSH key (on your own computer, one time only)
+### 3. Generate an SSH key (on your own computer, one time only)
 
 Windows PowerShell:
 
@@ -231,7 +278,7 @@ cat $env:USERPROFILE\.ssh\id_ed25519.pub
 
 **Back this up** — copy the `.ssh` folder somewhere safe (e.g. a password manager or encrypted drive). Losing the private key means losing SSH access (recoverable via DigitalOcean's browser-based Console + adding a new key, but inconvenient).
 
-### 3. Connect to the server
+### 4. Connect to the server
 
 ```bash
 ssh root@<server-ip>
@@ -239,7 +286,7 @@ ssh root@<server-ip>
 
 Type `yes` to accept the host fingerprint on first connection.
 
-### 4. Install core software on the server
+### 5. Install core software on the server
 
 ```bash
 apt update && apt upgrade -y
@@ -253,7 +300,7 @@ apt install -y git
 npm install -g pm2
 ```
 
-### 5. Clone the repo and configure environment
+### 6. Clone the repo and configure environment
 
 ```bash
 cd ~
@@ -276,7 +323,9 @@ TRANSLATE_RATE_LIMIT_MAX=...
 
 Save (`Ctrl+O`, Enter) and exit (`Ctrl+X`).
 
-### 6. Start the app with PM2
+`RATE_LIMIT_WINDOW_MINUTES` and `TRANSLATE_RATE_LIMIT_MAX` are optional — `limitsConfig.js` already falls back to sensible defaults (15 minutes, 30 requests) if they're left out.
+
+### 7. Start the app with PM2
 
 ```bash
 pm2 start dashboard/server.js --name phrase-app
@@ -285,14 +334,14 @@ pm2 startup              # sets up auto-start on reboot (may run automatically i
 pm2 save                 # freezes the current process list for restart-on-boot
 ```
 
-### 7. Point a domain at the server (DuckDNS, free)
+### 8. Point a domain at the server (DuckDNS, free)
 
 1. Go to duckdns.org, log in, complete the reCAPTCHA
 2. Add a subdomain (e.g. `phrase-app`) → this gives you `phrase-app.duckdns.org`
 3. Set its IP field to the server's public IP, click "update ip"
 4. Verify from your computer: `ping phrase-app.duckdns.org` should resolve to the server IP
 
-### 8. Install and configure Nginx as a reverse proxy
+### 9. Install and configure Nginx as a reverse proxy
 
 ```bash
 apt install -y nginx certbot python3-certbot-nginx
@@ -328,7 +377,7 @@ nginx -t                    # should say "syntax is ok" / "test is successful"
 systemctl restart nginx
 ```
 
-### 9. Add HTTPS with Certbot
+### 10. Add HTTPS with Certbot
 
 ```bash
 certbot --nginx -d phrase-app.duckdns.org
@@ -336,7 +385,7 @@ certbot --nginx -d phrase-app.duckdns.org
 
 Follow the prompts (email, agree to terms, decline EFF email sharing if you like). Certbot automatically rewrites the Nginx config to add the SSL server block and an HTTP→HTTPS redirect, and sets up auto-renewal (certificates renew every 90 days without manual action).
 
-### 10. Add Basic Auth (password-protect the whole app)
+### 11. Add Basic Auth (password-protect the whole app)
 
 ```bash
 apt install -y apache2-utils
@@ -386,7 +435,7 @@ nginx -t
 systemctl restart nginx
 ```
 
-### 11. Verify
+### 12. Verify
 
 Open `https://phrase-app.duckdns.org` in an incognito/private browser window — you should be prompted for the username/password before anything loads.
 
