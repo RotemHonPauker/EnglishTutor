@@ -22,9 +22,37 @@ This app is deliberately not built for use in the moment itself — not while yo
 
 ---
 
-## How it works
+## Contents
 
-### Spaces
+- [🔧 How it works](#-how-it-works)
+  - [🌍 Spaces](#-spaces)
+  - [➕ Add tab](#-add-tab)
+  - [📋 Practice tab](#-practice-tab)
+  - [📊 Analytics tab](#-analytics-tab)
+  - [🔩 Setup tab](#-setup-tab)
+- [🧱 Stack](#-stack)
+- [🔊 Text-to-speech & recording privacy](#-text-to-speech--recording-privacy)
+- [🚦 Rate limiting & usage caps](#-rate-limiting--usage-caps)
+- [🚀 Deploying from scratch](#-deploying-from-scratch)
+  - [1. Create the database (Supabase)](#1-create-the-database-supabase)
+  - [2. Create the VPS](#2-create-the-vps)
+  - [3. Generate an SSH key](#3-generate-an-ssh-key-on-your-own-computer-one-time-only)
+  - [4. Connect to the server](#4-connect-to-the-server)
+  - [5. Install core software on the server](#5-install-core-software-on-the-server)
+  - [6. Clone the repo and configure environment](#6-clone-the-repo-and-configure-environment)
+  - [7. Start the app with PM2](#7-start-the-app-with-pm2)
+  - [8. Point a domain at the server](#8-point-a-domain-at-the-server-duckdns-free)
+  - [9. Install and configure Nginx](#9-install-and-configure-nginx-as-a-reverse-proxy)
+  - [10. Add HTTPS with Certbot](#10-add-https-with-certbot)
+  - [11. Add Basic Auth](#11-add-basic-auth-password-protect-the-whole-app)
+  - [12. Verify](#12-verify)
+- [🔄 Updating the live app after making changes](#-updating-the-live-app-after-making-changes)
+
+---
+
+## 🔧 How it works
+
+### 🌍 Spaces
 
 The app always shows exactly one active space, named in the header at the top of every tab. Tap the name to switch to another space, or create a new one. Creating a space asks for:
 
@@ -36,7 +64,7 @@ The app always shows exactly one active space, named in the header at the top of
 
 You can also **⇄ migrate** one space into another — this moves its phrases, tags, and transcripts into the target space.
 
-### Add tab
+### ➕ Add tab
 
 A single text input, with three small icon buttons (**⌨️ 📖 🎙️**) plus a **Transcriptions** toggle.
 
@@ -59,7 +87,7 @@ A single text input, with three small icon buttons (**⌨️ 📖 🎙️**) plu
   - Selecting text inside an expanded transcript surfaces an "Add to input" bar — tap it to drop that exact selection into the input (switching to ⌨️ automatically), edit if needed, then Send, same as typing it fresh.
   - Repeat per phrase.
 
-### Practice tab
+### 📋 Practice tab
 
 Your full phrase list as cards — in a dictionary space, each card is a looked-up word instead of a phrase.
 
@@ -76,7 +104,7 @@ Your full phrase list as cards — in a dictionary space, each card is a looked-
   - **👑**: tap to mark a word learned, same as a phrase.
   - **🗑️**: tap to delete.
 
-### Analytics tab
+### 📊 Analytics tab
 
 A horizontal stacked-bar chart.
 
@@ -87,7 +115,7 @@ A horizontal stacked-bar chart.
 - Both toggles group phrases by _when they were added_, not by when they reached their current status.
 - Not shown at all for a dictionary space.
 
-### Setup tab
+### 🔩 Setup tab
 
 Not shown at all for a dictionary space.
 
@@ -99,7 +127,7 @@ Not shown at all for a dictionary space.
 
 ---
 
-## Stack
+## 🧱 Stack
 
 | Piece                          | Technology                                         |
 | ------------------------------ | -------------------------------------------------- |
@@ -115,14 +143,14 @@ Not shown at all for a dictionary space.
 
 ---
 
-## Text-to-speech & recording privacy
+## 🔊 Text-to-speech & recording privacy
 
 - Tapping 🔊 next to a variant generates spoken audio via Gemini TTS (voice: **Achernar**) the first time only — the file is saved to `dashboard/public/audio-cache/` on whichever machine's server handled the request, and its path is stored in `phrases.tts_url_variant1`/`tts_url_variant2`. Every play after that just serves the cached file, no API call. Deleting a phrase deletes its cached audio files too, so nothing lingers with no phrase pointing to it.
 - A recording itself is never stored — only the resulting transcript text (saved to `transcripts`) survives past the request, and nothing else, until you select something from it.
 
 ---
 
-## Rate limiting & usage caps
+## 🚦 Rate limiting & usage caps
 
 A layer protects Gemini API usage from runaway cost (abuse, a bug, or an abandoned browser tab):
 
@@ -183,7 +211,7 @@ EnglishTutor/
 
 ---
 
-## Deploying from scratch
+## 🚀 Deploying from scratch
 
 This is the exact sequence used to get from nothing to the live app on your phone. Total time: roughly one hour.
 
@@ -445,7 +473,7 @@ To install open the production URL on your phone, then use "Add to Home Screen" 
 
 ---
 
-## Updating the live app after making changes
+## 🔄 Updating the live app after making changes
 
 1. Push your changes from your computer as usual:
 
