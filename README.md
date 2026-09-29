@@ -57,22 +57,22 @@ This app is deliberately not built for use in the moment itself — not while yo
 ---
 ## 📱 Screenshots 
 <p align="center">
-  <img src="screenshots/Screenshot_spaces_list.jpg" width="190" />
-  <img src="screenshots/Screenshot_spaces_progression.jpg" width="190" />
-  <img src="screenshots/Screenshot_spaces_bridge.jpg" width="190" />
-  <img src="screenshots/Screenshot_add_recording.jpg" width="190" />
+  <img src="screenshots/Screenshot_spaces_list.jpg" width="23%" />
+  <img src="screenshots/Screenshot_spaces_progression.jpg" width="23%" />
+  <img src="screenshots/Screenshot_spaces_bridge.jpg" width="23%" />
+  <img src="screenshots/Screenshot_add_recording.jpg" width="23%" />
 </p>
 <p align="center">
-  <img src="screenshots/Screenshot_add_trasncript.jpg" width="190" />
-  <img src="screenshots/Screenshot_add_type.jpg" width="190" />
-  <img src="screenshots/Screenshot_practice_cards.jpg" width="190" />
-  <img src="screenshots/Screenshot_practice_filter.jpg" width="190" />
+  <img src="screenshots/Screenshot_add_trasncript.jpg" width="23%" />
+  <img src="screenshots/Screenshot_add_type.jpg" width="23%" />
+  <img src="screenshots/Screenshot_practice_cards.jpg" width="23%" />
+  <img src="screenshots/Screenshot_practice_filter.jpg" width="23%" />
 </p>
 <p align="center">
-  <img src="screenshots/Screenshot_practice_dictionary.jpg" width="190" />
-  <img src="screenshots/Screenshot_analysis.jpg" width="190" />
-  <img src="screenshots/Screenshot_setup_rules.jpg" width="190" />
-  <img src="screenshots/Screenshot_setup_tags.jpg" width="190" />
+  <img src="screenshots/Screenshot_practice_dictionary.jpg" width="23%" />
+  <img src="screenshots/Screenshot_analysis.jpg" width="23%" />
+  <img src="screenshots/Screenshot_setup_rules.jpg" width="23%" />
+  <img src="screenshots/Screenshot_setup_tags.jpg" width="23%" />
 </p>
 
 
