@@ -23,7 +23,7 @@ This app is deliberately not built for use in the moment itself — not while yo
 ---
 
 ## Contents
-
+- [📱 Screenshots](#-screenshots)
 - [🔧 How it works](#-how-it-works)
   - [🌍 Spaces](#-spaces)
   - [➕ Add tab](#-add-tab)
@@ -55,6 +55,28 @@ This app is deliberately not built for use in the moment itself — not while yo
 - [🔄 Updating the live app after making changes](#-updating-the-live-app-after-making-changes)
 
 ---
+## 📱 Screenshots 
+<p align="center">
+  <img src="screenshots/Screenshot_spaces_list.jpg" width="190" />
+  <img src="screenshots/Screenshot_spaces_progression.jpg" width="190" />
+  <img src="screenshots/Screenshot_spaces_bridge.jpg" width="190" />
+  <img src="screenshots/Screenshot_add_recording.jpg" width="190" />
+</p>
+<p align="center">
+  <img src="screenshots/Screenshot_add_trasncript.jpg" width="190" />
+  <img src="screenshots/Screenshot_add_type.jpg" width="190" />
+  <img src="screenshots/Screenshot_practice_cards.jpg" width="190" />
+  <img src="screenshots/Screenshot_practice_filter.jpg" width="190" />
+</p>
+<p align="center">
+  <img src="screenshots/Screenshot_practice_dictionary.jpg" width="190" />
+  <img src="screenshots/Screenshot_analysis.jpg" width="190" />
+  <img src="screenshots/Screenshot_setup_rules.jpg" width="190" />
+  <img src="screenshots/Screenshot_setup_tags.jpg" width="190" />
+</p>
+
+
+--- 
 
 ## 🔧 How it works
 
