@@ -91,6 +91,7 @@ function renderSpacePickerList() {
             </div>
             <button class="space-picker-edit-btn" onclick="event.stopPropagation(); showMigrateSpaceForm('${s.id}')" title="Migrate into another space">⇄</button>
             ${s.space_type === 'dictionary' ? '<span class="space-picker-edit-btn-placeholder"></span>' : `<button class="space-picker-edit-btn" onclick="event.stopPropagation(); showRenameSpaceForm('${s.id}')" title="Rename">✎</button>`}
+            <button class="space-picker-edit-btn" onclick="event.stopPropagation(); showDeleteSpaceForm('${s.id}')" title="Delete">🗑️</button>
         </div>
     `).join('');
     list.innerHTML = spaceRows;
@@ -132,6 +133,45 @@ async function submitRenameSpace(id) {
     document.getElementById('space-picker-new-form').innerHTML = '';
     renderSpacePickerList();
     renderSpaceHeader();
+}
+
+// Deletion is one step short of migration: nothing to move anywhere, so no
+// target to pick — just a plain confirm, since it's the one space action
+// that can't be undone once it's done (migration at least leaves everything
+// alive in the target).
+function showDeleteSpaceForm(id) {
+    const space = spaces.find(s => s.id === id);
+    if (!space) return;
+    const form = document.getElementById('space-picker-new-form');
+    form.innerHTML = `
+        <div class="tag-name">
+            Delete "${space.name}" — its phrases, tags, and transcripts included? This cannot be undone.
+        </div>
+        <div class="form-buttons">
+            <button onclick="document.getElementById('space-picker-new-form').innerHTML = ''">Cancel</button>
+            <button class="primary danger" onclick="submitDeleteSpace('${id}')">Delete</button>
+        </div>
+    `;
+}
+
+async function submitDeleteSpace(id) {
+    const res = await fetch(`/spaces/${id}`, { method: 'DELETE' });
+
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Failed to delete space');
+        return;
+    }
+
+    document.getElementById('space-picker-new-form').innerHTML = '';
+    await loadSpaces();
+    // Same handling as after a migration: land on whatever space remains
+    // if the deleted one was active, otherwise just refresh the list.
+    if (!spaces.some(s => s.id === activeSpaceId)) {
+        await setActiveSpace(spaces[0]?.id || null);
+    } else {
+        renderSpacePickerList();
+    }
 }
 
 // Space type decides what the language fields mean: Progression is the
@@ -273,12 +313,24 @@ function showMigrateSpaceForm(id) {
     const source = spaces.find(s => s.id === id);
     if (!source) return;
     migrateSourceSpaceId = id;
-    const candidates = spaces.filter(s => s.id !== id);
+    // Only spaces of the same type and language pair are valid targets —
+    // migrating across either would either lose data (dictionary entries
+    // never move) or mix phrases from a different language pair into a
+    // space with nothing to tell them apart. Filtered out here so there's
+    // nothing incompatible to even pick, rather than picking it and
+    // hitting the server's rejection.
+    const candidates = spaces.filter(s =>
+        s.id !== id &&
+        s.space_type === source.space_type &&
+        s.source_language === source.source_language &&
+        s.target_language === source.target_language &&
+        (source.space_type !== 'bridge' || s.bridge_language === source.bridge_language)
+    );
     const form = document.getElementById('space-picker-new-form');
 
     if (!candidates.length) {
         form.innerHTML = `
-            <div class="tag-name">No other space to migrate "${source.name}" into.</div>
+            <div class="tag-name">No other space with the same type and languages to migrate "${source.name}" into.</div>
             <div class="form-buttons">
                 <button onclick="document.getElementById('space-picker-new-form').innerHTML = ''">Close</button>
             </div>

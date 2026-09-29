@@ -34,6 +34,18 @@ document.addEventListener('selectionchange', handleTranscriptSelectionChange);
 let addInputMode = 'type'; // 'type' | 'dictionary' | 'record'
 
 function setAddInputMode(mode, btnEl) {
+    // Picking a mode icon is itself a decision to leave the Transcriptions
+    // view (the footer buttons stay live while it's showing, precisely so
+    // this can happen) — so this closes that view out, instead of leaving
+    // the log stuck on the transcript list underneath. This is now the
+    // only way out of Transcriptions; there's no dedicated "Back" button.
+    if (captureViewMode === 'transcripts') {
+        captureViewMode = 'log';
+        applyCaptureViewMode();
+        captureLog.innerHTML = ''; // clear the transcript list out from under the log
+        hideTranscriptSelectionBar();
+    }
+
     const previousMode = addInputMode;
     addInputMode = mode;
     document.querySelectorAll('#capture-mode-icons .capture-mode-icon-btn[data-mode]').forEach(b => b.classList.remove('active'));
@@ -105,20 +117,19 @@ function enterCaptureTab(btnEl) {
     resetCaptureLog();
 }
 
-// Toggles the capture window's content between the normal capture log and
-// an inline view of past recording transcripts. Switching either way clears whatever was
-// showing before.
+// Opens the capture window's inline view of past recording transcripts.
+// One-directional by design — there's no "Back" button anymore. Picking
+// any Type/Dictionary/Record mode icon already exits this view as a side
+// effect (see setAddInputMode above), and that's the only way out: opening
+// transcripts is itself a stop along the way to picking a phrase, not a
+// separate place that needs its own way back.
 let captureViewMode = 'log'; // 'log' | 'transcripts'
 
-function toggleCaptureView() {
-    captureViewMode = captureViewMode === 'log' ? 'transcripts' : 'log';
+function openTranscriptsView() {
+    if (captureViewMode === 'transcripts') return; // already showing — this button has nothing left to do
+    captureViewMode = 'transcripts';
     applyCaptureViewMode();
-    if (captureViewMode === 'transcripts') {
-        loadTranscripts(); // renders into #capture-log, see the Transcripts section below
-    } else {
-        refreshCaptureLog('record'); // restores the recording note if Record is still the active mode, else clears
-        hideTranscriptSelectionBar();
-    }
+    loadTranscripts(); // renders into #capture-log, see the Transcripts section below
 }
 
 function applyCaptureViewMode() {
@@ -126,11 +137,13 @@ function applyCaptureViewMode() {
     const contentArea = document.getElementById('capture-content-area');
     const sendBtn = document.getElementById('capture-send-btn');
     if (captureViewMode === 'transcripts') {
-        if (btn) { btn.textContent = 'Back'; btn.title = 'Back to capture'; btn.classList.add('active'); }
+        // Disabled rather than repurposed into "Back" — with no toggle
+        // behavior left, a second tap here would have nothing to do.
+        if (btn) { btn.classList.add('active'); btn.disabled = true; }
         if (contentArea) contentArea.classList.add('disabled');
         if (sendBtn) sendBtn.disabled = true;
     } else {
-        if (btn) { btn.textContent = 'Transcriptions'; btn.title = 'View past recording transcripts'; btn.classList.remove('active'); }
+        if (btn) { btn.classList.remove('active'); btn.disabled = false; }
         if (contentArea) contentArea.classList.remove('disabled');
         if (sendBtn) sendBtn.disabled = false;
     }
@@ -312,11 +325,17 @@ function renderTranscripts() {
     captureLog.innerHTML = warningHtml + (listHtml || '<div class="capture-log-item error">No recordings processed yet.</div>');
 }
 
-// Accordion: one click expands/collapses that entry in place.
+// Accordion: one click expands that entry and collapses any other that was
+// open, same as a single-open-field Setup accordion — never more than one
+// transcript's body showing at a time.
 function toggleTranscript(id) {
     const body = document.getElementById(`transcript-body-${id}`);
     if (!body) return;
-    body.style.display = body.style.display === 'none' ? 'block' : 'none';
+    const isOpen = body.style.display !== 'none';
+
+    document.querySelectorAll('.transcript-card-body').forEach(b => b.style.display = 'none');
+
+    body.style.display = isOpen ? 'none' : 'block';
 }
 
 async function deleteTranscriptRow(id) {

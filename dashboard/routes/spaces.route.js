@@ -1,5 +1,6 @@
 import express from 'express';
-import { getSpaces, createSpace, updateSpace, migrateSpace } from '../../database.js';
+import { getSpaces, createSpace, updateSpace, deleteSpace, migrateSpace, getPhrases } from '../../database.js';
+import { deleteSpeechFile } from '../tts/ttsEngine.js';
 import { LANGUAGES } from '../../languages.js';
 
 const VALID_LANGUAGE_NAMES = new Set(LANGUAGES.map(l => l.name));
@@ -90,12 +91,72 @@ router.put('/spaces/:id', async (req, res) => {
     }
 });
 
+// Deletes a space and everything scoped to it — tags, phrases, dictionary
+// entries, and transcripts all cascade at the database level (see the
+// schema). At least one space always has to remain, since the app always
+// shows exactly one active space.
+router.delete('/spaces/:id', async (req, res) => {
+    try {
+        const existing = await getSpaces();
+        if (existing.length <= 1) {
+            return res.status(400).json({ error: 'Cannot delete the only remaining space' });
+        }
+        const target = existing.find(s => s.id === req.params.id);
+        if (!target) {
+            return res.status(404).json({ error: 'Space not found' });
+        }
+
+        // Fetched before the delete — the cascade removes these rows, so
+        // this is the last chance to know which TTS files to clean up.
+        const phrases = target.space_type === 'dictionary' ? [] : await getPhrases(req.params.id);
+
+        await deleteSpace(req.params.id);
+
+        // Best-effort, same as a single phrase delete — just for every
+        // phrase this space had at once.
+        for (const phrase of phrases) {
+            await deleteSpeechFile(phrase.tts_url_variant1);
+            await deleteSpeechFile(phrase.tts_url_variant2);
+        }
+
+        res.json({ ok: true });
+    } catch (err) {
+        console.error('Error deleting space:', err);
+        res.status(500).json({ error: 'Failed to delete space' });
+    }
+});
+
 router.post('/spaces/migrate', async (req, res) => {
     const { sourceId, targetId, dropSourceTranscripts } = req.body;
     if (!sourceId || !targetId) {
         return res.status(400).json({ error: 'sourceId and targetId are required' });
     }
     try {
+        const existing = await getSpaces();
+        const source = existing.find(s => s.id === sourceId);
+        const target = existing.find(s => s.id === targetId);
+        if (!source || !target) {
+            return res.status(404).json({ error: 'Space not found' });
+        }
+        // migrateSpace only ever moves tags and phrases — a dictionary
+        // space's entries live in a separate table it never touches, so
+        // merging across types would silently lose them (or strand phrases
+        // inside a space whose UI only shows dictionary entries). Blocked
+        // outright rather than risking that.
+        if (source.space_type !== target.space_type) {
+            return res.status(400).json({ error: `Can't migrate a ${source.space_type} space into a ${target.space_type} space — they hold different kinds of data` });
+        }
+        // Phrases carry no language tag of their own — a space's language
+        // pair is how the app knows what they're in. Merging across
+        // languages would mix, say, Hebrew→English phrases into a
+        // French→English space with nothing to tell them apart.
+        if (source.source_language !== target.source_language || source.target_language !== target.target_language) {
+            return res.status(400).json({ error: "Can't migrate between spaces with different languages" });
+        }
+        if (source.space_type === 'bridge' && source.bridge_language !== target.bridge_language) {
+            return res.status(400).json({ error: "Can't migrate between Bridge spaces with different bridge languages" });
+        }
+
         await migrateSpace({ sourceId, targetId, dropSourceTranscripts: !!dropSourceTranscripts });
         res.json({ ok: true });
     } catch (err) {
