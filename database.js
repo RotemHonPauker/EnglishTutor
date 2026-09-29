@@ -169,14 +169,27 @@ export const updateSpace = async ({ id, name, aboutThisSpace, variant1Notes, var
     return result.rows[0];
 };
 
-// Every dependent table's space_id is ON DELETE CASCADE (see the schema in
-// the README), so this one DELETE also removes the space's tags, phrases,
-// dictionary entries, and transcripts. It does not touch cached TTS audio
-// files on disk — the route calling this fetches the phrases first and
-// cleans those up itself, same as a single phrase delete does.
+// Deletes everything scoped to a space, then the space itself, all inside
+// one transaction. It doesn't touch cached TTS audio files on disk —
+// the route calling this fetches the phrases first and cleans those up
+// itself, same as a single phrase delete does.
 export const deleteSpace = async (id) => {
-    const result = await pool.query(`DELETE FROM spaces WHERE id = $1 RETURNING *`, [id]);
-    return result.rows[0];
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        await client.query(`DELETE FROM phrases WHERE space_id = $1`, [id]);
+        await client.query(`DELETE FROM dictionary WHERE space_id = $1`, [id]);
+        await client.query(`DELETE FROM transcripts WHERE space_id = $1`, [id]);
+        await client.query(`DELETE FROM tags WHERE space_id = $1`, [id]);
+        const result = await client.query(`DELETE FROM spaces WHERE id = $1 RETURNING *`, [id]);
+        await client.query('COMMIT');
+        return result.rows[0];
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
 };
 
 // --- Space migration ---

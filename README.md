@@ -247,7 +247,7 @@ CREATE TABLE spaces (
 
 CREATE TABLE tags (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    space_id UUID NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
+    space_id UUID NOT NULL REFERENCES spaces(id),
     name TEXT NOT NULL,
     color TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -255,7 +255,7 @@ CREATE TABLE tags (
 
 CREATE TABLE phrases (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    space_id UUID NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
+    space_id UUID NOT NULL REFERENCES spaces(id),
     tag_id UUID REFERENCES tags(id) ON DELETE SET NULL,
     source_text TEXT NOT NULL,
     variant_1 TEXT,
@@ -269,7 +269,7 @@ CREATE TABLE phrases (
 
 CREATE TABLE dictionary (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    space_id UUID NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
+    space_id UUID NOT NULL REFERENCES spaces(id),
     source_query TEXT,
     word TEXT NOT NULL,
     part_of_speech TEXT,
@@ -282,7 +282,7 @@ CREATE TABLE dictionary (
 
 CREATE TABLE transcripts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    space_id UUID NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
+    space_id UUID NOT NULL REFERENCES spaces(id),
     content TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
