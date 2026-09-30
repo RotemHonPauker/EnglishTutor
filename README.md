@@ -1,28 +1,13 @@
-# Fraza: Hebrew-English Phrase Capture and Practice App
+# Fraza: Real-World Language Companion
 
-This isn't about learning English. It's about wanting to speak it — in the actual moment, in your actual day — and getting stuck. The word isn't there. You're not sure the phrasing is right. The sentence breaks halfway through, and with it, your confidence to keep going.
+**Capture the phrases you actually need. Express yourself naturally.**
 
-But it doesn't have to happen the same way twice. In your next five free minutes, you write that phrase into the app — and maybe two or three more you already know you'll need for a similar moment tomorrow. At the office, with your colleagues. At the playground, with the daughter you're teaching English to. At the front desk, with the hotel receptionist on your next destination.
-
-Now you had that exact phrase ready, in your pocket.
-
-That's what this app does: capture a Hebrew phrase, get an English translation back, and hear it spoken aloud to practice how it actually sounds. Because context shapes what "the right phrasing" even means, you can also describe the environment you're building vocabulary for — who you're talking to, what tone fits — so translations are shaped around it instead of generic. And since different parts of life call for entirely different vocabularies, the app lets you keep separate environments and switch between them.
-
-_(Technically, "Hebrew" and "English" above are just this app's own default — any space can be set up with a different source/target language pair, or a third reference language for comparing against a language you already know. See [Database](#database) and [How it works](#how-it-works) for the space-type/language model.)_
-
-## What it's for
-
-A few examples of the kind of need this covers:
-
-- **Instilling English in my daughter's everyday life** — playing at the playground, doing crafts together, splashing in the bath, reading her a story.
-- **Sounding like myself at work** — chatting over coffee, contributing in meetings, presenting to managers and teams.
-- **Getting ready for a trip** — starting conversations with service providers, talking about myself and my life when meeting new people, getting a feel for the local culture and way of life.
-
-This app is deliberately not built for use in the moment itself — not while your hands (and attention) are full. It's built for the five minutes you didn't know you'd have: the line at the supermarket, the gap between meetings, the minute right before or after. That's when a phrase gets captured, or practiced, or refined — never in the middle of the moment it was meant for.
+Fraza is built for learners who already have a basic grasp of a language, helping them overcome the hurdle of getting stuck on real-life phrasing. Instead of teaching grammar or pronunciation from scratch, the app lets you capture flashcards from short typed notes, word lookups, or hands-free voice recordings up to 30 minutes long. Custom AI prompts automatically generate dual translations tailored to your preferred tone, register, or even a third reference language. You can organize your phrases into dedicated spaces — such as work, parenting, or travel — with custom tags and personal prompts. With an integrated personal dictionary and smart transcript filtering, Fraza turns your everyday routine into a tailored vocabulary collection.
 
 ---
 
 ## Contents
+
 - [📱 Screenshots](#-screenshots)
 - [🔧 How it works](#-how-it-works)
   - [🌍 Spaces](#-spaces)
@@ -55,7 +40,9 @@ This app is deliberately not built for use in the moment itself — not while yo
 - [🔄 Updating the live app after making changes](#-updating-the-live-app-after-making-changes)
 
 ---
-## 📱 Screenshots 
+
+## 📱 Screenshots
+
 <p align="center">
   <img src="screenshots/Screenshot_spaces_list.jpg" width="23%" />
   <img src="screenshots/Screenshot_spaces_progression.jpg" width="23%" />
@@ -75,8 +62,7 @@ This app is deliberately not built for use in the moment itself — not while yo
   <img src="screenshots/Screenshot_setup_tags.jpg" width="23%" />
 </p>
 
-
---- 
+---
 
 ## 🔧 How it works
 
@@ -243,7 +229,7 @@ EnglishTutor/
 
 ## 💻 Test drive
 
-Gets the app fully working on your computer — no phone, no VPS, no domain needed. From here you can actually use the app in full, not just try it out — but only on this computer, and only while the `node` command below stays running in a terminal window. Close that terminal (or put your computer to sleep) and the app stops. 
+Gets the app fully working on your computer — no phone, no VPS, no domain needed. From here you can actually use the app in full, not just try it out — but only on this computer, and only while the `node` command below stays running in a terminal window. Close that terminal (or put your computer to sleep) and the app stops.
 Total setup time: roughly 15–20 minutes.
 
 ### 1. Create the database
@@ -357,7 +343,7 @@ Open `http://localhost:3000` in your browser.
 
 ## 🚀 Going live
 
-Picks up from the local setup above — same database, same Gemini key — and turns it into something that runs 24/7 on its own server, independent of your computer, installable straight onto your phone's home screen like a native app. 
+Picks up from the local setup above — same database, same Gemini key — and turns it into something that runs 24/7 on its own server, independent of your computer, installable straight onto your phone's home screen like a native app.
 Total setup time: roughly one hour.
 
 ### 1. Create the VPS
