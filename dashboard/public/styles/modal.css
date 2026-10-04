@@ -4,7 +4,7 @@
     align-items: center;
     font-size: 1rem;
     font-weight: 600;
-    color: #aaa;
+    color: var(--text-muted);
 }
 
 .tag-picker-section {
@@ -16,7 +16,7 @@
 .tag-picker-label {
     font-size: 0.75rem;
     font-weight: 600;
-    color: #666;
+    color: var(--text-faint);
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
@@ -33,17 +33,17 @@
     border: 2px solid transparent;
     cursor: pointer;
     font-size: 0.875rem;
-    background: #2a2a2a;
-    color: #ccc;
+    background: var(--surface-2);
+    color: var(--text-2);
 }
 
 .tag-chip.selected {
-    border-color: #fff;
+    border-color: var(--chip-selected);
 }
 
 .tag-chip.none {
-    background: #2a2a2a;
-    color: #888;
+    background: var(--surface-2);
+    color: var(--text-muted);
 }
 
 .modal-footer {
@@ -61,7 +61,7 @@
 #unsaved-rules-modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.7);
+    background: var(--overlay);
     z-index: 100;
     display: flex;
     align-items: center;
@@ -70,8 +70,8 @@
 }
 
 .confirm-modal {
-    background: #1a1a1a;
-    border: 1px solid #2a2a2a;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 12px;
     width: 100%;
     max-width: 340px;
@@ -101,13 +101,13 @@
 #delete-modal-text {
     font-size: 0.9375rem;
     line-height: 1.5;
-    color: #e8e8e8;
+    color: var(--text);
 }
 
 #delete-modal-text .preview {
     display: block;
     margin-top: 8px;
-    color: #999;
+    color: var(--text-muted);
     font-size: 0.875rem;
 }
 
@@ -135,7 +135,7 @@
 .space-picker-edit-btn {
     background: none;
     border: none;
-    color: #888;
+    color: var(--text-muted);
     cursor: pointer;
     font-size: 0.9375rem;
     padding: 6px 4px;
@@ -143,7 +143,7 @@
 }
 
 .space-picker-edit-btn:hover {
-    color: #ccc;
+    color: var(--text-2);
     background: none;
 }
 
@@ -156,8 +156,8 @@
 .space-picker-item {
     padding: 10px 10px;
     border-radius: 8px;
-    background: #2a2a2a;
-    color: #ccc;
+    background: var(--surface-2);
+    color: var(--text-2);
     cursor: pointer;
     font-size: 0.9375rem;
     overflow: hidden;
@@ -166,7 +166,7 @@
 }
 
 .space-picker-item:hover {
-    background: #333;
+    background: var(--surface-3);
 }
 
 .space-picker-item.active {
@@ -175,11 +175,11 @@
 }
 
 #space-picker-new-form input[type="text"] {
-    background: #0f0f0f;
-    border: 1px solid #333;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
     border-radius: 6px;
     padding: 8px 10px;
-    color: #e8e8e8;
+    color: var(--text);
     font-size: 1rem;
     outline: none;
     width: 100%;
@@ -191,11 +191,11 @@
 }
 
 #space-picker-new-form select {
-    background: #0f0f0f;
-    border: 1px solid #333;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
     border-radius: 6px;
     padding: 8px 10px;
-    color: #e8e8e8;
+    color: var(--text);
     font-size: 1rem;
     outline: none;
     width: 100%;
@@ -222,18 +222,18 @@
 .space-create-label {
     font-size: 0.75rem;
     font-weight: 600;
-    color: #888;
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
 
 .space-create-field select,
 .space-create-field input[type="text"] {
-    background: #0f0f0f;
-    border: 1px solid #333;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
     border-radius: 6px;
     padding: 8px 10px;
-    color: #e8e8e8;
+    color: var(--text);
     font-size: 1rem;
     outline: none;
     width: 100%;
@@ -252,5 +252,5 @@
 .space-create-description {
     font-size: 0.8125rem;
     line-height: 1.5;
-    color: #999;
+    color: var(--text-muted);
 }

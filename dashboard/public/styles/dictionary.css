@@ -9,28 +9,28 @@
     padding: 3px 8px;
     font-size: 0.75rem;
     font-weight: 500;
-    background: #2a2a2a;
-    color: #888;
+    background: var(--surface-2);
+    color: var(--text-muted);
     margin-left: auto;
 }
 
 .dictionary-word {
     font-size: 1.0625rem;
     font-weight: 700;
-    color: #e8e8e8;
+    color: var(--text);
     line-height: 1.4;
 }
 
 .dictionary-synonyms {
     font-size: 1rem;
-    color: #999;
+    color: var(--text-muted);
     line-height: 1.4;
     font-style: italic;
 }
 
 .dictionary-example {
     font-size: 1rem;
-    color: #e8e8e8;
+    color: var(--text);
     line-height: 1.4;
 }
 
@@ -38,7 +38,7 @@
 
 .dictionary-options-prompt {
     font-size: 0.8125rem;
-    color: #aaa;
+    color: var(--text-muted);
     margin-bottom: 8px;
 }
 
@@ -58,7 +58,7 @@
     cursor: pointer;
     font-size: 0.875rem;
     background: rgba(37, 99, 235, 0.15);
-    color: #e8e8e8;
+    color: var(--text);
     text-align: start;
 }
 
@@ -69,5 +69,5 @@
 .dictionary-option-context {
     opacity: 0.85;
     font-size: 0.85em;
-    color: #cbd5f5;
+    color: var(--accent-text);
 }

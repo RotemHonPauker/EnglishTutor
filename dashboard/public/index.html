@@ -3,11 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        // Apply the saved theme before the first paint, so there is no flash of the wrong colors
+        (function () {
+            var t = 'dark';
+            try { t = localStorage.getItem('fraza-theme') || 'dark'; } catch (e) {}
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
     <title>Fraza</title>
 
     <!-- PWA: makes the app installable and gives it an icon/name on the home screen -->
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#000000">
+    <meta name="theme-color" id="theme-color-meta" content="#000000">
 
     <!-- iOS-specific tags (Android reads everything it needs from manifest.json) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -72,6 +80,13 @@
     <!-- TAGS + SPACE SETUP VIEW -->
     <div id="view-tags" class="view">
         <div id="setup-scroll">
+            <div id="theme-section">
+                <div id="space-rules-header">Appearance</div>
+                <div class="mode-toggle">
+                    <button type="button" class="mode-toggle-btn active" data-theme-choice="dark" onclick="setTheme('dark')">🌙 Dark</button>
+                    <button type="button" class="mode-toggle-btn" data-theme-choice="light" onclick="setTheme('light')">☀️ Light</button>
+                </div>
+            </div>
             <div id="space-rules-section">
                 <div id="space-rules-header">Space Setup</div>
                 <div id="space-rules-intro">This is where you help sharpen the translations.<br>These fields become part of the AI prompt.</div>
@@ -327,6 +342,7 @@
     </div>
 </div>
 
+<script src="theme.js"></script>
 <script src="loadingOverlay.js"></script>
 <script src="languagesUtils.js"></script>
 <script src="spacesState.js"></script>

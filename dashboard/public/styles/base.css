@@ -1,3 +1,58 @@
+/* ===== Theme variables =====
+   Dark is the default. The active theme is set as data-theme on <html>
+   (see theme.js). Add new colors here instead of hardcoding hex values. */
+
+:root,
+:root[data-theme="dark"] {
+    --page-bg: #000;
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --card: #141414;
+    --surface-2: #2a2a2a;
+    --surface-3: #333;
+    --btn-bg: #1e1e1e;
+    --btn-hover: #2a2a2a;
+    --border: #2a2a2a;
+    --divider: #1a1a1a;
+    --divider-soft: #222;
+    --input-bg: #0f0f0f;
+    --input-border: #333;
+    --text: #e8e8e8;
+    --text-2: #ccc;
+    --text-muted: #999;
+    --text-faint: #666;
+    --accent-text: #93c5fd;
+    --accent-link: #60a5fa;
+    --chip-selected: #fff;
+    --overlay: rgba(0,0,0,0.7);
+    --meta-color: #000000;
+}
+
+:root[data-theme="light"] {
+    --page-bg: #f3f2ef;
+    --bg: #f3f2ef;
+    --surface: #ffffff;
+    --card: #ffffff;
+    --surface-2: #e8e5e0;
+    --surface-3: #dcd8d2;
+    --btn-bg: #ffffff;
+    --btn-hover: #e8e5e0;
+    --border: #d6d2cb;
+    --divider: #e4e1db;
+    --divider-soft: #ebe8e3;
+    --input-bg: #ffffff;
+    --input-border: #c9c4bc;
+    --text: #191919;
+    --text-2: #333333;
+    --text-muted: #666666;
+    --text-faint: #8c8780;
+    --accent-text: #1d4ed8;
+    --accent-link: #1d4ed8;
+    --chip-selected: #191919;
+    --overlay: rgba(0,0,0,0.45);
+    --meta-color: #f3f2ef;
+}
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -6,8 +61,8 @@
 }
 
 html {
-    background: #000;
-    scrollbar-color: #2563eb #0f0f0f;
+    background: var(--page-bg);
+    scrollbar-color: #2563eb var(--bg);
     scrollbar-width: thin;
 }
 
@@ -16,7 +71,7 @@ html {
 }
 
 ::-webkit-scrollbar-track {
-    background: #0f0f0f;
+    background: var(--bg);
 }
 
 ::-webkit-scrollbar-thumb {
@@ -30,8 +85,8 @@ html {
 
 body {
     font-family: 'Segoe UI', sans-serif;
-    background: #0f0f0f;
-    color: #e8e8e8;
+    background: var(--bg);
+    color: var(--text);
     height: 100vh;
     height: 100dvh;
     height: var(--app-height, 100dvh);
@@ -40,13 +95,13 @@ body {
     overflow: hidden;
     max-width: 640px;
     margin: 0 auto;
-    border-inline: 1px solid #1a1a1a;
+    border-inline: 1px solid var(--divider);
 }
 
 button {
-    background: #1e1e1e;
-    color: #ccc;
-    border: 1px solid #333;
+    background: var(--btn-bg);
+    color: var(--text-2);
+    border: 1px solid var(--input-border);
     padding: 7px 14px;
     border-radius: 6px;
     font-size: 0.8125rem;
@@ -54,7 +109,7 @@ button {
     transition: background 0.15s;
 }
 
-button:hover { background: #2a2a2a; }
+button:hover { background: var(--btn-hover); }
 
 button.primary {
     background: #2563eb;
@@ -82,7 +137,7 @@ button.danger:hover { background: #b91c1c; }
 
 #space-header {
     padding: 10px 16px;
-    border-bottom: 1px solid #1a1a1a;
+    border-bottom: 1px solid var(--divider);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -91,12 +146,12 @@ button.danger:hover { background: #b91c1c; }
     flex-shrink: 0;
     font-size: 0.875rem;
     font-weight: 600;
-    color: #aaa;
+    color: var(--text-muted);
     transition: background 0.15s;
 }
 
 #space-header:hover {
-    background: #1a1a1a;
+    background: var(--surface);
 }
 
 .space-header-chevron {
@@ -109,7 +164,7 @@ button.danger:hover { background: #b91c1c; }
 #app-loading-overlay {
     position: fixed;
     inset: 0;
-    background: #0f0f0f;
+    background: var(--bg);
     z-index: 9999;
     display: flex;
     align-items: center;
@@ -146,9 +201,9 @@ button.danger:hover { background: #b91c1c; }
     flex: 1;
     padding: 8px 10px;
     border-radius: 8px;
-    border: 1px solid #2a2a2a;
-    background: #1a1a1a;
-    color: #888;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
     font-size: 0.8125rem;
     cursor: pointer;
 }
@@ -163,4 +218,19 @@ button.danger:hover { background: #b91c1c; }
     opacity: 0.35;
     cursor: default;
     pointer-events: none;
+}
+/* ===== Appearance section (Setup tab) ===== */
+
+#theme-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#theme-section .mode-toggle {
+    padding: 0;
 }

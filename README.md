@@ -133,6 +133,7 @@ A horizontal stacked-bar chart.
 
 Not shown at all for a dictionary space.
 
+- **Appearance** — switch between **🌙 Dark** (default) and **☀️ Light** mode.
 - **Space Setup** this is where you help sharpen the translations: each field you fill in becomes part of the AI prompt that shapes this space's transcription and translation. Four fields, each opening one at a time with its own Save/Cancel and a "Copy from..." option to pull that field's content from another space:
   - **About this space** — who's speaking, common topics, and terminology particular to this space, so translations sound like they belong in it.
   - **Level 1 / Level 2** (labeled with the actual target/bridge language names in a Bridge space) — how each level should sound: Level 1 sets the baseline phrasing, Level 2 a step up in fluency from it. In a Bridge space, the second field shapes how that reference-language translation should sound so that it actually helps you learn the target language.
@@ -202,7 +203,8 @@ EnglishTutor/
 │   |   ├── spaceRules.js
 │   |   ├── spacesState.js
 │   |   ├── sw.js                (PWA — service worker, required for installability)
-│   |   └── tags.js
+│   |   ├── tags.js
+│   |   └── theme.js
 │   ├── routes/
 │   |   ├── dictionary.route.js
 │   |   ├── phrases.route.js
