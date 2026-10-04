@@ -50,7 +50,7 @@ Fraza is built for learners who already have a basic grasp of a language, helpin
   <img src="screenshots/Screenshot_add_recording.jpg" width="23%" />
 </p>
 <p align="center">
-  <img src="screenshots/Screenshot_add_trasncript.jpg" width="23%" />
+  <img src="screenshots/Screenshot_add_transcript.jpg" width="23%" />
   <img src="screenshots/Screenshot_add_type.jpg" width="23%" />
   <img src="screenshots/Screenshot_practice_cards.jpg" width="23%" />
   <img src="screenshots/Screenshot_practice_filter.jpg" width="23%" />
