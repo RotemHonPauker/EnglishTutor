@@ -112,6 +112,59 @@
     margin-left: auto;
 }
 
+#select-mode-btn.active {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #fff;
+}
+
+/* ===== Selection action bar (Table tab, multi-select "Move to...") ===== */
+/* Same blue-tinted-bar language as #transcript-selection-bar (capture.css). */
+
+#selection-action-bar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    margin: 0 12px 10px;
+    background: rgba(37, 99, 235, 0.12);
+    border: 1px solid rgba(37, 99, 235, 0.3);
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+
+#selection-count {
+    flex: 1;
+    font-size: 0.8125rem;
+    color: var(--accent-text);
+}
+
+#selection-action-bar button {
+    flex-shrink: 0;
+    font-size: 0.8125rem;
+}
+
+/* ===== Select mode on a phrase card ===== */
+
+.phrase-select-checkbox {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    cursor: pointer;
+    accent-color: #2563eb;
+}
+
+.phrase-card.selected {
+    outline: 2px solid #2563eb;
+    outline-offset: -1px;
+}
+
+.level-badge:disabled,
+.tag-badge:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
 .active-filters-row {
     display: flex;
     flex-wrap: wrap;

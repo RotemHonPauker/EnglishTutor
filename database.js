@@ -75,6 +75,17 @@ export const updatePhraseLearned = async ({ id, learned }) => {
     return result.rows[0];
 };
 
+// Bulk move (Table tab, multi-select "Move to..."): moves a specific set of
+// phrases into a different space in one query. No retranslation happens, so
+// level and learned_at carry over unchanged. tag_id is cleared.
+export const bulkMovePhrases = async ({ ids, targetSpaceId }) => {
+    const result = await pool.query(
+        `UPDATE phrases SET space_id = $1, tag_id = NULL WHERE id = ANY($2::uuid[]) RETURNING *`,
+        [targetSpaceId, ids]
+    );
+    return result.rows;
+};
+
 export const deletePhrase = async (id) => {
     const result = await pool.query(
         `DELETE FROM phrases WHERE id = $1 RETURNING *`,

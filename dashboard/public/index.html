@@ -68,8 +68,14 @@
                     <span id="phrase-count"></span>
                     <button id="practice-tags-btn" onclick="openTagFilterModal()">Tags</button>
                     <button id="learned-filter-btn" onclick="toggleLearnedFilter()">All</button>
+                    <button id="select-mode-btn" onclick="toggleSelectMode()">Select</button>
                 </div>
                 <div id="active-tag-filters" class="active-filters-row" style="display:none"></div>
+                <div id="selection-action-bar" style="display:none">
+                    <span id="selection-count"></span>
+                    <button onclick="toggleSelectMode()">Cancel</button>
+                    <button class="primary" onclick="openMovePhraseModal()">Move to...</button>
+                </div>
                 <div id="table-wrapper">
                     <div id="table-body" class="phrase-cards"></div>
                 </div>
@@ -199,7 +205,7 @@
             <div id="capture-input-area">
                 <div id="capture-editing-banner" style="display:none">
                     <span class="capture-editing-text"></span>
-                    <button onclick="cancelEditingPhrase()">✕ Cancel</button>
+                    <button id="capture-editing-cancel-btn" onclick="cancelEditingPhrase()">✕ Cancel</button>
                 </div>
                 <div id="capture-text-row">
                     <div id="capture-content-area">
@@ -324,6 +330,34 @@
         <div class="modal-footer">
             <button onclick="closeDeleteModal()">Cancel</button>
             <button class="primary danger" onclick="confirmDelete()">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- MOVE PHRASE MODAL (bulk, from the Table tab's multi-select) -->
+<div id="move-phrase-modal-overlay" style="display:none">
+    <div id="move-phrase-modal" class="confirm-modal">
+        <div class="modal-header">
+            <span id="move-phrase-modal-title">Move to...</span>
+            <button onclick="closeMovePhraseModal()">✕</button>
+        </div>
+        <div id="move-phrase-list" class="tag-picker-chip-list"></div>
+        <div class="modal-footer">
+            <button onclick="closeMovePhraseModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- DICTIONARY/TYPE MODE MISMATCH CONFIRM -->
+<div id="mode-mismatch-modal-overlay" style="display:none">
+    <div id="mode-mismatch-modal" class="confirm-modal">
+        <div class="modal-header">
+            <span id="mode-mismatch-modal-title">Send to the dictionary?</span>
+        </div>
+        <div id="mode-mismatch-modal-text">This looks like a full phrase — send it, or look it up?</div>
+        <div class="modal-footer">
+            <button id="mode-mismatch-confirm-btn" onclick="modeMismatchStayAction()">📖 Look it up</button>
+            <button class="primary" id="mode-mismatch-switch-btn" onclick="modeMismatchSwitchAction()">⌨️ Send it</button>
         </div>
     </div>
 </div>

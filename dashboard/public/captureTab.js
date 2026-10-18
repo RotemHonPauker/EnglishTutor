@@ -172,11 +172,15 @@ async function submitTypedPhrase() {
     if (!text) return;
 
     if ((typeof isDictionarySpace === 'function' && isDictionarySpace()) || addInputMode === 'dictionary') {
-        captureTextInput.value = '';
-        captureTextInput.style.height = 'auto';
-        if (typeof resolveDictionarySpaceIdAndProceed === 'function') {
-            resolveDictionarySpaceIdAndProceed((spaceId) => submitDictionaryLookup(text, null, null, spaceId));
+        // Only warn when there's an actual Type mode to switch to — a
+        // dictionary SPACE has no alternative, so there's nothing to
+        // mistake it for.
+        const canSwitchToType = !(typeof isDictionarySpace === 'function' && isDictionarySpace());
+        if (canSwitchToType && looksLikeSentence(text)) {
+            showModeMismatchConfirm(text, 'to-type');
+            return;
         }
+        submitAsDictionaryLookup(text);
         return;
     }
 
@@ -185,6 +189,22 @@ async function submitTypedPhrase() {
         return;
     }
 
+    // Same mismatch check in the other direction: one or two words typed
+    // in ⌨️ Type mode reads like a dictionary query, not a phrase. Only
+    // relevant for a fresh capture — editing or moving an existing (short)
+    // phrase is deliberate, so those paths above return before this.
+    if (looksLikeSingleTerm(text)) {
+        showModeMismatchConfirm(text, 'to-dictionary');
+        return;
+    }
+
+    await submitPhraseDirect(text);
+}
+
+// Pulled out of submitTypedPhrase so both the normal path and the
+// mode-mismatch "send anyway" path can call it directly, without
+// re-running (and possibly re-triggering) the mismatch check.
+async function submitPhraseDirect(text) {
     const sendBtn = document.getElementById('capture-send-btn');
     captureTextInput.value = '';
     captureTextInput.style.height = 'auto';
@@ -209,6 +229,104 @@ async function submitTypedPhrase() {
         sendBtn.disabled = false;
         sendBtn.textContent = '➤';
         captureTextInput.focus();
+    }
+}
+
+// Pulled out of submitTypedPhrase so the mode-mismatch "look up anyway"
+// path can call it directly too.
+function submitAsDictionaryLookup(text) {
+    captureTextInput.value = '';
+    captureTextInput.style.height = 'auto';
+    if (typeof resolveDictionarySpaceIdAndProceed === 'function') {
+        resolveDictionarySpaceIdAndProceed((spaceId) => submitDictionaryLookup(text, null, null, spaceId));
+    }
+}
+
+// ===== Dictionary/Type mode-mismatch confirm =====
+// Two simple heuristics catch the "forgot which mode I'm in" case before
+// text gets lost to the wrong kind of send: more than 3 words typed while
+// 📖 Dictionary is selected reads as a sentence, not a lookup query; 1-2
+// words typed while ⌨️ Type is selected reads as a lookup query, not a
+// phrase. One modal handles both directions — its copy and buttons just
+// swap depending on which triggered it.
+
+function looksLikeSentence(text) {
+    const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+    return wordCount > 3;
+}
+
+function looksLikeSingleTerm(text) {
+    const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+    return wordCount > 0 && wordCount <= 2;
+}
+
+let pendingModeMismatchText = null;
+let pendingModeMismatchDirection = null; // 'to-type' (currently in Dictionary) | 'to-dictionary' (currently in Type)
+
+function showModeMismatchConfirm(text, direction) {
+    pendingModeMismatchText = text;
+    pendingModeMismatchDirection = direction;
+
+    const title = document.getElementById('mode-mismatch-modal-title');
+    const body = document.getElementById('mode-mismatch-modal-text');
+    const switchBtn = document.getElementById('mode-mismatch-switch-btn');
+    const stayBtn = document.getElementById('mode-mismatch-confirm-btn');
+
+    // The "switch" button always carries the primary (colored) styling,
+    // set once in the HTML — it's the more likely intent either way,
+    // since the mismatch itself is usually just forgetting which mode is
+    // active, not a deliberate choice to stay in it.
+    if (direction === 'to-dictionary') {
+        if (title) title.textContent = 'Look it up instead?';
+        if (body) body.textContent = 'This looks like a single word — send it, or look it up?';
+        if (stayBtn) stayBtn.textContent = '⌨️ Send it';
+        if (switchBtn) switchBtn.textContent = '📖 Look it up';
+    } else {
+        if (title) title.textContent = 'Send as a phrase instead?';
+        if (body) body.textContent = 'This looks like a full phrase — look it up, or send it?';
+        if (stayBtn) stayBtn.textContent = '📖 Look it up';
+        if (switchBtn) switchBtn.textContent = '⌨️ Send it';
+    }
+
+    document.getElementById('mode-mismatch-modal-overlay').style.display = 'flex';
+}
+
+function closeModeMismatchModal() {
+    document.getElementById('mode-mismatch-modal-overlay').style.display = 'none';
+}
+
+// "Switch" button: hop to the other mode and act accordingly.
+function modeMismatchSwitchAction() {
+    const text = pendingModeMismatchText;
+    const direction = pendingModeMismatchDirection;
+    pendingModeMismatchText = null;
+    pendingModeMismatchDirection = null;
+    closeModeMismatchModal();
+    if (!text) return;
+
+    if (direction === 'to-dictionary') {
+        setAddInputMode('dictionary');
+        submitAsDictionaryLookup(text);
+    } else {
+        setAddInputMode('type');
+        captureTextInput.value = text;
+        submitTypedPhrase();
+    }
+}
+
+// "Stay" button: keep the currently-selected mode and send as-is, this once.
+function modeMismatchStayAction() {
+    const text = pendingModeMismatchText;
+    const direction = pendingModeMismatchDirection;
+    pendingModeMismatchText = null;
+    pendingModeMismatchDirection = null;
+    closeModeMismatchModal();
+    if (!text) return;
+
+    if (direction === 'to-dictionary') {
+        submitPhraseDirect(text);
+    } else {
+        submitAsDictionaryLookup(text);
     }
 }
 
@@ -443,6 +561,8 @@ function showEditingBanner(phrase) {
     const preview = phrase.source_text && phrase.source_text.length > 40 ? `${text}…` : text;
     const label = banner.querySelector('.capture-editing-text');
     if (label) label.textContent = preview ? `Editing: "${preview}"` : 'Editing phrase';
+    const cancelBtn = document.getElementById('capture-editing-cancel-btn');
+    if (cancelBtn) cancelBtn.onclick = cancelEditingPhrase;
     banner.style.display = 'flex';
 }
 

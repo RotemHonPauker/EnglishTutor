@@ -52,6 +52,7 @@ async function setActiveSpace(id) {
     closeSpacePicker();
     if (typeof resetTagFilter === 'function') resetTagFilter();
     if (typeof resetLearnedFilter === 'function') resetLearnedFilter();
+    if (typeof resetSelectMode === 'function') resetSelectMode();
     if (typeof resetDateScroll === 'function') resetDateScroll();
     // Only matters if the user is currently sitting on the Add tab — but
     // it's safe to call regardless (it just clears an off-screen log), and

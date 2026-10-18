@@ -1,6 +1,6 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
-import { getPhrases, getPhraseById, saveSentence, updatePhrase, updatePhraseTag, updatePhraseLevel, updatePhraseLearned, updatePhraseTtsUrl, deletePhrase } from '../../database.js';
+import { getPhrases, getPhraseById, saveSentence, updatePhrase, updatePhraseTag, updatePhraseLevel, updatePhraseLearned, updatePhraseTtsUrl, deletePhrase, bulkMovePhrases, getSpaceRuleFields } from '../../database.js';
 import { translatePhrase } from '../translation/translationEngine.js';
 import { generateSpeech, deleteSpeechFile } from '../tts/ttsEngine.js';
 import { RATE_LIMIT_WINDOW_MS, TRANSLATE_RATE_LIMIT_MAX } from '../limitsConfig.js';
@@ -59,6 +59,33 @@ router.post('/phrases', translateLimiter, async (req, res) => {
     } catch (err) {
         console.error('Error translating/saving phrase:', err);
         res.status(500).json({ error: 'Failed to translate phrase' });
+    }
+});
+
+// Bulk move (Table tab, multi-select "Move to..."): moves a specific set of
+// phrases into a different space in one database update — no re-translation,
+// so this never touches Claude. Level and learned status carry over
+// unchanged; tags don't, since a tag belongs to a specific space (see
+// bulkMovePhrases) and a phrase landing in a different space is untagged
+// there, same as any phrase freshly created in it.
+router.patch('/phrases/bulk-move', async (req, res) => {
+    const { ids, targetSpaceId } = req.body;
+    if (!Array.isArray(ids) || !ids.length) {
+        return res.status(400).json({ error: 'ids must be a non-empty array' });
+    }
+    if (!targetSpaceId) {
+        return res.status(400).json({ error: 'targetSpaceId is required' });
+    }
+    try {
+        const targetFields = await getSpaceRuleFields(targetSpaceId);
+        if (targetFields.spaceType === 'dictionary') {
+            return res.status(400).json({ error: "Can't move phrases into a dictionary space" });
+        }
+        const phrases = await bulkMovePhrases({ ids, targetSpaceId });
+        res.json(phrases);
+    } catch (err) {
+        console.error('Error bulk-moving phrases:', err);
+        res.status(500).json({ error: 'Failed to move phrases' });
     }
 });
 

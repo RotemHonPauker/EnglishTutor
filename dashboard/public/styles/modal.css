@@ -58,7 +58,9 @@
 #tag-edit-modal-overlay,
 #space-picker-modal-overlay,
 #space-create-modal-overlay,
-#unsaved-rules-modal-overlay {
+#unsaved-rules-modal-overlay,
+#move-phrase-modal-overlay,
+#mode-mismatch-modal-overlay {
     position: fixed;
     inset: 0;
     background: var(--overlay);
@@ -82,7 +84,8 @@
 }
 
 #tag-picker-modal,
-#tag-filter-modal {
+#tag-filter-modal,
+#move-phrase-modal {
     max-height: 80vh;
     overflow-y: auto;
 }

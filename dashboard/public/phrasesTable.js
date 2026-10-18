@@ -2,6 +2,11 @@ const tableBody = document.getElementById('table-body');
 
 let allPhrases = [];
 
+// ===== Multi-select (for the bulk "Move to..." action) =====
+
+let selectMode = false;
+let selectedPhraseIds = new Set();
+
 // ===== Tag filter =====
 
 let filterTagIds = new Set();
@@ -180,23 +185,26 @@ function renderTable() {
         const displayedVariant = level === 2 ? p.variant_2 : p.variant_1;
         const levelBadgeLabel = isBridge ? (level === 2 ? bridgeCode : targetCode) : `Level ${level}`;
         const levelBadgeTitle = isBridge ? 'Tap to switch language' : 'Tap to switch level';
-        const cardClasses = ['phrase-card', tagColor ? 'has-color' : '', isLearned ? 'learned' : ''].filter(Boolean).join(' ');
+        const isSelected = selectedPhraseIds.has(p.id);
+        const cardClasses = ['phrase-card', tagColor ? 'has-color' : '', isLearned ? 'learned' : '', isSelected ? 'selected' : ''].filter(Boolean).join(' ');
         return `
-        <div class="${cardClasses}" style="${cardStyle}">
+        <div class="${cardClasses}" style="${cardStyle}" ${selectMode ? `onclick="toggleCardSelection('${p.id}')"` : ''}>
             <div class="phrase-card-header">
-                <div class="phrase-card-icons">
+                ${selectMode
+                    ? `<input type="checkbox" class="phrase-select-checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleCardSelection('${p.id}')">`
+                    : `<div class="phrase-card-icons">
                     <button style="${iconBg ? `background:${iconBg};` : ''}" title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑️</button>
                     <button style="${iconBg ? `background:${iconBg};` : ''}" title="Edit phrase" onclick="editPhraseRow('${p.id}')">✏️</button>
                     <button class="learned-btn ${isLearned ? 'active' : ''}" style="${iconBg ? `background:${iconBg};` : ''}" title="${isLearned ? 'Learned — tap to unmark' : 'Mark as learned'}" onclick="toggleLearned('${p.id}')">👑</button>
-                </div>
+                </div>`}
                 <div class="phrase-card-badges">
-                    <button class="level-badge level-${level}" style="${badgeStyle}" title="${levelBadgeTitle}" onclick="toggleLevel('${p.id}')">${levelBadgeLabel}</button>
-                    <button class="tag-badge" style="${badgeStyle}" onclick="openTagPicker('${p.id}')">${badgeLabel}</button>
+                    <button class="level-badge level-${level}" style="${badgeStyle}" title="${levelBadgeTitle}" onclick="toggleLevel('${p.id}')" ${selectMode ? 'disabled' : ''}>${levelBadgeLabel}</button>
+                    <button class="tag-badge" style="${badgeStyle}" onclick="openTagPicker('${p.id}')" ${selectMode ? 'disabled' : ''}>${badgeLabel}</button>
                 </div>
             </div>
             <div class="phrase-card-main">
                 <div class="phrase-source" dir="auto">${p.source_text || ''}</div>
-                <div class="phrase-variant"><button class="tts-btn" title="Play" onclick="playPhraseAudio('${p.id}', ${level}, this)">🔊</button> ${displayedVariant || ''}</div>
+                <div class="phrase-variant"><button class="tts-btn" title="Play" onclick="playPhraseAudio('${p.id}', ${level}, this)" ${selectMode ? 'disabled' : ''}>🔊</button> ${displayedVariant || ''}</div>
             </div>
         </div>
     `;
@@ -431,4 +439,102 @@ async function confirmTagPick() {
     const tagId = tagPickerSelectedTag;
     closeTagPicker();
     await updatePhraseTagAssignment(phraseId, tagId);
+}
+
+// ===== Select mode (toolbar "Select" toggle) =====
+// Swaps each card's icon row for a checkbox and makes the whole card
+// tappable; the level/tag badges and the audio button are disabled while
+// it's active so a stray tap during selection can't retag/replay/relevel
+// something by accident. Exists purely to feed the bulk "Move to..."
+// action below — there's nothing else to do with a selection right now.
+
+function toggleSelectMode() {
+    selectMode = !selectMode;
+    if (!selectMode) selectedPhraseIds.clear();
+    updateSelectModeUI();
+    renderTable();
+}
+
+// Always turns select mode off — used by the selection bar's own Cancel
+// button and by anything that invalidates a selection outright (switching
+// spaces, a bulk move having just gone through).
+function exitSelectMode() {
+    selectMode = false;
+    selectedPhraseIds.clear();
+    updateSelectModeUI();
+    renderTable();
+}
+
+// Called on space switch (spacesState.js), same as resetTagFilter/
+// resetLearnedFilter — a selection of specific phrase ids from the space
+// you're leaving has nothing to do with the one you're entering.
+function resetSelectMode() {
+    exitSelectMode();
+}
+
+function toggleCardSelection(id) {
+    if (selectedPhraseIds.has(id)) selectedPhraseIds.delete(id);
+    else selectedPhraseIds.add(id);
+    updateSelectModeUI();
+    renderTable();
+}
+
+function updateSelectModeUI() {
+    const btn = document.getElementById('select-mode-btn');
+    if (btn) {
+        btn.textContent = selectMode ? 'Cancel' : 'Select';
+        btn.classList.toggle('active', selectMode);
+    }
+    const bar = document.getElementById('selection-action-bar');
+    const count = selectedPhraseIds.size;
+    if (bar) bar.style.display = selectMode && count > 0 ? 'flex' : 'none';
+    const countEl = document.getElementById('selection-count');
+    if (countEl) countEl.textContent = `${count} selected`;
+}
+
+// ===== Move selected phrases to another space (bulk, from the selection bar) =====
+// A direct space_id update (PATCH /phrases/bulk-move) — no retranslation, no
+// Add-tab round trip. Level and learned status carry over unchanged; tags
+// don't, since a tag belongs to one specific space (see database.js).
+
+function openMovePhraseModal() {
+    if (!selectedPhraseIds.size) return;
+    renderMovePhraseList();
+    const title = document.getElementById('move-phrase-modal-title');
+    const count = selectedPhraseIds.size;
+    if (title) title.textContent = `Move ${count} phrase${count === 1 ? '' : 's'} to...`;
+    document.getElementById('move-phrase-modal-overlay').style.display = 'flex';
+}
+
+function closeMovePhraseModal() {
+    document.getElementById('move-phrase-modal-overlay').style.display = 'none';
+}
+
+// Only other Progression/Bridge spaces are valid targets — a dictionary
+// space does word lookups, not phrase capture, so moved phrases have
+// nowhere sensible to land there.
+function renderMovePhraseList() {
+    const container = document.getElementById('move-phrase-list');
+    const candidates = (typeof spaces !== 'undefined' ? spaces : [])
+        .filter(s => s.id !== activeSpaceId && s.space_type !== 'dictionary');
+    container.innerHTML = candidates.length
+        ? candidates.map(s => `<div class="tag-chip" onclick="confirmBulkMove('${s.id}')">${s.name}</div>`).join('')
+        : `<div class="tag-name">No other phrase space to move these into.</div>`;
+}
+
+async function confirmBulkMove(targetSpaceId) {
+    const ids = [...selectedPhraseIds];
+    closeMovePhraseModal();
+    try {
+        const res = await fetch('/phrases/bulk-move', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids, targetSpaceId })
+        });
+        if (!res.ok) throw new Error('Failed to move phrases');
+        exitSelectMode();
+        await loadTable();
+    } catch (err) {
+        alert('Failed to move phrases — try again.');
+    }
 }
