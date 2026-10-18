@@ -91,6 +91,7 @@ A single text input, with three small icon buttons (**⌨️ 📖 🎙️**) plu
   - Look up a word in the space's source or target language.
   - Doesn't require switching to a dictionary space at all.
   - If more than one dictionary space exists, a quick picker asks which one first (if there's only one, it's used directly; if there are none yet, you're told to create one).
+- **Mode mismatch check**: if what you typed doesn't match the selected icon (a single word while ⌨️ Type is active, or a full phrase while 📖 Dictionary is active), a quick prompt offers to send it the other way instead — catches the easy mistake of forgetting which mode is selected.
 - **🎙️ Record**:
   - Swaps the text input out for two buttons — "Recording in {source language}" and "Recording in {target language}" — telling Gemini up front which language to expect, making it easier to identify correctly in audio. Typed text doesn't need this hint, since the language is already obvious from the text itself.
   - Then opens the file picker to select a recording of up to ~30 minutes.
@@ -117,6 +118,7 @@ Your full phrase list as cards — in a dictionary space, each card is a looked-
 - **Dictionary cards** show the word itself, its part of speech, synonyms in both languages, and an example sentence — with just two buttons:
   - **👑**: tap to mark a word learned, same as a phrase.
   - **🗑️**: tap to delete.
+- **Select**: a toolbar toggle for multi-select — pick several cards, then **Move to...** moves them all into another space at once. Level and learned status carry over; tags don't, since a tag belongs to the space you're leaving.
 
 ### 📊 Analytics tab
 
