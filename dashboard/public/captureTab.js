@@ -1,4 +1,5 @@
 const captureLog = document.getElementById('capture-log');
+const transcriptsPanel = document.getElementById('transcripts-panel');
 const captureTextInput = document.getElementById('capture-text-input');
 let captureMode = 'capture';
 
@@ -33,19 +34,24 @@ document.addEventListener('selectionchange', handleTranscriptSelectionChange);
 
 let addInputMode = 'type'; // 'type' | 'dictionary' | 'record'
 
+// Transcripts (below) is a TOGGLE that layers on top of this mode, not a
+// separate mode of its own — it can be open at the same time as either
+// Type or Dictionary, and switching between those two never touches it.
+// The one exception is Record: a recording and the transcript list can't
+// be on screen together (see transcriptsOpen), so picking Record closes
+// the toggle if it was open.
 function setAddInputMode(mode, btnEl) {
-    // Picking a mode icon is itself a decision to leave the Transcriptions
-    // view (the footer buttons stay live while it's showing, precisely so
-    // this can happen) — so this closes that view out, instead of leaving
-    // the log stuck on the transcript list underneath. This is now the
-    // only way out of Transcriptions; there's no dedicated "Back" button.
-    if (captureViewMode === 'transcripts') {
-        captureViewMode = 'log';
-        applyCaptureViewMode();
-        captureLog.innerHTML = ''; // clear the transcript list out from under the log
-        hideTranscriptSelectionBar();
+    if (mode === 'record' && transcriptsOpen) {
+        closeTranscriptsView();
     }
+    applyAddInputModeUI(mode, btnEl);
+}
 
+// Just the visual side of switching input mode (icon state, textarea vs.
+// record buttons, placeholder text) — split out of setAddInputMode so
+// openTranscriptsView can also force a switch out of Record (into Type)
+// without going through the "close transcripts" branch above.
+function applyAddInputModeUI(mode, btnEl) {
     const previousMode = addInputMode;
     addInputMode = mode;
     document.querySelectorAll('#capture-mode-icons .capture-mode-icon-btn[data-mode]').forEach(b => b.classList.remove('active'));
@@ -74,12 +80,12 @@ function setAddInputMode(mode, btnEl) {
 }
 
 // The recording note lives in the main log area (center of the screen,
-// room to actually read it). previousMode lets this be a no-op when switching between
-// Type and Dictionary, so it never clobbers real capture results sitting
-// in the log — it only touches the log when Record is actually being
-// entered or left (or when returning from the transcripts view, which
-// passes 'record' regardless so the log always matches whatever mode is
-// current).
+// room to actually read it). previousMode lets this be a no-op when
+// switching between Type and Dictionary, so it never clobbers real
+// capture results sitting in the log — it only touches the log when
+// Record is actually being entered or left. Independent of the
+// transcripts toggle entirely — that renders into its own panel now (see
+// below), never into capture-log, so there's nothing here to guard against.
 function refreshCaptureLog(previousMode) {
     if (addInputMode === 'record') {
         captureLog.innerHTML = `<div class="recording-info-note">🎙️<br>Recordings are limited to about 30 minutes.<br>Once it's processed, you'll land straight on its transcript. Just select whichever lines you want to translate.</div>`;
@@ -117,47 +123,69 @@ function enterCaptureTab(btnEl) {
     resetCaptureLog();
 }
 
-// Opens the capture window's inline view of past recording transcripts.
-// One-directional by design — there's no "Back" button anymore. Picking
-// any Type/Dictionary/Record mode icon already exits this view as a side
-// effect (see setAddInputMode above), and that's the only way out: opening
-// transcripts is itself a stop along the way to picking a phrase, not a
-// separate place that needs its own way back.
-let captureViewMode = 'log'; // 'log' | 'transcripts'
+// ===== Transcripts toggle =====
+// A toggle layered on top of addInputMode, not a view that replaces it:
+// it can be open together with Type or Dictionary, and only Record forces
+// it shut (see setAddInputMode above). The "Transcriptions" button itself
+// is the toggle — tap to open, tap again to close. Renders into its own
+// #transcripts-panel, a separate element from #capture-log — never into
+// capture-log itself, so opening or closing it can never clear or
+// overwrite a phrase result, a dictionary lookup's option chips still
+// being chosen, or anything else capture-log happens to be showing.
 
-function openTranscriptsView() {
-    if (captureViewMode === 'transcripts') return; // already showing — this button has nothing left to do
-    captureViewMode = 'transcripts';
-    applyCaptureViewMode();
-    loadTranscripts(); // renders into #capture-log, see the Transcripts section below
+let transcriptsOpen = false;
+
+function toggleTranscriptsView() {
+    if (transcriptsOpen) {
+        closeTranscriptsView();
+    } else {
+        openTranscriptsView();
+    }
 }
 
-function applyCaptureViewMode() {
-    const btn = document.getElementById('capture-history-btn');
-    const contentArea = document.getElementById('capture-content-area');
-    const sendBtn = document.getElementById('capture-send-btn');
-    if (captureViewMode === 'transcripts') {
-        // Disabled rather than repurposed into "Back" — with no toggle
-        // behavior left, a second tap here would have nothing to do.
-        if (btn) { btn.classList.add('active'); btn.disabled = true; }
-        if (contentArea) contentArea.classList.add('disabled');
-        if (sendBtn) sendBtn.disabled = true;
-    } else {
-        if (btn) { btn.classList.remove('active'); btn.disabled = false; }
-        if (contentArea) contentArea.classList.remove('disabled');
-        if (sendBtn) sendBtn.disabled = false;
+function openTranscriptsView() {
+    if (transcriptsOpen) return;
+    // Record has no text field to add a selection into, and can't be
+    // shown alongside the transcript list anyway — switch to Type first
+    // so there's something underneath to work with.
+    if (addInputMode === 'record') {
+        applyAddInputModeUI('type');
     }
+    transcriptsOpen = true;
+    if (transcriptsPanel) transcriptsPanel.style.display = 'flex';
+    applyTranscriptsButtonUI();
+    loadTranscripts(); // renders into #transcripts-panel, see the Transcripts section below
+}
+
+function closeTranscriptsView() {
+    if (!transcriptsOpen) return;
+    transcriptsOpen = false;
+    if (transcriptsPanel) {
+        transcriptsPanel.style.display = 'none';
+        transcriptsPanel.innerHTML = ''; // reloaded fresh next time it opens; capture-log is untouched
+    }
+    applyTranscriptsButtonUI();
+    hideTranscriptSelectionBar();
+}
+
+function applyTranscriptsButtonUI() {
+    const btn = document.getElementById('capture-history-btn');
+    if (btn) btn.classList.toggle('active', transcriptsOpen);
 }
 
 // Shared by enterCaptureTab and space switching (spacesState.js calls this
 // directly, since enterCaptureTab won't fire if the user is already
 // sitting on this tab when they switch spaces from the header). Always
-// lands back on the normal capture log, not the transcripts view — and
-// cancels any in-progress phrase edit, since re-entering the tab fresh
-// means starting over.
+// closes the transcripts toggle and lands back on the normal capture log
+// — and cancels any in-progress phrase edit, since re-entering the tab
+// fresh means starting over.
 function resetCaptureLog() {
-    captureViewMode = 'log';
-    applyCaptureViewMode();
+    transcriptsOpen = false;
+    if (transcriptsPanel) {
+        transcriptsPanel.style.display = 'none';
+        transcriptsPanel.innerHTML = '';
+    }
+    applyTranscriptsButtonUI();
     captureLog.innerHTML = '';
     hideTranscriptSelectionBar();
     setAddInputMode((typeof isDictionarySpace === 'function' && isDictionarySpace()) ? 'dictionary' : 'type');
@@ -364,10 +392,15 @@ async function handleRecordingFileSelected(inputEl) {
             throw new Error(data.error || 'Failed to process recording');
         }
 
-        // Straight into the transcript list, expanded on the fresh one,
-        // ready to select from.
-        captureViewMode = 'transcripts';
-        applyCaptureViewMode();
+        // Recording and the transcript toggle can't coexist, so switch out
+        // of Record into Type first, then open the toggle straight onto
+        // the fresh transcript, ready to select from.
+        if (addInputMode === 'record') {
+            applyAddInputModeUI('type');
+        }
+        transcriptsOpen = true;
+        if (transcriptsPanel) transcriptsPanel.style.display = 'flex';
+        applyTranscriptsButtonUI();
         await loadTranscripts();
         if (transcripts.length) toggleTranscript(transcripts[0].id);
     } catch (err) {
@@ -407,7 +440,7 @@ function addCaptureMessage(text) {
     captureLog.scrollTop = captureLog.scrollHeight;
 }
 
-// ===== Transcripts (the "logs" view toggled into #capture-log) =====
+// ===== Transcripts (rendered into #transcripts-panel while the toggle is open) =====
 
 let transcripts = [];
 
@@ -440,7 +473,9 @@ function renderTranscripts() {
     `;
     }).join('');
 
-    captureLog.innerHTML = warningHtml + (listHtml || '<div class="capture-log-item error">No recordings processed yet.</div>');
+    if (transcriptsPanel) {
+        transcriptsPanel.innerHTML = warningHtml + (listHtml || '<div class="capture-log-item error">No recordings processed yet.</div>');
+    }
 }
 
 // Accordion: one click expands that entry and collapses any other that was
@@ -475,7 +510,7 @@ async function deleteTranscriptRow(id) {
 let pendingTranscriptSelection = '';
 
 function handleTranscriptSelectionChange() {
-    if (captureViewMode !== 'transcripts') {
+    if (!transcriptsOpen) {
         hideTranscriptSelectionBar();
         return;
     }
@@ -509,19 +544,18 @@ function hideTranscriptSelectionBar() {
     if (bar) bar.style.display = 'none';
 }
 
-// Switches back to the normal capture log with the selected text already
-// sitting in the input, ready to edit and Send — the input is disabled
-// while browsing transcripts, so leaving that view is what re-enables it.
+// Drops the selected text into the input, ready to edit and Send — the
+// transcript list stays open underneath the whole time (the toggle is
+// untouched here), so this can be repeated for as many lines as wanted
+// without losing the transcript. The input is already usable in Type or
+// Dictionary mode regardless of the toggle, so there's nothing to unlock;
+// this just fills it and focuses it.
 function addTranscriptSelectionToInput() {
     if (!pendingTranscriptSelection) return;
     const text = pendingTranscriptSelection;
 
     window.getSelection().removeAllRanges();
-    captureViewMode = 'log';
-    applyCaptureViewMode();
-    captureLog.innerHTML = '';
     hideTranscriptSelectionBar();
-    setAddInputMode('type');
 
     captureTextInput.value = text;
     captureTextInput.style.height = 'auto';

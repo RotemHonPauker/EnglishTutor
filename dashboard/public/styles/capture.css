@@ -5,6 +5,26 @@
     overflow: hidden;
 }
 
+/* ===== Transcripts panel ===== */
+/* Deliberately a separate scroll container from #capture-log, not part of
+   it — the transcripts toggle can be open at the same time as Type or
+   Dictionary mode, so its content must never be cleared or overwritten by
+   whatever capture-log is doing (a phrase result, dictionary lookup
+   options still being chosen, etc), and vice versa. Capped height of its
+   own so it doesn't crowd out the rest of the tab when open; the person
+   can still scroll the whole section if needed. */
+
+#transcripts-panel {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 12px 0;
+    max-height: 42vh;
+    overflow-y: auto;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--divider-soft);
+}
+
 #capture-log {
     flex: 1;
     overflow-y: auto;
@@ -33,10 +53,10 @@
 }
 
 /* ===== Transcript-selection bar ===== */
-/* Appears above the (disabled, while browsing transcripts) input area
-   whenever a person has an active text selection inside a transcript
-   card body — lets them hand-pick which lines are worth translating
-   instead of auto-generating a card for everything Gemini transcribed. */
+/* Appears above the input area whenever a person has an active text
+   selection inside a transcript card body — lets them hand-pick which
+   lines are worth translating instead of auto-generating a card for
+   everything Gemini transcribed. */
 
 #transcript-selection-bar {
     display: flex;
@@ -232,9 +252,9 @@
 }
 
 
-/* ===== Transcripts (the "logs" view toggled into #capture-log) ===== */
-/* Renders inside #capture-log above, which already provides the flex/gap
-   spacing between items — no margins needed here. */
+/* ===== Transcripts (rendered into #transcripts-panel above) ===== */
+/* The panel above already provides the flex/gap spacing between items —
+   no margins needed here. */
 
 #transcripts-warning {
     background: rgba(248, 113, 113, 0.12);
@@ -256,10 +276,14 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 14px;
+    padding: 8px 12px;
     cursor: pointer;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     color: var(--text-2);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--surface);
 }
 
 .transcript-card-actions button {
@@ -271,13 +295,12 @@
 }
 
 .transcript-card-body {
-    padding: 0 14px 14px;
+    padding: 6px 14px;
     font-size: 0.875rem;
     line-height: 1.6;
     color: var(--text-muted);
     white-space: pre-wrap;
     border-top: 1px solid var(--border);
-    padding-top: 12px;
-    max-height: 260px;
+    max-height: 8.3em;
     overflow-y: auto;
 }

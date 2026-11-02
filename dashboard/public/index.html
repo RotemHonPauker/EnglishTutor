@@ -197,6 +197,12 @@
     <!-- ADD VIEW -->
     <div id="view-add" class="view">
         <div id="capture-section">
+            <!-- TRANSCRIPTS PANEL: a separate container from capture-log on
+                 purpose — it's a toggle that can be open at the same time as
+                 Type/Dictionary mode, so it must never share, clear, or
+                 overwrite whatever capture-log is showing (a phrase result,
+                 dictionary lookup options still being chosen, etc). -->
+            <div id="transcripts-panel" style="display:none"></div>
             <div id="capture-log"></div>
             <div id="transcript-selection-bar" style="display:none">
                 <span id="transcript-selection-preview" dir="auto"></span>
@@ -220,7 +226,7 @@
                             <button class="capture-mode-icon-btn active" data-mode="type" title="Type a phrase" onclick="setAddInputMode('type', this)">⌨️</button>
                             <button class="capture-mode-icon-btn" data-mode="dictionary" title="Look up a dictionary word" onclick="setAddInputMode('dictionary', this)">📖</button>
                             <button class="capture-mode-icon-btn" data-mode="record" title="Upload a recording" onclick="setAddInputMode('record', this)">🎙️</button>
-                            <button id="capture-history-btn" title="View past recording transcripts" onclick="openTranscriptsView()">Transcriptions</button>
+                            <button id="capture-history-btn" title="View past recording transcripts" onclick="toggleTranscriptsView()">Transcriptions</button>
                         </div>
                         <button class="primary" id="capture-send-btn" title="Send" onclick="submitTypedPhrase()">➤</button>
                     </div>
