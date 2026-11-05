@@ -1,3 +1,5 @@
+// Needs remoteDb.js and ttsStorage.js loaded first.
+
 let spaces = [];
 let activeSpaceId = localStorage.getItem('activeSpaceId') || null;
 
@@ -5,8 +7,7 @@ let activeSpaceId = localStorage.getItem('activeSpaceId') || null;
 // loads. If there's no valid active space yet (first-ever visit, or a
 // stored id that no longer exists), falls back to the first space returned.
 async function loadSpaces() {
-    const res = await fetch('/spaces');
-    spaces = await res.json();
+    spaces = await getSpaces();
 
     const stillExists = spaces.some(s => s.id === activeSpaceId);
     if (!stillExists) {
@@ -88,7 +89,7 @@ function renderSpacePickerList() {
     const spaceRows = ordered.map(s => `
         <div class="space-picker-row">
             <div class="space-picker-item ${s.id === activeSpaceId ? 'active' : ''}" onclick="requestSpaceSwitch('${s.id}')">
-                ${s.space_type === 'dictionary' ? '📖 ' : ''}${s.name}
+                ${s.space_type === 'dictionary' ? '📖 ' : ''}${escapeHtml(s.name)}
             </div>
             <button class="space-picker-edit-btn" onclick="event.stopPropagation(); showMigrateSpaceForm('${s.id}')" title="Migrate into another space">⇄</button>
             ${s.space_type === 'dictionary' ? '<span class="space-picker-edit-btn-placeholder"></span>' : `<button class="space-picker-edit-btn" onclick="event.stopPropagation(); showRenameSpaceForm('${s.id}')" title="Rename">✎</button>`}
@@ -103,7 +104,7 @@ function showRenameSpaceForm(id) {
     if (!space) return;
     const form = document.getElementById('space-picker-new-form');
     form.innerHTML = `
-        <input id="rename-space-name-input" type="text" value="${space.name}" autocomplete="off" />
+        <input id="rename-space-name-input" type="text" value="${escapeHtml(space.name)}" autocomplete="off" />
         <div class="form-buttons">
             <button onclick="document.getElementById('space-picker-new-form').innerHTML = ''">Cancel</button>
             <button class="primary" onclick="submitRenameSpace('${id}')">Save</button>
@@ -115,19 +116,14 @@ async function submitRenameSpace(id) {
     const name = document.getElementById('rename-space-name-input').value.trim();
     if (!name) return;
 
-    const res = await fetch(`/spaces/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name })
-    });
-
-    if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        alert(data.error || 'Failed to rename space');
+    let updated;
+    try {
+        updated = await updateSpace({ id, name });
+    } catch (err) {
+        alert(err.message || 'Failed to rename space');
         return;
     }
 
-    const updated = await res.json();
     const idx = spaces.findIndex(s => s.id === id);
     if (idx !== -1) spaces[idx] = updated;
 
@@ -146,7 +142,7 @@ function showDeleteSpaceForm(id) {
     const form = document.getElementById('space-picker-new-form');
     form.innerHTML = `
         <div class="tag-name">
-            Delete "${space.name}" — its phrases, tags, and transcripts included? This cannot be undone.
+            Delete "${escapeHtml(space.name)}" — its phrases, tags, and transcripts included? This cannot be undone.
         </div>
         <div class="form-buttons">
             <button onclick="document.getElementById('space-picker-new-form').innerHTML = ''">Cancel</button>
@@ -156,12 +152,27 @@ function showDeleteSpaceForm(id) {
 }
 
 async function submitDeleteSpace(id) {
-    const res = await fetch(`/spaces/${id}`, { method: 'DELETE' });
+    // Grab the phrase ids first so their cached audio can be cleared from
+    // this device's IndexedDB after the delete succeeds — deleteSpace()
+    // only touches the Supabase tables, same division of responsibility as
+    // a single phrase delete (see phrasesTable.js).
+    let phrasesInSpace = [];
+    try {
+        phrasesInSpace = await getPhrases(id);
+    } catch (err) {
+        // Non-fatal — worst case a few orphaned cache entries stay in
+        // IndexedDB. Proceed with the delete regardless.
+    }
 
-    if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        alert(data.error || 'Failed to delete space');
+    try {
+        await deleteSpace(id);
+    } catch (err) {
+        alert(err.message || 'Failed to delete space');
         return;
+    }
+
+    for (const phrase of phrasesInSpace) {
+        await deleteTtsBlobsForPhrase(phrase.id);
     }
 
     document.getElementById('space-picker-new-form').innerHTML = '';
@@ -284,19 +295,14 @@ async function submitNewSpace() {
     const targetLanguage = document.getElementById('new-space-target-lang').value;
     const bridgeLanguage = spaceType === 'bridge' ? document.getElementById('new-space-bridge-lang').value : undefined;
 
-    const res = await fetch('/spaces', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, spaceType, sourceLanguage, targetLanguage, bridgeLanguage })
-    });
-
-    if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        alert(data.error || 'Failed to create space');
+    let space;
+    try {
+        space = await createSpace({ name, spaceType, sourceLanguage, targetLanguage, bridgeLanguage });
+    } catch (err) {
+        alert(err.message || 'Failed to create space');
         return;
     }
 
-    const space = await res.json();
     spaces.push(space);
     closeSpaceCreateModal();
     await setActiveSpace(space.id);
@@ -319,7 +325,7 @@ function showMigrateSpaceForm(id) {
     // never move) or mix phrases from a different language pair into a
     // space with nothing to tell them apart. Filtered out here so there's
     // nothing incompatible to even pick, rather than picking it and
-    // hitting the server's rejection.
+    // hitting a rejection from the database layer.
     const candidates = spaces.filter(s =>
         s.id !== id &&
         s.space_type === source.space_type &&
@@ -331,7 +337,7 @@ function showMigrateSpaceForm(id) {
 
     if (!candidates.length) {
         form.innerHTML = `
-            <div class="tag-name">No other space with the same type and languages to migrate "${source.name}" into.</div>
+            <div class="tag-name">No other space with the same type and languages to migrate "${escapeHtml(source.name)}" into.</div>
             <div class="form-buttons">
                 <button onclick="document.getElementById('space-picker-new-form').innerHTML = ''">Close</button>
             </div>
@@ -340,9 +346,9 @@ function showMigrateSpaceForm(id) {
     }
 
     form.innerHTML = `
-        <div class="tag-name">Migrate "${source.name}" into:</div>
+        <div class="tag-name">Migrate "${escapeHtml(source.name)}" into:</div>
         <div class="tag-picker-chip-list">
-            ${candidates.map(s => `<div class="tag-chip" onclick="confirmMigrateSpaceTarget('${s.id}')">${s.name}</div>`).join('')}
+            ${candidates.map(s => `<div class="tag-chip" onclick="confirmMigrateSpaceTarget('${s.id}')">${escapeHtml(s.name)}</div>`).join('')}
         </div>
         <div class="form-buttons">
             <button onclick="document.getElementById('space-picker-new-form').innerHTML = ''">Cancel</button>
@@ -363,7 +369,7 @@ function renderMigrateSpaceConfirm(source, target) {
     const form = document.getElementById('space-picker-new-form');
     form.innerHTML = `
         <div class="tag-name">
-            Move all phrases, tags, and transcripts from "${source.name}" into "${target.name}", and delete "${source.name}"?
+            Move all phrases, tags, and transcripts from "${escapeHtml(source.name)}" into "${escapeHtml(target.name)}", and delete "${escapeHtml(source.name)}"?
             This cannot be undone.
         </div>
         <div id="migrate-space-error" class="form-error" style="display:none"></div>
@@ -375,58 +381,52 @@ function renderMigrateSpaceConfirm(source, target) {
 }
 
 async function submitMigrateSpace(sourceId, targetId, dropSourceTranscripts) {
-    const res = await fetch('/spaces/migrate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sourceId, targetId, dropSourceTranscripts })
-    });
-
-    if (res.ok) {
-        document.getElementById('space-picker-new-form').innerHTML = '';
-        migrateSourceSpaceId = null;
-        await loadSpaces();
-        // If the space we were sitting on was the one just migrated away,
-        // land on whatever space remains instead of a now-nonexistent id.
-        if (!spaces.some(s => s.id === activeSpaceId)) {
-            await setActiveSpace(spaces[0]?.id || null);
+    try {
+        await migrateSpace({ sourceId, targetId, dropSourceTranscripts });
+    } catch (err) {
+        if (err.code === 'TOO_MANY_TRANSCRIPTS') {
+            renderMigrateTranscriptOverflow(sourceId, targetId, err.sourceCount, err.targetCount);
+            return;
+        }
+        const errEl = document.getElementById('migrate-space-error');
+        if (errEl) {
+            errEl.style.display = 'block';
+            errEl.textContent = err.message || 'Failed to migrate space';
         } else {
-            // Otherwise we're still on the same space id — but if it was
-            // the migration's target, its tags/phrases just changed under
-            // it. Refresh both instead of leaving the stale pre-migration
-            // view up until the next manual reload.
-            renderSpacePickerList();
-            await loadTags();
-            await loadTable();
+            alert(err.message || 'Failed to migrate space');
         }
         return;
     }
 
-    const data = await res.json().catch(() => ({}));
-    if (data.error === 'too_many_transcripts') {
-        renderMigrateTranscriptOverflow(sourceId, targetId, data.sourceCount, data.targetCount);
-        return;
-    }
-
-    const errEl = document.getElementById('migrate-space-error');
-    if (errEl) {
-        errEl.style.display = 'block';
-        errEl.textContent = data.error || 'Failed to migrate space';
+    document.getElementById('space-picker-new-form').innerHTML = '';
+    migrateSourceSpaceId = null;
+    await loadSpaces();
+    // If the space we were sitting on was the one just migrated away,
+    // land on whatever space remains instead of a now-nonexistent id.
+    if (!spaces.some(s => s.id === activeSpaceId)) {
+        await setActiveSpace(spaces[0]?.id || null);
     } else {
-        alert(data.error || 'Failed to migrate space');
+        // Otherwise we're still on the same space id — but if it was
+        // the migration's target, its tags/phrases just changed under
+        // it. Refresh both instead of leaving the stale pre-migration
+        // view up until the next manual reload.
+        renderSpacePickerList();
+        await loadTags();
+        await loadTable();
     }
 }
 
-// The server blocked the migration because combined transcripts would
-// exceed the hard cap — offer to drop the source's own transcripts and
-// proceed, or back out and let them be cleaned up manually first.
+// Blocked because combined transcripts would exceed the hard cap — offer
+// to drop the source's own transcripts and proceed, or back out and let
+// them be cleaned up manually first.
 function renderMigrateTranscriptOverflow(sourceId, targetId, sourceCount, targetCount) {
     const source = spaces.find(s => s.id === sourceId);
     const target = spaces.find(s => s.id === targetId);
     const form = document.getElementById('space-picker-new-form');
     form.innerHTML = `
         <div class="tag-name">
-            Too many transcripts to migrate — "${target.name}" already has ${targetCount}, and "${source.name}" would add ${sourceCount} more.
-            "${source.name}"'s transcripts will be deleted rather than moved if you continue.
+            Too many transcripts to migrate — "${escapeHtml(target.name)}" already has ${targetCount}, and "${escapeHtml(source.name)}" would add ${sourceCount} more.
+            "${escapeHtml(source.name)}"'s transcripts will be deleted rather than moved if you continue.
         </div>
         <div class="form-buttons">
             <button onclick="document.getElementById('space-picker-new-form').innerHTML = ''">Wait — I'll clean up manually</button>

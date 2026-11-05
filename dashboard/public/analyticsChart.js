@@ -9,6 +9,9 @@
 // moved between states).
 // Unlike the Practice date scroll, there's no "Older" row here and no row
 // is ever selectable — this is a trend view, not a navigation control.
+// Pure in-memory chart over allPhrases/tags — no network calls, so no
+// changes were needed here beyond escaping tag names before they go into
+// innerHTML (see escapeHtml, defined in app.js).
 
 let analyticsGranularity = 'day'; // 'day' | 'week' | 'month'
 let analyticsMode = 'tag';        // 'tag' | 'learned'
@@ -80,7 +83,7 @@ function renderAnalyticsChart() {
                 const tag = tags.find(t => t.id === tagId);
                 const color = tag ? (tag.color || NO_TAG_COLOR) : NO_TAG_COLOR;
                 const name = tag ? tag.name : 'No tag';
-                return `<div class="chart-segment" style="flex:${count}; background:${color};" title="${name}: ${count}"></div>`;
+                return `<div class="chart-segment" style="flex:${count}; background:${color};" title="${escapeHtml(name)}: ${count}"></div>`;
             }).join('');
         } else {
             const learnedCount = b.phrases.filter(p => p.learned_at).length;
@@ -111,7 +114,7 @@ function renderAnalyticsLegend() {
 
     if (analyticsMode === 'tag') {
         const tagDots = tags.map(t => `
-            <span class="chart-legend-item"><span class="chart-legend-dot" style="background:${t.color || NO_TAG_COLOR}"></span>${t.name}</span>
+            <span class="chart-legend-item"><span class="chart-legend-dot" style="background:${t.color || NO_TAG_COLOR}"></span>${escapeHtml(t.name)}</span>
         `).join('');
         legend.innerHTML = tagDots + `<span class="chart-legend-item"><span class="chart-legend-dot" style="background:${NO_TAG_COLOR}"></span>No tag</span>`;
     } else {

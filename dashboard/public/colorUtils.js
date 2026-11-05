@@ -1,20 +1,20 @@
+// Fixed palette offered when picking a tag's color. There's no backend
+// anymore to fetch this from (the old GET /colors route is gone, and so
+// is dashboard/colors.js), so the palette is just inlined here directly
+// — same values as before. COLORS is populated immediately at
+// script-load time, so nothing needs to await it anymore. This same
+// palette is also duplicated as TAG_COLORS inside remoteDb.js, which
+// needs it for migrateSpace's color-collision resolution and can't
+// depend on this file loading first — see the comment there.
+
 const DEFAULT_TAG_COLOR = '#ccc';
 
-// The fixed palette offered when picking a tag's color (used by tags.js).
-// Fetched once from the backend (the actual source of truth, colors.js)
-// rather than kept as a second hardcoded copy here — same pattern as
-// languagesUtils.js's LANGUAGES. Starts empty and is filled in by
-// loadColors(), called once from app.js's window.onload.
-let COLORS = [];
-
-async function loadColors() {
-    try {
-        const res = await fetch('/colors');
-        COLORS = await res.json();
-    } catch (err) {
-        console.error('Failed to load colors:', err);
-    }
-}
+const COLORS = [
+    '#AD1457', '#D81B60', '#E67C73', '#F4511E',
+    '#F09300', '#F6BF26', '#7CB342', '#0B8043',
+    '#009688', '#33B679', '#039BE5', '#3F51B5',
+    '#B39DDB', '#9E69AF', '#8E24AA', '#795548'
+];
 
 function getContrastColor(hex) {
     if (!hex) return '#ccc';

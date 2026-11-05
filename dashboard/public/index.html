@@ -384,11 +384,34 @@
 
 <script src="theme.js"></script>
 <script src="loadingOverlay.js"></script>
+
+<!-- Supabase connection (URL/key entered once, see connectionGate.js) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabaseClient.js"></script>
+<script src="connectionGate.js"></script>
+
+<!-- Login (Supabase Auth) -->
+<script src="authGate.js"></script>
+
+<!-- Gemini API key (entered once, see geminiKeyGate.js) -->
+<script src="geminiClient.js"></script>
+<script src="geminiKeyGate.js"></script>
+
+<!-- Data layer + AI engines (all run client-side now) -->
+<script src="remoteDb.js"></script>
+<script src="promptTemplates.js"></script>
+<script src="translationEngine.js"></script>
+<script src="dictionaryEngine.js"></script>
+<script src="audioEngine.js"></script>
+<script src="ttsEngine.js"></script>
+<script src="ttsStorage.js"></script>
+
+<!-- App screens -->
 <script src="languagesUtils.js"></script>
+<script src="colorUtils.js"></script>
 <script src="spacesState.js"></script>
 <script src="spaceRules.js"></script>
 <script src="dictionary.js"></script>
-<script src="colorUtils.js"></script>
 <script src="tags.js"></script>
 <script src="phrasesTable.js"></script>
 <script src="practiceDateScroll.js"></script>

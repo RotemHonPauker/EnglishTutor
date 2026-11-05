@@ -9,6 +9,7 @@
 // machinery already built for phrases) and Add (Send becomes a word lookup
 // instead of a phrase capture). Analytics and Setup don't apply and are
 // disabled while a dictionary space is active.
+// Needs remoteDb.js, dictionaryEngine.js and geminiClient.js loaded first.
 
 let allDictionaryEntries = [];
 
@@ -120,6 +121,11 @@ function renderDictionarySpacePicker(dictSpaces, onResolved) {
 // word chosen from an earlier options list, so the saved entry remembers
 // what was actually searched for. spaceId: which dictionary this lookup
 // (and its language pair) belongs to.
+//
+// Used to be one POST to /dictionary/lookup; now it's three steps done
+// here directly: look up the space's language pair, call Gemini
+// (dictionaryEngine.js), and — once there's an actual word, not just a
+// disambiguation list — save the entry (remoteDb.js).
 async function submitDictionaryLookup(query, sourceQuery, partOfSpeechHint, spaceId) {
     const sendBtn = document.getElementById('capture-send-btn');
     captureTextInput.disabled = true;
@@ -127,22 +133,26 @@ async function submitDictionaryLookup(query, sourceQuery, partOfSpeechHint, spac
     sendBtn.textContent = '...';
 
     try {
-        const res = await fetch('/dictionary/lookup', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ spaceId, query, sourceQuery: sourceQuery || null, partOfSpeechHint: partOfSpeechHint || null })
-        });
-        if (!res.ok) throw new Error('Failed to look up word');
-        const data = await res.json();
+        const spaceFields = await getSpaceRuleFields(spaceId);
+        const result = await lookupWord(query.trim(), spaceFields.sourceLanguage, spaceFields.targetLanguage, partOfSpeechHint || null);
 
-        if (data.type === 'options') {
-            addDictionaryOptions(data.options, data.kind, query, sourceQuery, spaceId);
+        if (result.type === 'options') {
+            addDictionaryOptions(result.options || [], result.kind, query, sourceQuery, spaceId);
         } else {
-            addDictionarySavedMessage(data.entry);
-            if (spaceId === activeSpaceId) allDictionaryEntries.unshift(data.entry);
+            const entry = await saveDictionaryEntry({
+                spaceId,
+                sourceQuery: sourceQuery || null,
+                word: result.word,
+                partOfSpeech: result.partOfSpeech,
+                sourceSynonyms: (result.sourceSynonyms || []).join(', '),
+                exampleSentence: result.exampleSentence,
+                targetSynonyms: (result.targetSynonyms || []).join(', ')
+            });
+            addDictionarySavedMessage(entry);
+            if (spaceId === activeSpaceId) allDictionaryEntries.unshift(entry);
         }
     } catch (err) {
-        addCaptureMessage("Couldn't look that up — try again.");
+        addCaptureMessage(err.code === 'NO_API_KEY' ? 'No Gemini API key set yet.' : "Couldn't look that up — try again.");
     } finally {
         captureTextInput.disabled = false;
         sendBtn.disabled = false;
@@ -210,11 +220,11 @@ function addDictionarySavedMessage(entry) {
     const div = document.createElement('div');
     div.className = 'capture-log-item';
     div.innerHTML = `
-        <div class="dictionary-word" dir="auto">${entry.word || ''}</div>
-        ${entry.part_of_speech ? `<span class="dictionary-pos">${entry.part_of_speech}</span>` : ''}
-        ${entry.source_synonyms ? `<div class="dictionary-synonyms" dir="auto">${entry.source_synonyms}</div>` : ''}
-        ${entry.example_sentence ? `<div class="dictionary-example">${entry.example_sentence}</div>` : ''}
-        ${entry.target_synonyms ? `<div class="dictionary-synonyms">${entry.target_synonyms}</div>` : ''}
+        <div class="dictionary-word" dir="auto">${escapeHtml(entry.word || '')}</div>
+        ${entry.part_of_speech ? `<span class="dictionary-pos">${escapeHtml(entry.part_of_speech)}</span>` : ''}
+        ${entry.source_synonyms ? `<div class="dictionary-synonyms" dir="auto">${escapeHtml(entry.source_synonyms)}</div>` : ''}
+        ${entry.example_sentence ? `<div class="dictionary-example">${escapeHtml(entry.example_sentence)}</div>` : ''}
+        ${entry.target_synonyms ? `<div class="dictionary-synonyms">${escapeHtml(entry.target_synonyms)}</div>` : ''}
     `;
     captureLog.appendChild(div);
     captureLog.scrollTop = captureLog.scrollHeight;
@@ -223,8 +233,7 @@ function addDictionarySavedMessage(entry) {
 // ===== Dictionary data + card rendering (Practice, in a dictionary space) =====
 
 async function loadDictionaryEntries(spaceId) {
-    const res = await fetch(`/dictionary?spaceId=${spaceId}`);
-    allDictionaryEntries = await res.json();
+    allDictionaryEntries = await getDictionaryEntries(spaceId);
     if (typeof generateDateBuckets === 'function') generateDateBuckets();
     if (typeof renderDateScroll === 'function') renderDateScroll();
     renderTable();
@@ -253,13 +262,13 @@ function renderDictionaryCards() {
                     <button title="Delete word" onclick="deleteDictionaryRow('${e.id}')">🗑️</button>
                     <button class="learned-btn ${isLearned ? 'active' : ''}" title="${isLearned ? 'Learned — tap to unmark' : 'Mark as learned'}" onclick="toggleDictionaryLearned('${e.id}')">👑</button>
                 </div>
-                <span class="dictionary-pos">${e.part_of_speech || ''}</span>
+                <span class="dictionary-pos">${escapeHtml(e.part_of_speech || '')}</span>
             </div>
             <div class="phrase-card-main">
-                <div class="dictionary-word" dir="auto">${e.word || ''}</div>
-                ${e.source_synonyms ? `<div class="dictionary-synonyms" dir="auto">${e.source_synonyms}</div>` : ''}
-                ${e.example_sentence ? `<div class="dictionary-example">${e.example_sentence}</div>` : ''}
-                ${e.target_synonyms ? `<div class="dictionary-synonyms">${e.target_synonyms}</div>` : ''}
+                <div class="dictionary-word" dir="auto">${escapeHtml(e.word || '')}</div>
+                ${e.source_synonyms ? `<div class="dictionary-synonyms" dir="auto">${escapeHtml(e.source_synonyms)}</div>` : ''}
+                ${e.example_sentence ? `<div class="dictionary-example">${escapeHtml(e.example_sentence)}</div>` : ''}
+                ${e.target_synonyms ? `<div class="dictionary-synonyms">${escapeHtml(e.target_synonyms)}</div>` : ''}
             </div>
         </div>
         `;
@@ -267,7 +276,7 @@ function renderDictionaryCards() {
 }
 
 // Same optimistic-update pattern as toggleLearned (phrasesTable.js), just
-// against /dictionary instead of /phrases.
+// against updateDictionaryEntryLearned instead of updatePhraseLearned.
 async function toggleDictionaryLearned(id) {
     const entry = allDictionaryEntries.find(e => e.id === id);
     if (!entry) return;
@@ -275,13 +284,7 @@ async function toggleDictionaryLearned(id) {
     entry.learned_at = nextLearned ? new Date().toISOString() : null;
     renderTable();
     try {
-        const res = await fetch(`/dictionary/${id}/learned`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ learned: nextLearned })
-        });
-        if (!res.ok) throw new Error('Failed to update learned status');
-        const updated = await res.json();
+        const updated = await updateDictionaryEntryLearned({ id, learned: nextLearned });
         entry.learned_at = updated.learned_at;
         renderTable();
     } catch (err) {
@@ -298,6 +301,6 @@ function deleteDictionaryRow(id) {
     pendingDeleteId = id;
     pendingDeleteType = 'dictionary';
     document.getElementById('delete-modal-text').innerHTML =
-        `Delete "${entry ? entry.word : 'this word'}"? This can't be undone.`;
+        `Delete "${escapeHtml(entry ? entry.word : 'this word')}"? This can't be undone.`;
     document.getElementById('delete-modal-overlay').style.display = 'flex';
 }

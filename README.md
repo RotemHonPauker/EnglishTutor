@@ -17,27 +17,14 @@ Fraza is built for learners who already have a basic grasp of a language, helpin
   - [🔩 Setup tab](#-setup-tab)
 - [🧱 Stack](#-stack)
 - [🔊 Text-to-speech & recording privacy](#-text-to-speech--recording-privacy)
-- [🚦 Rate limiting & usage caps](#-rate-limiting--usage-caps)
-- [📁 Project structure](#-project-structure)
-- [💻 Test drive](#-test-drive)
-  - [1. Create the database](#1-create-the-database)
-  - [2. Get a Gemini API key](#2-get-a-gemini-api-key)
-  - [3. Clone the repo and install dependencies](#3-clone-the-repo-and-install-dependencies)
-  - [4. Configure environment](#4-configure-environment)
-  - [5. Run it](#5-run-it)
-- [🚀 Going live](#-going-live)
-  - [1. Create the VPS](#1-create-the-vps)
-  - [2. Generate an SSH key](#2-generate-an-ssh-key-on-your-own-computer-one-time-only)
-  - [3. Connect to the server](#3-connect-to-the-server)
-  - [4. Install core software on the server](#4-install-core-software-on-the-server)
-  - [5. Clone the repo and configure environment](#5-clone-the-repo-and-configure-environment)
-  - [6. Start the app with PM2](#6-start-the-app-with-pm2)
-  - [7. Point a domain at the server](#7-point-a-domain-at-the-server-duckdns-free)
-  - [8. Install and configure Nginx](#8-install-and-configure-nginx-as-a-reverse-proxy)
-  - [9. Add HTTPS with Certbot](#9-add-https-with-certbot)
-  - [10. Add Basic Auth](#10-add-basic-auth-password-protect-the-whole-app)
-  - [11. Verify](#11-verify)
-- [🔄 Updating the live app after making changes](#-updating-the-live-app-after-making-changes)
+- [🔑 Keys, and what actually protects your data](#-keys-and-what-actually-protects-your-data])
+- [🚀 Setup](#-setup)
+  - [1. Create the Supabase project and database](#1-create-the-supabase-project-and-database)
+  - [2. Create your sign-in user](#2-create-your-sign-in-user)
+  - [3. Get a Gemini API key](#3-get-a-gemini-api-key)
+  - [4. Run it locally](#4-run-it-locally)
+  - [5. Publish it so you can install it on your phone](#5-publish-it-so-you-can-install-it-on-your-phone)
+  - [6. First launch, on any device](#6-first-launch-on-any-device)
 
 ---
 
@@ -146,101 +133,55 @@ Not shown at all for a dictionary space.
 
 ## 🧱 Stack
 
-| Piece                          | Technology                                         |
-| ------------------------------ | -------------------------------------------------- |
-| Translation & audio processing | Google Gemini (`gemini-3.6-flash`)                 |
-| Text-to-speech                 | Google Gemini TTS (`gemini-3.1-flash-tts-preview`) |
-| Database                       | Postgres via Supabase                              |
-| Server                         | DigitalOcean VPS                                   |
-| Process manager                | PM2 (keeps the app alive, restarts on reboot)      |
-| Reverse proxy                  | Nginx                                              |
-| HTTPS                          | Let's Encrypt via Certbot                          |
-| Domain                         | DuckDNS (free dynamic DNS)                         |
-| App install                    | PWA (manifest + service worker)                    |
+| Piece                          | Technology                                                                                                                             |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Translation & audio processing | Google Gemini (`gemini-3.6-flash`), called straight from the browser                                                                   |
+| Text-to-speech                 | Google Gemini TTS (`gemini-3.1-flash-tts-preview`), called straight from the browser                                                   |
+| Database                       | Postgres via Supabase, queried directly from the browser (`supabase-js`)                                                               |
+| Auth                           | Supabase Auth — a single account, sign-ups disabled                                                                                    |
+| Data protection                | Postgres Row Level Security, scoped to the signed-in user                                                                              |
+| Hosting                        | Any static file host (GitHub Pages, Netlify, or your own computer for local use) — plain HTML/CSS/JS, no build step, no server process |
+| App install                    | PWA (manifest + service worker)                                                                                                        |
+
+There's no backend at all — the app is a set of static files. On first launch on any device, it asks once for your Supabase project's URL/key and your Gemini API key, and remembers them on that device from then on (see [🔑 Keys, and who can see your data](#-keys-and-who-can-see-your-data)). Everything else — your data's actual security — comes from Supabase Auth plus Row Level Security, not from keeping any of this hidden.
 
 ---
 
 ## 🔊 Text-to-speech & recording privacy
 
-- Tapping 🔊 next to a variant generates spoken audio via Gemini TTS (voice: **Achernar**) the first time only — the file is saved to `dashboard/public/audio-cache/` on whichever machine's server handled the request, and its path is stored in `phrases.tts_url_variant1`/`tts_url_variant2`. Every play after that just serves the cached file, no API call. Deleting a phrase deletes its cached audio files too, so nothing lingers with no phrase pointing to it.
-- A recording itself is never stored — only the resulting transcript text (saved to `transcripts`) survives past the request, and nothing else, until you select something from it.
+- Tapping 🔊 next to a variant generates spoken audio via Gemini TTS (voice: **Achernar**) the first time only — the audio is saved as a file in your browser's own local storage (IndexedDB) on that device, keyed by phrase + variant. Every play after that just reads the cached file, no API call. This means TTS audio is **per device, not shared** — playing a phrase on your phone for the first time will generate it again there, even if you'd already played it on your computer. Deleting a phrase deletes its cached audio too, so nothing lingers with no phrase pointing to it.
+- A recording itself is never stored anywhere — only the resulting transcript text (saved to `transcripts`) survives past the request, and nothing else, until you select something from it.
 
 ---
 
-## 🚦 Rate limiting & usage caps
+## 🔑 Keys, and what actually protects your data
 
-A layer protects Gemini API usage from runaway cost (abuse, a bug, or an abandoned browser tab):
+Three values live only in this device's browser storage (`localStorage`), never in the repo: the Supabase URL + publishable key, your login password, and your Gemini key. None of them are encrypted beyond that.
+ 
+**How someone could actually get them:**
+ 
+1. **A rooted/jailbroken phone** — breaks the OS sandbox that normally keeps one app from reading another app's storage.
+2. **A malicious browser extension** — installed in the same browser, with permission to read page content.
+3. **Physical access to an unlocked phone, or forensic recovery tools** — reads device storage directly.
 
-- **Per-route rate limits** (`express-rate-limit`) on `/phrases` (translation), `/recordings` (transcription), and `/dictionary/lookup` (word lookups) — capped requests per IP per time window.
-- **~30-minute recording cap** — recordings are sent inline (embedded directly in the API call) rather than through a separate upload step, which is simpler but size-capped: 60MB of raw audio is the ceiling, comfortably under Gemini's 100MB inline-request limit once base64 overhead is factored in. Based on this app's actual recording weight (~1.5MB/minute), that's roughly half an hour. Oversized files are rejected with a clear message rather than silently failing.
-
----
-
-## 📁 Project structure
-
-```
-EnglishTutor/
-├── dashboard/
-│   ├── audio/
-│   |   ├── audioEngine.js
-│   |   └── audioPrompt.txt
-│   ├── dictionary/
-│   |   ├── dictionaryEngine.js
-│   |   └── dictionaryPrompt.txt
-│   ├── public/
-│   |   ├── audio-cache/         (gitignored — generated at runtime)
-│   |   ├── icons/
-│   |   ├── styles/
-│   |   ├── analyticsChart.js
-│   |   ├── app.js
-│   |   ├── captureTab.js
-│   |   ├── colorUtils.js
-│   |   ├── dictionary.js
-│   |   ├── index.html
-│   |   ├── languagesUtils.js
-│   |   ├── loadingOverlay.js
-│   |   ├── manifest.json        (PWA — app name, icons, install behavior)
-│   |   ├── phrasesTable.js
-│   |   ├── practiceDateScroll.js
-│   |   ├── spaceRules.js
-│   |   ├── spacesState.js
-│   |   ├── sw.js                (PWA — service worker, required for installability)
-│   |   ├── tags.js
-│   |   └── theme.js
-│   ├── routes/
-│   |   ├── dictionary.route.js
-│   |   ├── phrases.route.js
-│   |   ├── recordings.route.js
-│   |   ├── spaces.route.js
-│   |   └── tags.route.js
-│   ├── translation/
-│   |   ├── translationEngine.js
-│   |   ├── translationPrompt.txt
-│   |   └── variantGuidance.txt
-│   ├── tts/
-│   |   └── ttsEngine.js
-│   ├── limitsConfig.js
-│   └── server.js
-├── .env
-├── colors.js
-├── database.js
-├── languages.js
-├── package.json
-└── README.md
-```
+Put simply: these keys can't be stolen unless your phone is already compromised (rooted/jailbroken) or physically in someone else's hands. Short of that, the browser itself is what keeps them safe — every website gets its own completely isolated storage, so no *other* app on your phone and no *other* website you visit can ever read Fraza's `localStorage`. That's a basic security guarantee all browsers enforce (per-site/per-origin isolation), on top of the normal OS-level sandboxing that keeps apps separate from each other in general. Installing Fraza as a PWA doesn't change any of this — it still runs inside the browser's engine, under that same storage isolation, like any website.
+ 
+What actually protects your data, beyond these three values, is one layer deeper: **Supabase Auth + Row Level Security** (set up in step 1 below). Even someone who gets all three values still can't read or write your rows without also being signed in as you.
+ 
+**Never** put a Supabase **service_role** key anywhere in this app, in any form. That one really is secret, and bypasses Row Level Security entirely — everything above assumes it's never used here.
 
 ---
 
-## 💻 Test drive
+## 🚀 Setup
 
-Gets the app fully working on your computer — no phone, no VPS, no domain needed. From here you can actually use the app in full, not just try it out — but only on this computer, and only while the `node` command below stays running in a terminal window. Close that terminal (or put your computer to sleep) and the app stops.
 Total setup time: roughly 15–20 minutes.
 
-### 1. Create the database
+### 1. Create the Supabase project and database
 
-- Provider: supabase.com → New project
-- Choose a project name, a strong database password (save it — this becomes part of `DATABASE_URI_SESSION` in a later step), and a region close to your server
-- Once the project is ready, open **SQL Editor → New query**, paste the following, and run it — this creates all five tables the app needs:
+- Provider: supabase.com → New project. Choose a project name and a region; the database password it asks you to set here is a separate thing from your app login (step 2) — you won't need it day to day, so a generated one is fine.
+- Once the project is ready, open **SQL Editor → New query**, and run these three scripts in order:
+
+**`01-schema.sql`** — creates the five tables:
 
 ```sql
 CREATE TABLE spaces (
@@ -300,279 +241,125 @@ CREATE TABLE transcripts (
 );
 ```
 
-- From **Settings → Database → Connection string**, copy the **Session pooler** URI (not Transaction mode — the app keeps a long-lived pool, which needs session mode). This becomes `DATABASE_URI_SESSION` in a later step.
+**`02-user-id-and-rls.sql`** — adds an owner column and turns on Row Level Security, so each row is only visible to the signed-in user who owns it:
 
-### 2. Get a Gemini API key
+```sql
+alter table spaces add column if not exists user_id uuid references auth.users default auth.uid();
 
-- Go to **aistudio.google.com → Get API key → Create API key** (pick or create a Google Cloud project if prompted)
-- Copy the key — this becomes `GEMINI_API_KEY`
+alter table spaces enable row level security;
+alter table tags enable row level security;
+alter table phrases enable row level security;
+alter table dictionary enable row level security;
+alter table transcripts enable row level security;
 
-### 3. Clone the repo and install dependencies
+create policy "own spaces" on spaces
+    for all
+    using (user_id = auth.uid())
+    with check (user_id = auth.uid());
+
+create policy "own tags" on tags
+    for all
+    using (exists (select 1 from spaces where spaces.id = tags.space_id and spaces.user_id = auth.uid()))
+    with check (exists (select 1 from spaces where spaces.id = tags.space_id and spaces.user_id = auth.uid()));
+
+create policy "own phrases" on phrases
+    for all
+    using (exists (select 1 from spaces where spaces.id = phrases.space_id and spaces.user_id = auth.uid()))
+    with check (exists (select 1 from spaces where spaces.id = phrases.space_id and spaces.user_id = auth.uid()));
+
+create policy "own dictionary" on dictionary
+    for all
+    using (exists (select 1 from spaces where spaces.id = dictionary.space_id and spaces.user_id = auth.uid()))
+    with check (exists (select 1 from spaces where spaces.id = dictionary.space_id and spaces.user_id = auth.uid()));
+
+create policy "own transcripts" on transcripts
+    for all
+    using (exists (select 1 from spaces where spaces.id = transcripts.space_id and spaces.user_id = auth.uid()))
+    with check (exists (select 1 from spaces where spaces.id = transcripts.space_id and spaces.user_id = auth.uid()));
+```
+
+**`03-grant-table-privileges.sql`** — Row Level Security decides _which rows_ a signed-in user can touch, but Postgres also needs the more basic, separate permission to touch the _table_ at all. This grants that to the `authenticated` role the app actually connects as:
+
+```sql
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.spaces TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.tags TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.phrases TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.dictionary TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.transcripts TO authenticated;
+
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+```
+
+### 2. Create your sign-in user
+
+Fraza is single-user — there's no sign-up flow in the app itself, by design.
+ 
+1. In the Supabase dashboard: **Authentication → Users → Add user** → create one with your email and a password. This is the only account the app will ever let in.
+2. **Authentication → Settings** → turn **off** "Allow new users to sign up" (or equivalent, naming may vary), so nobody else can ever create an account even if they find the app's URL.
+3. If you had existing data in these tables from before this account existed: copy this new user's UUID (click them in the Users list), then in **SQL Editor → New query**, paste this — replacing `PASTE-YOUR-USER-UUID-HERE` with that UUID — and run it. This assigns all your old rows to your new account, so Row Level Security doesn't hide them from you:
+
+```sql
+update spaces set user_id = 'PASTE-YOUR-USER-UUID-HERE' where user_id is null;
+```
+
+### 3. Get a Gemini API key
+
+- Go to **aistudio.google.com** → **API Keys** in the left sidebar → **Create API Key** (pick or create a Google Cloud project if prompted).
+- You'll paste this into the app itself in step 6 — it isn't needed anywhere else, and never goes into any file in this repo.
+
+### 4. Run it locally
 
 ```bash
 git clone https://github.com/<your-username>/EnglishTutor.git
 cd EnglishTutor
-npm install
+npm start
 ```
 
-### 4. Configure environment
+This just serves the static files (`dashboard/public/`) at `http://localhost:3000` — there's nothing to install or configure first. Open that URL and continue to [6. First launch, on any device](#6-first-launch-on-any-device).
 
-```bash
-nano .env
+### 5. Publish it so you can install it on your phone
+
+Any static host works — the app is just the files in `dashboard/public/`. The simplest option that keeps everything on GitHub: **GitHub Pages**, via a small GitHub Actions workflow that publishes that one folder.
+
+Create `.github/workflows/deploy.yml` in the repo:
+
+```yaml
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dashboard/public
+      - id: deployment
+        uses: actions/deploy-pages@v4
 ```
 
-Paste in (real values, never commit this file):
+Then in the repo's **Settings → Pages**, set **Source** to **GitHub Actions**. Push to `main`, wait for the workflow to finish (the Actions tab shows progress), and your app is live at `https://<your-username>.github.io/EnglishTutor/`.
 
-```
-GEMINI_API_KEY=...
-DATABASE_PASSWORD=...
-DATABASE_URI_SESSION=...
-RATE_LIMIT_WINDOW_MINUTES=...
-TRANSLATE_RATE_LIMIT_MAX=...
-```
+### 6. First launch, on any device
 
-Save (`Ctrl+O`, Enter) and exit (`Ctrl+X`).
+The first time you open the app on a given device (local or published), it walks you through three one-time screens, each with its own on-screen instructions for exactly where to find the value it's asking for:
 
-`RATE_LIMIT_WINDOW_MINUTES` and `TRANSLATE_RATE_LIMIT_MAX` are optional — `limitsConfig.js` already falls back to sensible defaults (15 minutes, 30 requests) if they're left out.
+1. **Connect to your Supabase database** — Project URL and publishable key.
+2. **Sign in** — the email and password from step 2.
+3. **Connect your Gemini API key** — from step 3.
 
-### 5. Run it
+All three are saved to that device's browser storage and skipped automatically after that. Repeat this once per new device (phone, another computer) — nothing carries over between devices on its own.
 
-```bash
-node dashboard/server.js
-```
-
-Open `http://localhost:3000` in your browser.
-
----
-
-## 🚀 Going live
-
-Picks up from the local setup above — same database, same Gemini key — and turns it into something that runs 24/7 on its own server, independent of your computer, installable straight onto your phone's home screen like a native app.
-Total setup time: roughly one hour.
-
-### 1. Create the VPS
-
-- Provider: DigitalOcean → Create → Droplet
-- Image: Ubuntu 24.04 LTS
-- Plan: Basic → Regular SSD → 1GB RAM ($6/mo).
-- Authentication: SSH key (generate locally first if you don't have one — see step 2)
-- Leave Volumes, Backups, IPv6, and Managed Database unchecked
-- Note the assigned public IP address after creation
-
-### 2. Generate an SSH key (on your own computer, one time only)
-
-Windows PowerShell:
-
-```powershell
-ssh-keygen -t ed25519 -C "phrase-app"
-```
-
-Accept the default file location, empty passphrase is fine for personal use. Copy the public key to add to DigitalOcean:
-
-```powershell
-cat $env:USERPROFILE\.ssh\id_ed25519.pub
-```
-
-**Back this up** — copy the `.ssh` folder somewhere safe (e.g. a password manager or encrypted drive). Losing the private key means losing SSH access (recoverable via DigitalOcean's browser-based Console + adding a new key, but inconvenient).
-
-### 3. Connect to the server
-
-```bash
-ssh root@<server-ip>
-```
-
-Type `yes` to accept the host fingerprint on first connection.
-
-### 4. Install core software on the server
-
-```bash
-apt update && apt upgrade -y
-# If asked about sshd_config during upgrade: keep the local version currently installed
-
-curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-apt install -y nodejs
-node -v && npm -v   # sanity check
-
-apt install -y git
-npm install -g pm2
-```
-
-### 5. Clone the repo and configure environment
-
-```bash
-cd ~
-git clone https://github.com/<your-username>/EnglishTutor.git
-cd EnglishTutor
-npm install
-
-nano .env
-```
-
-Same `.env` file as in the local setup above, with the exact same values:
-
-```
-GEMINI_API_KEY=...
-DATABASE_PASSWORD=...
-DATABASE_URI_SESSION=...
-RATE_LIMIT_WINDOW_MINUTES=...
-TRANSLATE_RATE_LIMIT_MAX=...
-```
-
-Save (`Ctrl+O`, Enter) and exit (`Ctrl+X`).
-
-### 6. Start the app with PM2
-
-```bash
-pm2 start dashboard/server.js --name phrase-app
-pm2 status              # confirm "online"
-pm2 startup              # sets up auto-start on reboot (may run automatically in recent PM2 versions)
-pm2 save                 # freezes the current process list for restart-on-boot
-```
-
-### 7. Point a domain at the server (DuckDNS, free)
-
-1. Go to duckdns.org, log in, complete the reCAPTCHA
-2. Add a subdomain (e.g. `phrase-app`) → this gives you `phrase-app.duckdns.org`
-3. Set its IP field to the server's public IP, click "update ip"
-4. Verify from your computer: `ping phrase-app.duckdns.org` should resolve to the server IP
-
-### 8. Install and configure Nginx as a reverse proxy
-
-```bash
-apt install -y nginx certbot python3-certbot-nginx
-
-nano /etc/nginx/sites-available/phrase-app
-```
-
-Paste:
-
-```nginx
-server {
-    listen 80;
-    server_name phrase-app.duckdns.org;
-
-    client_max_body_size 100M;  # default is 1MB — far too small for a base64-encoded recording
-
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-
-Save and exit, then:
-
-```bash
-ln -s /etc/nginx/sites-available/phrase-app /etc/nginx/sites-enabled/
-nginx -t                    # should say "syntax is ok" / "test is successful"
-systemctl restart nginx
-```
-
-### 9. Add HTTPS with Certbot
-
-```bash
-certbot --nginx -d phrase-app.duckdns.org
-```
-
-Follow the prompts (email, agree to terms, decline EFF email sharing if you like). Certbot automatically rewrites the Nginx config to add the SSL server block and an HTTP→HTTPS redirect, and sets up auto-renewal (certificates renew every 90 days without manual action).
-
-### 10. Add Basic Auth (password-protect the whole app)
-
-```bash
-apt install -y apache2-utils
-htpasswd -c /etc/nginx/.htpasswd <your-username>
-```
-
-(You'll be prompted to set a password. Omit `-c` if adding additional users later — it overwrites the file.)
-
-Edit the config again:
-
-```bash
-nano /etc/nginx/sites-available/phrase-app
-```
-
-Inside the **HTTPS** `server` block (the one with `listen 443 ssl;`, not the HTTP-redirect block), add two lines at the top of `location / { }`:
-
-```nginx
-    location / {
-        auth_basic "Restricted";
-        auth_basic_user_file /etc/nginx/.htpasswd;
-
-        proxy_pass http://localhost:3000;
-        ...
-    }
-```
-
-**Don't stop there — `manifest.json` and `sw.js` need to stay exempt.** The browser fetches these two files automatically in the background (not through user navigation) to check PWA installability. If they're behind the same Basic Auth as everything else, that background fetch gets a silent `401` and "Add to Home Screen" quietly stops working — the rest of the app still works fine, so this is easy to miss until you specifically try to (re)install it. Add these **above** `location / { }`, inside the same `server` block:
-
-```nginx
-    location = /manifest.json {
-        proxy_pass http://localhost:3000;
-        proxy_set_header Host $host;
-    }
-
-    location = /sw.js {
-        proxy_pass http://localhost:3000;
-        proxy_set_header Host $host;
-    }
-```
-
-(`location =` is an exact match and always wins over the general `location /` block, regardless of the order they appear in the file.)
-
-Save, exit, then:
-
-```bash
-nginx -t
-systemctl restart nginx
-```
-
-### 11. Verify
-
-Open `https://phrase-app.duckdns.org` in an incognito/private browser window — you should be prompted for the username/password before anything loads.
-
-Now the app is installable to your phone's home screen, where it opens full-screen without browser chrome, like a native app.
-
-To install open the production URL on your phone, then use "Add to Home Screen" (Safari, via the share button) or "Install app" (Chrome, via the ⋮ menu).
-
----
-
-## 🔄 Updating the live app after making changes
-
-1. Push your changes from your computer as usual:
-
-   ```bash
-   git add .
-   git commit -m "your message"
-   git push
-   ```
-
-2. SSH into the server and pull the changes:
-   ```bash
-   ssh root@<server-ip>
-   cd ~/EnglishTutor
-   git pull
-   npm install    # only if package.json changed
-   pm2 restart phrase-app
-   ```
-
-**`.env` is NOT part of this flow.** It's gitignored on purpose (see Notes below), so `git pull` never touches it. Any new key a feature needs (like `GEMINI_API_KEY` when text-to-speech was added) has to be added to the server's `.env` **by hand**:
-
-```bash
-nano .env
-# add the new line, save (Ctrl+O, Enter), exit (Ctrl+X)
-pm2 restart phrase-app   # required — a running process doesn't pick up .env changes on its own
-```
-
-If something that depends on a new key works locally but fails only in production, check `.env` on the server before assuming the code is wrong — `pm2 logs phrase-app` will usually show the actual error (e.g. a missing-credentials error) right away.
-
-**Nginx config changes never go through PM2.** If you edit `/etc/nginx/sites-available/phrase-app` (e.g. adding another auth-exempt path the way `manifest.json`/`sw.js` were), reload Nginx itself instead:
-
-```bash
-nginx -t                   # check syntax before reloading — a bad config
-                           # here can take the whole site down
-systemctl reload nginx
-```
+To install it as an app on your phone: open the published URL in your phone's browser, then "Add to Home Screen" (Safari, via the share button) or "Install app" (Chrome, via the ⋮ menu). It opens full-screen from then on, like a native app.

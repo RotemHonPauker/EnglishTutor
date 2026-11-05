@@ -301,6 +301,6 @@
     color: var(--text-muted);
     white-space: pre-wrap;
     border-top: 1px solid var(--border);
-    max-height: 8.3em;
+    max-height: 11em;
     overflow-y: auto;
 }

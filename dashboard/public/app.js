@@ -1,3 +1,21 @@
+// --- SHARED HTML-ESCAPING HELPER ---
+// User-entered text (space names, tag names, phrase text, dictionary
+// words...) gets interpolated into innerHTML template strings all over
+// this app's UI files. Escaping it here, once, is what actually closes
+// the XSS gap: without it, a space/tag/phrase containing something like
+// <img src=x onerror="..."> would have its markup executed instead of
+// just displayed as text. Defined in app.js (loaded first) so every
+// later UI file can use it as a plain global.
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // --- VIEW SWITCHING (tab bar) ---
 
 function showView(view, btnEl) {
@@ -32,11 +50,19 @@ if (window.visualViewport) {
 }
 
 window.onload = async () => {
-    // Languages and colors don't depend on the active space, so both load
-    // in parallel with it — needed before the space picker's create form,
-    // any Bridge-space badge (phrasesTable.js), or the tag color picker
-    // (tags.js) renders.
-    await Promise.all([loadSpaces(), loadLanguages(), loadColors()]);
+    // Nothing else runs until all three one-time setup gates have
+    // resolved, in order: which Supabase project (connectionGate.js),
+    // who's logged in (authGate.js), and the Gemini API key
+    // (geminiKeyGate.js). Each of those internally awaits the one before
+    // it, so awaiting the last one in the chain is enough.
+    await waitForGeminiKey();
+
+    // LANGUAGES and COLORS are now plain inlined constants
+    // (languagesUtils.js / colorUtils.js) rather than fetched from the
+    // old GET /languages and GET /colors routes, so there's nothing to
+    // load for them anymore — they're already populated by the time this
+    // script runs.
+    await loadSpaces();
     // Restores the tab/Add-tab restrictions if the active space happens to
     // be a dictionary space — derived fresh from that space's type, so
     // this is always safe to call regardless of what kind of space it is.

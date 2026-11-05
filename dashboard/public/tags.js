@@ -1,3 +1,5 @@
+// Needs remoteDb.js loaded first.
+
 // ===== State =====
 
 let tags = [];
@@ -13,8 +15,7 @@ let mergeCandidates = [];
 // ===== Load =====
 
 async function loadTags() {
-    const res = await fetch(`/tags?spaceId=${activeSpaceId}`);
-    tags = await res.json();
+    tags = await getTags(activeSpaceId);
     if (typeof renderTable === 'function') renderTable();
     renderSidebar();
     if (typeof renderAnalyticsChart === 'function') renderAnalyticsChart();
@@ -30,7 +31,7 @@ function renderSidebar() {
     const tagChips = tags.map(tag => {
         const contrast = getContrastColor(tag.color);
         return `
-            <div class="tag-chip" style="background:${tag.color || '#333'}; color:${contrast}" onclick="openTagEditModal('${tag.id}')">${tag.name} <span class="tag-phrase-count">${getPhraseCountForTag(tag)}</span></div>
+            <div class="tag-chip" style="background:${tag.color || '#333'}; color:${contrast}" onclick="openTagEditModal('${tag.id}')">${escapeHtml(tag.name)} <span class="tag-phrase-count">${getPhraseCountForTag(tag)}</span></div>
         `;
     }).join('');
 
@@ -90,7 +91,7 @@ function showTagEditError(message, extraButtonHtml = '') {
     const err = document.getElementById('tag-edit-modal-error');
     if (!err) return;
     err.style.display = 'block';
-    err.innerHTML = message + (extraButtonHtml ? `<div class="form-buttons" style="margin-top:8px">${extraButtonHtml}</div>` : '');
+    err.innerHTML = escapeHtml(message) + (extraButtonHtml ? `<div class="form-buttons" style="margin-top:8px">${extraButtonHtml}</div>` : '');
 }
 
 // ===== Tag edit modal: 3-button action list (Edit / Merge / Delete) =====
@@ -110,16 +111,16 @@ function renderTagEditActions() {
     `;
 }
 
-// Deletes immediately. If the server blocks it (tag still has phrases
+// Deletes immediately. If deleteTag() blocks it (tag still has phrases
 // linked), show the reason in red, with a quick "Merge into..." shortcut.
 async function handleTagEditDelete() {
     const id = editModalTagId;
-    const res = await fetch(`/tags/${id}`, { method: 'DELETE' });
 
-    if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
+    try {
+        await deleteTag(id);
+    } catch (err) {
         showTagEditError(
-            data.error || 'Failed to delete tag',
+            err.message || 'Failed to delete tag',
             `<button class="primary" onclick="renderTagEditMerge()">Merge into...</button>`
         );
         return;
@@ -139,7 +140,7 @@ function renderTagEditEdit() {
     body.innerHTML = `
         <div class="tag-form-inner">
             <input id="tag-edit-name-input" type="text" placeholder="Tag name"
-                value="${tag.name}" autocomplete="off" />
+                value="${escapeHtml(tag.name)}" autocomplete="off" />
             <div class="color-grid">
                 ${COLORS.map(c => {
                     const taken = usedColors.includes(c) && c !== tag.color;
@@ -168,14 +169,10 @@ async function submitTagEdit() {
     const colorEl = document.getElementById('selected-color');
     const color = colorEl ? colorEl.value : null;
 
-    const res = await fetch(`/tags/${editModalTagId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, color })
-    });
-
-    if (!res.ok) {
-        showTagEditError('Failed to save tag.');
+    try {
+        await updateTag({ id: editModalTagId, name, color });
+    } catch (err) {
+        showTagEditError(err.message || 'Failed to save tag.');
         return;
     }
 
@@ -219,14 +216,10 @@ async function submitAddTag() {
     const colorEl = document.getElementById('selected-color');
     const color = colorEl ? colorEl.value : null;
 
-    const res = await fetch('/tags', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, color, spaceId: activeSpaceId })
-    });
-
-    if (!res.ok) {
-        showTagEditError('Failed to add tag.');
+    try {
+        await createTag({ name, color, spaceId: activeSpaceId });
+    } catch (err) {
+        showTagEditError(err.message || 'Failed to add tag.');
         return;
     }
 
@@ -253,7 +246,7 @@ function renderTagEditMerge() {
 
     if (!mergeCandidates.length) {
         body.innerHTML = `
-            <div class="tag-name">No other tags to merge "${tag.name}" into.</div>
+            <div class="tag-name">No other tags to merge "${escapeHtml(tag.name)}" into.</div>
             <div id="tag-edit-modal-error" class="form-error" style="display:none"></div>
         `;
         document.getElementById('tag-edit-modal-footer').innerHTML = `
@@ -263,7 +256,7 @@ function renderTagEditMerge() {
     }
 
     body.innerHTML = `
-        <div class="tag-name">Merge "${tag.name}" into:</div>
+        <div class="tag-name">Merge "${escapeHtml(tag.name)}" into:</div>
         <div class="merge-autocomplete">
             <input id="merge-search-input" type="text" placeholder="Type to search tags..."
                 autocomplete="off"
@@ -313,7 +306,7 @@ function renderMergeDropdown(options) {
     dropdown.innerHTML = options.length
         ? options.map(t => `
             <div class="merge-dropdown-item" data-id="${t.id}" onmousedown="selectMergeTarget('${t.id}')">
-                ${t.name}
+                ${escapeHtml(t.name)}
             </div>
         `).join('')
         : `<div class="merge-dropdown-empty">No matches</div>`;
@@ -332,7 +325,7 @@ function renderMergeConfirm(source, target) {
     const body = document.getElementById('tag-edit-modal-body');
     body.innerHTML = `
         <div class="tag-name">
-            Move all phrases from "${source.name}" into "${target.name}" and delete "${source.name}"?
+            Move all phrases from "${escapeHtml(source.name)}" into "${escapeHtml(target.name)}" and delete "${escapeHtml(source.name)}"?
             This cannot be undone.
         </div>
         <div id="tag-edit-modal-error" class="form-error" style="display:none"></div>
@@ -344,15 +337,10 @@ function renderMergeConfirm(source, target) {
 }
 
 async function confirmMerge(sourceId, targetId) {
-    const res = await fetch('/tags/merge', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sourceId, targetId })
-    });
-
-    if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        showTagEditError(data.error || 'Failed to merge tags');
+    try {
+        await mergeTags({ sourceId, targetId });
+    } catch (err) {
+        showTagEditError(err.message || 'Failed to merge tags');
         return;
     }
 

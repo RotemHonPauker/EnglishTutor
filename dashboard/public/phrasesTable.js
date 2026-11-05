@@ -1,3 +1,5 @@
+// Needs remoteDb.js and ttsStorage.js loaded first.
+
 const tableBody = document.getElementById('table-body');
 
 let allPhrases = [];
@@ -30,7 +32,7 @@ function renderTagFilterModal() {
     const chips = tags.map(t => {
         const contrast = getContrastColor(t.color);
         const selected = filterTagIds.has(t.id);
-        return `<div class="tag-chip ${selected ? 'selected' : ''}" style="background:${t.color || '#333'}; color:${contrast}" onclick="toggleFilterTag('${t.id}')">${t.name}</div>`;
+        return `<div class="tag-chip ${selected ? 'selected' : ''}" style="background:${t.color || '#333'}; color:${contrast}" onclick="toggleFilterTag('${t.id}')">${escapeHtml(t.name)}</div>`;
     }).join('');
     document.getElementById('tag-filter-groups').innerHTML = `<div class="tag-picker-chip-list">${noTagChip}${chips}</div>`;
 }
@@ -82,7 +84,7 @@ function renderActiveFilterChips() {
         const tag = tags.find(t => t.id === id);
         if (!tag) return '';
         const contrast = getContrastColor(tag.color);
-        return `<span class="active-filter-chip" style="background:${tag.color || '#333'}; color:${contrast}">${tag.name}<button onclick="removeTagFilter('${id}')">✕</button></span>`;
+        return `<span class="active-filter-chip" style="background:${tag.color || '#333'}; color:${contrast}">${escapeHtml(tag.name)}<button onclick="removeTagFilter('${id}')">✕</button></span>`;
     }).join('');
     row.style.display = filterTagIds.size ? 'flex' : 'none';
 }
@@ -125,8 +127,7 @@ async function loadTable() {
         if (typeof loadDictionaryEntries === 'function') await loadDictionaryEntries(activeSpaceId);
         return;
     }
-    const res = await fetch(`/phrases?spaceId=${activeSpaceId}`);
-    allPhrases = await res.json();
+    allPhrases = await getPhrases(activeSpaceId);
     if (typeof generateDateBuckets === 'function') generateDateBuckets();
     if (typeof renderDateScroll === 'function') renderDateScroll();
     renderTable();
@@ -179,7 +180,7 @@ function renderTable() {
         const badgeStyle = tagColor
             ? `background:${iconBg}; color:${cardTextColor};`
             : '';
-        const badgeLabel = tag ? tag.name : '—';
+        const badgeLabel = tag ? escapeHtml(tag.name) : '—';
         const isLearned = !!p.learned_at;
         const level = p.level === 2 ? 2 : 1;
         const displayedVariant = level === 2 ? p.variant_2 : p.variant_1;
@@ -203,8 +204,8 @@ function renderTable() {
                 </div>
             </div>
             <div class="phrase-card-main">
-                <div class="phrase-source" dir="auto">${p.source_text || ''}</div>
-                <div class="phrase-variant"><button class="tts-btn" title="Play" onclick="playPhraseAudio('${p.id}', ${level}, this)" ${selectMode ? 'disabled' : ''}>🔊</button> ${displayedVariant || ''}</div>
+                <div class="phrase-source" dir="auto">${escapeHtml(p.source_text || '')}</div>
+                <div class="phrase-variant"><button class="tts-btn" title="Play" onclick="playPhraseAudio('${p.id}', ${level}, this)" ${selectMode ? 'disabled' : ''}>🔊</button> ${escapeHtml(displayedVariant || '')}</div>
             </div>
         </div>
     `;
@@ -243,10 +244,11 @@ function startPlayback(url, btnEl) {
     audio.play();
 }
 
-// Lazy audio generation: returns the already-cached URL if this variant
-// was played before, and only calls the Gemini TTS API (and saves a new
-// file) the first time. Reuses the same translate rate limiter, since this
-// also calls an external AI API and should be protected the same way.
+// Lazy audio generation, now fully on-device: getOrCreatePhraseAudioUrl
+// (ttsStorage.js) checks THIS browser's IndexedDB cache first, and only
+// calls Gemini TTS the first time a given phrase+variant is played on
+// this particular device — see ttsStorage.js for why that's now per-
+// device rather than shared (no server disk to share it from anymore).
 // Tapping the same button again while it's playing stops it — no overlay,
 // no modal, just the button itself toggling between 🔊 and ⏹️, so the
 // screen underneath is always free to scroll.
@@ -260,30 +262,16 @@ async function playPhraseAudio(phraseId, variant, btnEl) {
     const phrase = allPhrases.find(p => p.id === phraseId);
     if (!phrase) return;
 
-    const existingUrl = variant === 1 ? phrase.tts_url_variant1 : phrase.tts_url_variant2;
-    if (existingUrl) {
-        startPlayback(existingUrl, btnEl);
-        return;
-    }
-
     const originalContent = btnEl.textContent;
     btnEl.disabled = true;
     btnEl.textContent = '⏳';
     try {
-        const res = await fetch(`/phrases/${phraseId}/tts`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ variant })
-        });
-        if (!res.ok) throw new Error('Failed to generate audio');
-        const data = await res.json();
-        if (variant === 1) phrase.tts_url_variant1 = data.url;
-        else phrase.tts_url_variant2 = data.url;
+        const url = await getOrCreatePhraseAudioUrl(phrase, variant);
         btnEl.disabled = false;
         btnEl.textContent = originalContent;
-        startPlayback(data.url, btnEl);
+        startPlayback(url, btnEl);
     } catch (err) {
-        alert('Failed to play audio');
+        alert(err.code === 'NO_API_KEY' ? 'No Gemini API key set yet.' : 'Failed to play audio');
         btnEl.disabled = false;
         btnEl.textContent = originalContent;
     }
@@ -305,7 +293,7 @@ function deletePhraseRow(id) {
     pendingDeleteId = id;
     pendingDeleteType = 'phrase';
     document.getElementById('delete-modal-text').innerHTML =
-        `Delete this phrase? This can't be undone.${preview ? `<span class="preview">"${preview}"</span>` : ''}`;
+        `Delete this phrase? This can't be undone.${preview ? `<span class="preview">"${escapeHtml(preview)}"</span>` : ''}`;
     document.getElementById('delete-modal-overlay').style.display = 'flex';
 }
 
@@ -320,10 +308,16 @@ async function confirmDelete() {
     if (!pendingDeleteId) return;
     const id = pendingDeleteId;
     const type = pendingDeleteType;
-    const url = type === 'dictionary' ? `/dictionary/${id}` : `/phrases/${id}`;
     try {
-        const res = await fetch(url, { method: 'DELETE' });
-        if (!res.ok) throw new Error('Failed to delete');
+        if (type === 'dictionary') {
+            await deleteDictionaryEntry(id);
+        } else {
+            await deletePhrase(id);
+            // Clears this device's cached audio for the phrase too — see
+            // ttsStorage.js. A phrase that's gone has nothing for that
+            // cache entry to point back to.
+            await deleteTtsBlobsForPhrase(id);
+        }
         closeDeleteModal();
         await loadTable();
     } catch (err) {
@@ -334,12 +328,7 @@ async function confirmDelete() {
 
 async function updatePhraseTagAssignment(id, tagId) {
     try {
-        const res = await fetch(`/phrases/${id}/tag`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tagId: tagId || null })
-        });
-        if (!res.ok) throw new Error('Failed to update tag');
+        await updatePhraseTag({ id, tagId: tagId || null });
         await loadTable();
     } catch (err) {
         alert('Failed to update tag');
@@ -355,13 +344,7 @@ async function toggleLevel(id) {
     phrase.level = nextLevel;
     renderTable();
     try {
-        const res = await fetch(`/phrases/${id}/level`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ level: nextLevel })
-        });
-        if (!res.ok) throw new Error('Failed to update level');
-        const updated = await res.json();
+        const updated = await updatePhraseLevel({ id, level: nextLevel });
         phrase.level = updated.level;
         renderTable();
     } catch (err) {
@@ -372,8 +355,8 @@ async function toggleLevel(id) {
 }
 
 // Optimistic-ish toggle: flips the local flag immediately so the crown and
-// card shading respond right away, re-rendering from the server's answer
-// only to correct it if the request actually failed. Independent of level.
+// card shading respond right away, re-rendering from the saved result only
+// to correct it if the request actually failed. Independent of level.
 async function toggleLearned(id) {
     const phrase = allPhrases.find(p => p.id === id);
     if (!phrase) return;
@@ -381,13 +364,7 @@ async function toggleLearned(id) {
     phrase.learned_at = nextLearned ? new Date().toISOString() : null;
     renderTable();
     try {
-        const res = await fetch(`/phrases/${id}/learned`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ learned: nextLearned })
-        });
-        if (!res.ok) throw new Error('Failed to update learned status');
-        const updated = await res.json();
+        const updated = await updatePhraseLearned({ id, learned: nextLearned });
         phrase.learned_at = updated.learned_at;
         renderTable();
         if (typeof renderSidebar === 'function') renderSidebar();
@@ -423,7 +400,7 @@ function renderTagPickerList() {
     const chips = tags.map(t => {
         const contrast = getContrastColor(t.color);
         const selected = tagPickerSelectedTag === t.id;
-        return `<div class="tag-chip ${selected ? 'selected' : ''}" style="background:${t.color || '#333'}; color:${contrast}" onclick="selectPickerTag('${t.id}')">${t.name}</div>`;
+        return `<div class="tag-chip ${selected ? 'selected' : ''}" style="background:${t.color || '#333'}; color:${contrast}" onclick="selectPickerTag('${t.id}')">${escapeHtml(t.name)}</div>`;
     }).join('');
     document.getElementById('tag-picker-list').innerHTML = noneChip + chips;
 }
@@ -493,9 +470,9 @@ function updateSelectModeUI() {
 }
 
 // ===== Move selected phrases to another space (bulk, from the selection bar) =====
-// A direct space_id update (PATCH /phrases/bulk-move) — no retranslation, no
-// Add-tab round trip. Level and learned status carry over unchanged; tags
-// don't, since a tag belongs to one specific space (see database.js).
+// A direct space_id update (bulkMovePhrases) — no retranslation, no Add-tab
+// round trip. Level and learned status carry over unchanged; tags don't,
+// since a tag belongs to one specific space (see remoteDb.js).
 
 function openMovePhraseModal() {
     if (!selectedPhraseIds.size) return;
@@ -518,7 +495,7 @@ function renderMovePhraseList() {
     const candidates = (typeof spaces !== 'undefined' ? spaces : [])
         .filter(s => s.id !== activeSpaceId && s.space_type !== 'dictionary');
     container.innerHTML = candidates.length
-        ? candidates.map(s => `<div class="tag-chip" onclick="confirmBulkMove('${s.id}')">${s.name}</div>`).join('')
+        ? candidates.map(s => `<div class="tag-chip" onclick="confirmBulkMove('${s.id}')">${escapeHtml(s.name)}</div>`).join('')
         : `<div class="tag-name">No other phrase space to move these into.</div>`;
 }
 
@@ -526,12 +503,7 @@ async function confirmBulkMove(targetSpaceId) {
     const ids = [...selectedPhraseIds];
     closeMovePhraseModal();
     try {
-        const res = await fetch('/phrases/bulk-move', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ids, targetSpaceId })
-        });
-        if (!res.ok) throw new Error('Failed to move phrases');
+        await bulkMovePhrases({ ids, targetSpaceId });
         exitSelectMode();
         await loadTable();
     } catch (err) {

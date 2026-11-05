@@ -5,12 +5,13 @@
 // `spaces`/`activeSpaceId`/`getActiveSpace()` and calls renderSpaceRulesForm()
 // from its own renderSpaceHeader() — a plain global-scope call, same as
 // everywhere else cross-file calls happen in this app.
+// Needs remoteDb.js loaded first.
 
 // ===== Space rules (Setup tab, above the tag list) =====
 // An accordion — each field starts collapsed, one click opens it for
 // editing, and Save/Cancel/Copy-from all act on that one field only. The
-// fields already come along with every space object from GET /spaces (a
-// plain SELECT *), so no separate fetch is needed here — just read
+// fields already come along with every space object from getSpaces() (a
+// plain select *), so no separate call is needed here — just read
 // whatever's already in `spaces`.
 
 const SPACE_RULE_FIELDS = {
@@ -102,8 +103,8 @@ function cancelSpaceRuleField(field) {
     document.querySelector(`.space-rules-item[data-field="${field}"]`)?.classList.remove('open');
 }
 
-// Saves just this one field — the PUT endpoint only touches whatever keys
-// are actually sent, so the other 3 fields (and name) are untouched.
+// Saves just this one field — updateSpace() only touches whatever keys
+// are actually passed, so the other 3 fields (and name) are untouched.
 async function saveSpaceRuleField(field) {
     const cfg = SPACE_RULE_FIELDS[field];
     const active = getActiveSpace();
@@ -115,14 +116,7 @@ async function saveSpaceRuleField(field) {
     if (btn) btn.disabled = true;
 
     try {
-        const res = await fetch(`/spaces/${active.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ [cfg.bodyKey]: value })
-        });
-        if (!res.ok) throw new Error('Failed to save');
-
-        const updated = await res.json();
+        const updated = await updateSpace({ id: active.id, [cfg.bodyKey]: value });
         const idx = spaces.findIndex(s => s.id === active.id);
         if (idx !== -1) spaces[idx] = updated;
 
@@ -170,8 +164,8 @@ function renderCopyPicker(field) {
 
     container.classList.add('open');
     container.innerHTML = candidates.length
-        ? `<div class="tag-picker-chip-list">${candidates.map(s => `<div class="tag-chip" onclick="copyFieldFromSpace('${field}', '${s.id}')">${s.name}</div>`).join('')}</div>`
-        : `<div class="space-rules-copy-empty">No other space has "${cfg.label}" filled in yet.</div>`;
+        ? `<div class="tag-picker-chip-list">${candidates.map(s => `<div class="tag-chip" onclick="copyFieldFromSpace('${field}', '${s.id}')">${escapeHtml(s.name)}</div>`).join('')}</div>`
+        : `<div class="space-rules-copy-empty">No other space has "${escapeHtml(cfg.label)}" filled in yet.</div>`;
 }
 
 function copyFieldFromSpace(field, sourceSpaceId) {

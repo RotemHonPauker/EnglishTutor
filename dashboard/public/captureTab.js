@@ -1,3 +1,6 @@
+// Needs remoteDb.js, geminiClient.js, translationEngine.js, audioEngine.js
+// and ttsStorage.js loaded first.
+
 const captureLog = document.getElementById('capture-log');
 const transcriptsPanel = document.getElementById('transcripts-panel');
 const captureTextInput = document.getElementById('capture-text-input');
@@ -232,6 +235,10 @@ async function submitTypedPhrase() {
 // Pulled out of submitTypedPhrase so both the normal path and the
 // mode-mismatch "send anyway" path can call it directly, without
 // re-running (and possibly re-triggering) the mismatch check.
+//
+// Used to be one POST to /phrases; now it's two steps done here directly:
+// call Gemini to translate (translationEngine.js), then save the result
+// (remoteDb.js).
 async function submitPhraseDirect(text) {
     const sendBtn = document.getElementById('capture-send-btn');
     captureTextInput.value = '';
@@ -241,17 +248,18 @@ async function submitPhraseDirect(text) {
     sendBtn.textContent = '...';
 
     try {
-        const res = await fetch('/phrases', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sourceText: text, spaceId: activeSpaceId })
+        const result = await translatePhrase(text, activeSpaceId);
+        const phrase = await saveSentence({
+            sourceText: result.correctedSource,
+            variant1: result.variant1,
+            variant2: result.variant2,
+            spaceId: activeSpaceId,
+            tagId: result.tagId
         });
-        if (!res.ok) throw new Error('Failed to translate phrase');
-        const phrase = await res.json();
         addCaptureResult(phrase);
         loadTable(); // so it's already there if the user switches to Practice
     } catch (err) {
-        addCaptureMessage("Couldn't translate that — try again.");
+        addCaptureMessage(err.code === 'NO_API_KEY' ? 'No Gemini API key set yet.' : "Couldn't translate that — try again.");
     } finally {
         captureTextInput.disabled = false;
         sendBtn.disabled = false;
@@ -363,6 +371,12 @@ function modeMismatchStayAction() {
 // automatically from it. As soon as the transcript is back, the view
 // flips straight to the transcript list (see the selection-to-input flow
 // below) so the person can start picking lines right away.
+//
+// Used to be one POST to /recordings; now it's two steps done here
+// directly: transcribe via Gemini (audioEngine.js — the recording itself
+// never leaves this device except as part of that one API call), then
+// save the resulting transcript text (remoteDb.js). The raw audio itself
+// is never stored anywhere, same as the original server version.
 async function handleRecordingFileSelected(inputEl) {
     const file = inputEl.files[0];
     inputEl.value = ''; // allow picking the same file again later
@@ -376,21 +390,14 @@ async function handleRecordingFileSelected(inputEl) {
     try {
         const audioBase64 = await fileToBase64(file);
 
-        const res = await fetch('/recordings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                audioBase64,
-                mimeType: file.type || 'audio/mp4',
-                spaceId: activeSpaceId,
-                mode: captureMode
-            })
+        const { transcript } = await processRecording({
+            audioBase64,
+            mimeType: file.type || 'audio/mp4',
+            spaceId: activeSpaceId,
+            mode: captureMode
         });
 
-        if (!res.ok) {
-            const data = await res.json().catch(() => ({}));
-            throw new Error(data.error || 'Failed to process recording');
-        }
+        await createTranscript({ spaceId: activeSpaceId, content: transcript });
 
         // Recording and the transcript toggle can't coexist, so switch out
         // of Record into Type first, then open the toggle straight onto
@@ -404,7 +411,11 @@ async function handleRecordingFileSelected(inputEl) {
         await loadTranscripts();
         if (transcripts.length) toggleTranscript(transcripts[0].id);
     } catch (err) {
-        addCaptureMessage(err.message || "Something went wrong processing that recording — try again.");
+        addCaptureMessage(
+            err.code === 'NO_API_KEY'
+                ? 'No Gemini API key set yet.'
+                : (err.message || "Something went wrong processing that recording — try again.")
+        );
     } finally {
         langBtns.forEach(b => b.disabled = false);
     }
@@ -425,8 +436,8 @@ function addCaptureResult(phrase) {
     const div = document.createElement('div');
     div.className = 'capture-log-item';
     div.innerHTML = `
-        <div class="phrase-source" dir="auto">${phrase.source_text || ''}</div>
-        <div class="phrase-variant">${phrase.variant_1 || ''}</div>
+        <div class="phrase-source" dir="auto">${escapeHtml(phrase.source_text || '')}</div>
+        <div class="phrase-variant">${escapeHtml(phrase.variant_1 || '')}</div>
     `;
     captureLog.appendChild(div);
     captureLog.scrollTop = captureLog.scrollHeight;
@@ -445,8 +456,7 @@ function addCaptureMessage(text) {
 let transcripts = [];
 
 async function loadTranscripts() {
-    const res = await fetch(`/transcripts?spaceId=${activeSpaceId}`);
-    transcripts = await res.json();
+    transcripts = await getTranscripts(activeSpaceId);
     renderTranscripts();
 }
 
@@ -468,7 +478,7 @@ function renderTranscripts() {
                     <button title="Delete" onclick="event.stopPropagation(); deleteTranscriptRow('${t.id}')">🗑️</button>
                 </div>
             </div>
-            <div class="transcript-card-body" id="transcript-body-${t.id}" style="display:none">${t.content}</div>
+            <div class="transcript-card-body" id="transcript-body-${t.id}" style="display:none">${escapeHtml(t.content)}</div>
         </div>
     `;
     }).join('');
@@ -493,8 +503,7 @@ function toggleTranscript(id) {
 
 async function deleteTranscriptRow(id) {
     try {
-        const res = await fetch(`/transcripts/${id}`, { method: 'DELETE' });
-        if (!res.ok) throw new Error('Failed to delete transcript');
+        await deleteTranscript(id);
         await loadTranscripts();
     } catch (err) {
         alert('Failed to delete transcript');
@@ -614,6 +623,11 @@ function cancelEditingPhrase() {
     captureTextInput.style.height = 'auto';
 }
 
+// Used to be one PATCH to /phrases/:id/retranslate; now it's: re-translate
+// (translationEngine.js), overwrite the phrase in place (updatePhrase,
+// which also clears both tts_url_variant flags), and clear this device's
+// cached audio for it (ttsStorage.js) — the old recording no longer
+// matches the new wording.
 async function submitPhraseEdit(text) {
     const id = editingPhraseId;
     const sendBtn = document.getElementById('capture-send-btn');
@@ -624,19 +638,21 @@ async function submitPhraseEdit(text) {
     sendBtn.textContent = '...';
 
     try {
-        const res = await fetch(`/phrases/${id}/retranslate`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sourceText: text, spaceId: activeSpaceId })
+        const result = await translatePhrase(text, activeSpaceId);
+        const phrase = await updatePhrase({
+            id,
+            sourceText: result.correctedSource,
+            variant1: result.variant1,
+            variant2: result.variant2
         });
-        if (!res.ok) throw new Error('Failed to update phrase');
-        const phrase = await res.json();
+        await deleteTtsBlobsForPhrase(id);
+
         addCaptureResult(phrase);
         editingPhraseId = null;
         hideEditingBanner();
         loadTable(); // so the updated wording is already there in Practice
     } catch (err) {
-        addCaptureMessage("Couldn't update that phrase — try again.");
+        addCaptureMessage(err.code === 'NO_API_KEY' ? 'No Gemini API key set yet.' : "Couldn't update that phrase — try again.");
     } finally {
         captureTextInput.disabled = false;
         sendBtn.disabled = false;
