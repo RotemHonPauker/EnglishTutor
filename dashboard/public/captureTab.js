@@ -191,9 +191,32 @@ function resetCaptureLog() {
     applyTranscriptsButtonUI();
     captureLog.innerHTML = '';
     hideTranscriptSelectionBar();
-    setAddInputMode((typeof isDictionarySpace === 'function' && isDictionarySpace()) ? 'dictionary' : 'type');
     editingPhraseId = null;
     hideEditingBanner();
+
+    // Nothing to capture into yet on a brand-new install (or right after
+    // deleting the last space) — show that plainly instead of leaving a
+    // normal-looking input that fails with a confusing error the moment
+    // someone tries to use it. Re-evaluated every time this runs, so it
+    // clears itself automatically once a space exists (setActiveSpace
+    // already calls resetCaptureLog, see spacesState.js).
+    const hasActiveSpace = typeof getActiveSpace === 'function' && !!getActiveSpace();
+    applyNoSpaceUI(!hasActiveSpace);
+    if (!hasActiveSpace) {
+        captureLog.innerHTML = '<div class="recording-info-note">👋<br>No space yet — tap the title above, then "+ New space" to create one. Come back here once it\'s made.</div>';
+        return;
+    }
+
+    setAddInputMode((typeof isDictionarySpace === 'function' && isDictionarySpace()) ? 'dictionary' : 'type');
+}
+
+// Disables the whole input area (text box, mode icons, send) while there's
+// no active space to save into.
+function applyNoSpaceUI(disabled) {
+    if (captureTextInput) captureTextInput.disabled = disabled;
+    const sendBtn = document.getElementById('capture-send-btn');
+    if (sendBtn) sendBtn.disabled = disabled;
+    document.querySelectorAll('#capture-mode-icons .capture-mode-icon-btn').forEach(b => { b.disabled = disabled; });
 }
 
 // ===== Typed input =====
@@ -201,6 +224,9 @@ function resetCaptureLog() {
 async function submitTypedPhrase() {
     const text = captureTextInput.value.trim();
     if (!text) return;
+    // Defense in depth — the input is disabled in this state (see
+    // resetCaptureLog), but guard the submit path directly too.
+    if (typeof getActiveSpace === 'function' && !getActiveSpace()) return;
 
     if ((typeof isDictionarySpace === 'function' && isDictionarySpace()) || addInputMode === 'dictionary') {
         // Only warn when there's an actual Type mode to switch to — a

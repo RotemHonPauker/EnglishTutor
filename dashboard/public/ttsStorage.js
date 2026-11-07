@@ -8,11 +8,19 @@
 // the file itself only exists on whichever device generated it. A phrase
 // played from a different device regenerates its own local copy, same as
 // if it had never been played before.
-// Needs geminiClient.js, ttsEngine.js and remoteDb.js loaded first.
 
-const DB_NAME = 'fraza-tts-cache';
-const DB_VERSION = 1;
-const STORE_NAME = 'audio';
+// Named with a TTS_ prefix, not DB_NAME/DB_VERSION/STORE_NAME — this is a
+// plain classic script like every other file in public/, so a top-level
+// const lives in the same shared global scope as every other script tag's
+// top-level consts (no per-file scoping without `type="module"`).
+// localDb.js already declares its own DB_NAME/DB_VERSION/STORE_NAME, and
+// since it loads first (see index.html), this file's would-be redeclaration
+// used to throw a SyntaxError that silently killed this entire script —
+// every function below went undefined, which is why phrase deletion (and
+// 🔊 playback) failed the moment it tried to call deleteTtsBlobsForPhrase.
+const TTS_DB_NAME = 'fraza-tts-cache';
+const TTS_DB_VERSION = 1;
+const TTS_STORE_NAME = 'audio';
 
 function ttsKey(phraseId, variant) {
     return `${phraseId}-v${variant}`;
@@ -20,11 +28,11 @@ function ttsKey(phraseId, variant) {
 
 function openTtsDb() {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        const request = indexedDB.open(TTS_DB_NAME, TTS_DB_VERSION);
         request.onupgradeneeded = () => {
             const db = request.result;
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
-                db.createObjectStore(STORE_NAME);
+            if (!db.objectStoreNames.contains(TTS_STORE_NAME)) {
+                db.createObjectStore(TTS_STORE_NAME);
             }
         };
         request.onsuccess = () => resolve(request.result);
@@ -35,8 +43,8 @@ function openTtsDb() {
 async function saveTtsBlob(phraseId, variant, blob) {
     const db = await openTtsDb();
     return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        tx.objectStore(STORE_NAME).put(blob, ttsKey(phraseId, variant));
+        const tx = db.transaction(TTS_STORE_NAME, 'readwrite');
+        tx.objectStore(TTS_STORE_NAME).put(blob, ttsKey(phraseId, variant));
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
     });
@@ -45,8 +53,8 @@ async function saveTtsBlob(phraseId, variant, blob) {
 async function getTtsBlob(phraseId, variant) {
     const db = await openTtsDb();
     return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, 'readonly');
-        const req = tx.objectStore(STORE_NAME).get(ttsKey(phraseId, variant));
+        const tx = db.transaction(TTS_STORE_NAME, 'readonly');
+        const req = tx.objectStore(TTS_STORE_NAME).get(ttsKey(phraseId, variant));
         req.onsuccess = () => resolve(req.result || null);
         req.onerror = () => reject(req.error);
     });
@@ -55,8 +63,8 @@ async function getTtsBlob(phraseId, variant) {
 async function deleteTtsBlob(phraseId, variant) {
     const db = await openTtsDb();
     return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        tx.objectStore(STORE_NAME).delete(ttsKey(phraseId, variant));
+        const tx = db.transaction(TTS_STORE_NAME, 'readwrite');
+        tx.objectStore(TTS_STORE_NAME).delete(ttsKey(phraseId, variant));
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
     });

@@ -51,7 +51,7 @@
 }
 
 .tab-btn.active {
-    color: var(--accent-link);
+    color: #60a5fa;
 }
 
 /* Analytics/Setup while in dictionary mode — neither applies there. */
