@@ -50,11 +50,10 @@ if (window.visualViewport) {
 }
 
 window.onload = async () => {
-    // Nothing else runs until all three one-time setup gates have
-    // resolved, in order: which Supabase project (connectionGate.js),
-    // who's logged in (authGate.js), and the Gemini API key
-    // (geminiKeyGate.js). Each of those internally awaits the one before
-    // it, so awaiting the last one in the chain is enough.
+    // Nothing else runs until the one-time Gemini API key gate has
+    // resolved (geminiKeyGate.js) — everything else (spaces, tags,
+    // phrases) lives in this device's own IndexedDB (localDb.js), so
+    // there's no connection or login step to wait on anymore.
     await waitForGeminiKey();
 
     // LANGUAGES and COLORS are now plain inlined constants

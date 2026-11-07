@@ -206,6 +206,9 @@ button.danger:hover { background: #b91c1c; }
     color: var(--text-muted);
     font-size: 0.8125rem;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .mode-toggle-btn.active {

@@ -16,15 +16,11 @@ Fraza is built for learners who already have a basic grasp of a language, helpin
   - [📊 Analytics tab](#-analytics-tab)
   - [🔩 Setup tab](#-setup-tab)
 - [🧱 Stack](#-stack)
-- [🔊 Text-to-speech & recording privacy](#-text-to-speech--recording-privacy)
-- [🔑 Keys, and what actually protects your data](#-keys-and-what-actually-protects-your-data])
+- [💾 Backup](#-backup)
+- [🔑 Keys, and what actually protects your data](#-keys-and-what-actually-protects-your-data)
 - [🚀 Setup](#-setup)
-  - [1. Create the Supabase project and database](#1-create-the-supabase-project-and-database)
-  - [2. Create your sign-in user](#2-create-your-sign-in-user)
-  - [3. Get a Gemini API key](#3-get-a-gemini-api-key)
-  - [4. Run it locally](#4-run-it-locally)
-  - [5. Publish it so you can install it on your phone](#5-publish-it-so-you-can-install-it-on-your-phone)
-  - [6. First launch, on any device](#6-first-launch-on-any-device)
+  - [1. Get a Gemini API key](#1-get-a-gemini-api-key)
+  - [2. Open the app and install it](#2-open-the-app-and-install-it)
 
 ---
 
@@ -123,6 +119,7 @@ A horizontal stacked-bar chart.
 Not shown at all for a dictionary space.
 
 - **Appearance** — switch between **🌙 Dark** (default) and **☀️ Light** mode.
+- **Backup** — export or import all your data. See [💾 Backup](#-backup) below.
 - **Space Setup** this is where you help sharpen the translations: each field you fill in becomes part of the AI prompt that shapes this space's transcription and translation. Four fields, each opening one at a time with its own Save/Cancel and a "Copy from..." option to pull that field's content from another space:
   - **About this space** — who's speaking, common topics, and terminology particular to this space, so translations sound like they belong in it.
   - **Level 1 / Level 2** (labeled with the actual target/bridge language names in a Bridge space) — how each level should sound: Level 1 sets the baseline phrasing, Level 2 a step up in fluency from it. In a Bridge space, the second field shapes how that reference-language translation should sound so that it actually helps you learn the target language.
@@ -133,233 +130,58 @@ Not shown at all for a dictionary space.
 
 ## 🧱 Stack
 
-| Piece                          | Technology                                                                                                                             |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Translation & audio processing | Google Gemini (`gemini-3.6-flash`), called straight from the browser                                                                   |
-| Text-to-speech                 | Google Gemini TTS (`gemini-3.1-flash-tts-preview`), called straight from the browser                                                   |
-| Database                       | Postgres via Supabase, queried directly from the browser (`supabase-js`)                                                               |
-| Auth                           | Supabase Auth — a single account, sign-ups disabled                                                                                    |
-| Data protection                | Postgres Row Level Security, scoped to the signed-in user                                                                              |
-| Hosting                        | Any static file host (GitHub Pages, Netlify, or your own computer for local use) — plain HTML/CSS/JS, no build step, no server process |
-| App install                    | PWA (manifest + service worker)                                                                                                        |
-
-There's no backend at all — the app is a set of static files. On first launch on any device, it asks once for your Supabase project's URL/key and your Gemini API key, and remembers them on that device from then on (see [🔑 Keys, and who can see your data](#-keys-and-who-can-see-your-data)). Everything else — your data's actual security — comes from Supabase Auth plus Row Level Security, not from keeping any of this hidden.
+| Piece                           | Technology                                                   |
+| -------------------------------- | -------------------------------------------------------------- |
+| Translation & audio processing  | Google Gemini (`gemini-3.6-flash`), called straight from the browser |
+| Text-to-speech                  | Google Gemini TTS (`gemini-3.1-flash-tts-preview`), called straight from the browser |
+| Storage                         | IndexedDB, built into the browser — nothing leaves this device unless you export it |
+| Hosting                         | Any static file host (GitHub Pages, Netlify, or your own computer for local use) — plain HTML/CSS/JS, no build step, no server process |
+| App install                     | PWA (manifest + service worker)                                |
 
 ---
 
-## 🔊 Text-to-speech & recording privacy
+## 💾 Backup
+There's no backend at all, and no database to set up — the app is a set of static files, and your data lives only in this device's browser storage. On first launch on any device, it asks once for your Gemini API key, and remembers it on that device from then on (see [🔑 Keys, and what actually protects your data](#-keys-and-what-actually-protects-your-data))
 
-- Tapping 🔊 next to a variant generates spoken audio via Gemini TTS (voice: **Achernar**) the first time only — the audio is saved as a file in your browser's own local storage (IndexedDB) on that device, keyed by phrase + variant. Every play after that just reads the cached file, no API call. This means TTS audio is **per device, not shared** — playing a phrase on your phone for the first time will generate it again there, even if you'd already played it on your computer. Deleting a phrase deletes its cached audio too, so nothing lingers with no phrase pointing to it.
-- A recording itself is never stored anywhere — only the resulting transcript text (saved to `transcripts`) survives past the request, and nothing else, until you select something from it.
+Since your data lives only on this device, **Backup** (in the Setup tab) is the only way it ever moves anywhere else. Two reasons you'd use it:
+
+- **A safety copy** — in case you clear your browser's data, lose the device, or something goes wrong. Export every so often and keep the file somewhere safe (email it to yourself, save it to Drive, etc.).
+- **Switching devices** — export on the old device, then import that same file on the new one, to carry everything over.
+
+**Export** reads everything — every space, tag, phrase, dictionary entry, and transcript — and downloads it as a single `.json` file, then opens your mail app with a draft reminding you to attach it. Browsers can't attach a downloaded file to an email automatically, so you still need to attach it yourself from Downloads if you're sending it somewhere.
+
+**Import** reads a file produced this way and restores it onto this device. It's meant for restoring into a fresh install, not for merging two devices that have each been used independently: importing overwrites any existing row that shares an ID with the file, rather than combining them. If you've used two devices separately and want everything in one place, there's no automatic way to merge them — you'd need to pick one device's data as the one to keep.
 
 ---
 
 ## 🔑 Keys, and what actually protects your data
 
-Three values live only in this device's browser storage (`localStorage`), never in the repo: the Supabase URL + publishable key, your login password, and your Gemini key. None of them are encrypted beyond that.
- 
-**How someone could actually get them:**
- 
+Your Gemini API key lives only in this device's browser storage (`localStorage`), never in the repo. It isn't encrypted beyond that.
+
+**How someone could actually get it:**
+
 1. **A rooted/jailbroken phone** — breaks the OS sandbox that normally keeps one app from reading another app's storage.
 2. **A malicious browser extension** — installed in the same browser, with permission to read page content.
 3. **Physical access to an unlocked phone, or forensic recovery tools** — reads device storage directly.
 
-Put simply: these keys can't be stolen unless your phone is already compromised (rooted/jailbroken) or physically in someone else's hands. Short of that, the browser itself is what keeps them safe — every website gets its own completely isolated storage, so no *other* app on your phone and no *other* website you visit can ever read Fraza's `localStorage`. That's a basic security guarantee all browsers enforce (per-site/per-origin isolation), on top of the normal OS-level sandboxing that keeps apps separate from each other in general. Installing Fraza as a PWA doesn't change any of this — it still runs inside the browser's engine, under that same storage isolation, like any website.
- 
-What actually protects your data, beyond these three values, is one layer deeper: **Supabase Auth + Row Level Security** (set up in step 1 below). Even someone who gets all three values still can't read or write your rows without also being signed in as you.
- 
-**Never** put a Supabase **service_role** key anywhere in this app, in any form. That one really is secret, and bypasses Row Level Security entirely — everything above assumes it's never used here.
+Put simply: it can't be stolen unless your phone is already compromised (rooted/jailbroken) or physically in someone else's hands. Short of that, the browser itself is what keeps it safe — every website gets its own completely isolated storage, so no *other* app on your phone and no *other* website you visit can ever read Fraza's `localStorage`. Installing Fraza as a PWA doesn't change any of this — it still runs inside the browser's engine, under that same storage isolation, like any website.
+
+The same is true of your actual data — your phrases, tags, transcripts — which also lives only in this device’s browser storage (IndexedDB), nowhere else, while the recording itself is never stored anywhere at all, only the resulting transcript text is kept.
 
 ---
 
 ## 🚀 Setup
 
-Total setup time: roughly 15–20 minutes.
+Total setup time: roughly 2 minutes. Nothing to install on a computer, no account to create — just a key and a link.
 
-### 1. Create the Supabase project and database
-
-- Provider: supabase.com → New project. Choose a project name and a region; the database password it asks you to set here is a separate thing from your app login (step 2) — you won't need it day to day, so a generated one is fine.
-- Once the project is ready, open **SQL Editor → New query**, and run these three scripts in order:
-
-**`01-schema.sql`** — creates the five tables:
-
-```sql
-CREATE TABLE spaces (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL,
-    space_type TEXT NOT NULL DEFAULT 'progression',
-    source_language TEXT NOT NULL,
-    target_language TEXT NOT NULL,
-    bridge_language TEXT,
-    about_this_space TEXT,
-    variant_1_notes TEXT,
-    variant_2_notes TEXT,
-    audio_recording_notes TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE TABLE tags (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    space_id UUID NOT NULL REFERENCES spaces(id),
-    name TEXT NOT NULL,
-    color TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE TABLE phrases (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    space_id UUID NOT NULL REFERENCES spaces(id),
-    tag_id UUID REFERENCES tags(id) ON DELETE SET NULL,
-    source_text TEXT NOT NULL,
-    variant_1 TEXT,
-    variant_2 TEXT,
-    level INTEGER NOT NULL DEFAULT 1,
-    learned_at TIMESTAMPTZ,
-    tts_url_variant1 TEXT,
-    tts_url_variant2 TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE TABLE dictionary (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    space_id UUID NOT NULL REFERENCES spaces(id),
-    source_query TEXT,
-    word TEXT NOT NULL,
-    part_of_speech TEXT,
-    source_synonyms TEXT,
-    target_synonyms TEXT,
-    example_sentence TEXT,
-    learned_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE TABLE transcripts (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    space_id UUID NOT NULL REFERENCES spaces(id),
-    content TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-```
-
-**`02-user-id-and-rls.sql`** — adds an owner column and turns on Row Level Security, so each row is only visible to the signed-in user who owns it:
-
-```sql
-alter table spaces add column if not exists user_id uuid references auth.users default auth.uid();
-
-alter table spaces enable row level security;
-alter table tags enable row level security;
-alter table phrases enable row level security;
-alter table dictionary enable row level security;
-alter table transcripts enable row level security;
-
-create policy "own spaces" on spaces
-    for all
-    using (user_id = auth.uid())
-    with check (user_id = auth.uid());
-
-create policy "own tags" on tags
-    for all
-    using (exists (select 1 from spaces where spaces.id = tags.space_id and spaces.user_id = auth.uid()))
-    with check (exists (select 1 from spaces where spaces.id = tags.space_id and spaces.user_id = auth.uid()));
-
-create policy "own phrases" on phrases
-    for all
-    using (exists (select 1 from spaces where spaces.id = phrases.space_id and spaces.user_id = auth.uid()))
-    with check (exists (select 1 from spaces where spaces.id = phrases.space_id and spaces.user_id = auth.uid()));
-
-create policy "own dictionary" on dictionary
-    for all
-    using (exists (select 1 from spaces where spaces.id = dictionary.space_id and spaces.user_id = auth.uid()))
-    with check (exists (select 1 from spaces where spaces.id = dictionary.space_id and spaces.user_id = auth.uid()));
-
-create policy "own transcripts" on transcripts
-    for all
-    using (exists (select 1 from spaces where spaces.id = transcripts.space_id and spaces.user_id = auth.uid()))
-    with check (exists (select 1 from spaces where spaces.id = transcripts.space_id and spaces.user_id = auth.uid()));
-```
-
-**`03-grant-table-privileges.sql`** — Row Level Security decides _which rows_ a signed-in user can touch, but Postgres also needs the more basic, separate permission to touch the _table_ at all. This grants that to the `authenticated` role the app actually connects as:
-
-```sql
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.spaces TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.tags TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.phrases TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.dictionary TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.transcripts TO authenticated;
-
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
-```
-
-### 2. Create your sign-in user
-
-Fraza is single-user — there's no sign-up flow in the app itself, by design.
- 
-1. In the Supabase dashboard: **Authentication → Users → Add user** → create one with your email and a password. This is the only account the app will ever let in.
-2. **Authentication → Settings** → turn **off** "Allow new users to sign up" (or equivalent, naming may vary), so nobody else can ever create an account even if they find the app's URL.
-3. If you had existing data in these tables from before this account existed: copy this new user's UUID (click them in the Users list), then in **SQL Editor → New query**, paste this — replacing `PASTE-YOUR-USER-UUID-HERE` with that UUID — and run it. This assigns all your old rows to your new account, so Row Level Security doesn't hide them from you:
-
-```sql
-update spaces set user_id = 'PASTE-YOUR-USER-UUID-HERE' where user_id is null;
-```
-
-### 3. Get a Gemini API key
+### 1. Get a Gemini API key
 
 - Go to **aistudio.google.com** → **API Keys** in the left sidebar → **Create API Key** (pick or create a Google Cloud project if prompted).
-- You'll paste this into the app itself in step 6 — it isn't needed anywhere else, and never goes into any file in this repo.
+- You'll paste this into the app itself in step 2 — it isn't needed anywhere else.
 
-### 4. Run it locally
+### 2. Open the app and install it
 
-```bash
-git clone https://github.com/<your-username>/EnglishTutor.git
-cd EnglishTutor
-npm start
-```
-
-This just serves the static files (`dashboard/public/`) at `http://localhost:3000` — there's nothing to install or configure first. Open that URL and continue to [6. First launch, on any device](#6-first-launch-on-any-device).
-
-### 5. Publish it so you can install it on your phone
-
-Any static host works — the app is just the files in `dashboard/public/`. The simplest option that keeps everything on GitHub: **GitHub Pages**, via a small GitHub Actions workflow that publishes that one folder.
-
-Create `.github/workflows/deploy.yml` in the repo:
-
-```yaml
-name: Deploy to GitHub Pages
-
-on:
-  push:
-    branches: [main]
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dashboard/public
-      - id: deployment
-        uses: actions/deploy-pages@v4
-```
-
-Then in the repo's **Settings → Pages**, set **Source** to **GitHub Actions**. Push to `main`, wait for the workflow to finish (the Actions tab shows progress), and your app is live at `https://<your-username>.github.io/EnglishTutor/`.
-
-### 6. First launch, on any device
-
-The first time you open the app on a given device (local or published), it walks you through three one-time screens, each with its own on-screen instructions for exactly where to find the value it's asking for:
-
-1. **Connect to your Supabase database** — Project URL and publishable key.
-2. **Sign in** — the email and password from step 2.
-3. **Connect your Gemini API key** — from step 3.
-
-All three are saved to that device's browser storage and skipped automatically after that. Repeat this once per new device (phone, another computer) — nothing carries over between devices on its own.
-
-To install it as an app on your phone: open the published URL in your phone's browser, then "Add to Home Screen" (Safari, via the share button) or "Install app" (Chrome, via the ⋮ menu). It opens full-screen from then on, like a native app.
+- Open **[rotemhonpauker.github.io/EnglishTutor](https://rotemhonpauker.github.io/EnglishTutor/)** on your phone (or computer).
+- The first time, it asks for your Gemini API key — paste the one from step 1. It's saved on this device and won't ask again.
+- To install it as an app on your phone: "Add to Home Screen" (Safari, via the share button) or "Install app" (Chrome, via the ⋮ menu). It opens full-screen from then on, like a native app.
+- Repeat this once per new device (phone, another computer) — nothing carries over between devices on its own, except what you move yourself with **Backup** (export on the old device, import on the new one — see [💾 Backup](#-backup) above).

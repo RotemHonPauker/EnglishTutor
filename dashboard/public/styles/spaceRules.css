@@ -129,3 +129,56 @@
 .space-rules-item-status.error {
     color: #f87171;
 }
+
+/* ===== Backup section (Setup tab) — add to spaceRules.css, right after
+   the existing #space-rules-section / #space-rules-header rules, or
+   anywhere in that file. Matches the card look of #theme-section and the
+   label/intro styling of #space-rules-header / #space-rules-intro, so it
+   reads as the same family of Setup-tab cards rather than a one-off.
+   The two action buttons reuse the existing .mode-toggle / .mode-toggle-btn
+   classes (the same ones Dark/Light under Appearance use), via index.html's
+   markup:
+     <div class="mode-toggle">
+       <button class="mode-toggle-btn active" ...>Export data</button>
+       <label class="mode-toggle-btn active" for="...">Import data</label>
+       ...
+     </div>
+   Two small additions were needed on top of that shared styling, see
+   below and the note for base.css further down. */
+
+#backup-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* #theme-section already does this (see base.css) so Dark/Light fill the
+   card edge-to-edge; without it, .mode-toggle's own default side padding
+   (10px 24px) stacks on top of #backup-section's own 16px padding, making
+   Export/Import noticeably narrower than Dark/Light. */
+#backup-section .mode-toggle {
+    padding: 0;
+}
+
+#backup-intro {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--text-muted);
+}
+
+.backup-status {
+    font-size: 0.75rem;
+    color: #33B679;
+}
+
+.backup-status:empty {
+    display: none;
+}
+
+.backup-status.error {
+    color: #f87171;
+}

@@ -1,21 +1,29 @@
-// geminiKeyGate.js — one-time "Enter your Gemini API key" overlay, same
-// blocking pattern as connectionGate.js (database) and authGate.js
-// (login), just for the third and last piece of setup this app needs on
-// a new device. Shown once per device, right after login; skipped
-// automatically on every later launch as long as a key is still saved.
+// geminiKeyGate.js — one-time "Enter your Gemini API key" overlay. This
+// is the only setup gate left in the app — there's no database connection
+// or login to wait on anymore (everything else lives in this device's
+// own IndexedDB, see localDb.js). Shown once per device, right at
+// startup; skipped automatically on every later launch as long as a key
+// is still saved.
 //
 // Needs geminiClient.js loaded first (uses hasGeminiApiKey/setGeminiApiKey).
-// Needs authGate.js loaded first and must wait on it — there is no reason
-// to ask for a Gemini key before someone has actually signed in.
 //
-// Usage from app.js (task 6): window.onload should be:
+// Usage from app.js: window.onload should be:
 //   window.onload = async () => {
-//       await waitForAuth();
 //       await waitForGeminiKey();
 //       ...rest as before...
 //   }
 
 (function () {
+    // The app's original #app-loading-overlay (base.css/index.html) was
+    // designed to hide itself automatically once the old server's initial
+    // fetches finished (see loadingOverlay.js) — a timing assumption that
+    // no longer holds now that startup can pause on a person filling in
+    // this form. This is the first script in the startup chain now (no
+    // more connection/login gates before it), so it force-hides that
+    // overlay directly, the same way connectionGate.js used to.
+    const legacyLoadingOverlay = document.getElementById('app-loading-overlay');
+    if (legacyLoadingOverlay) legacyLoadingOverlay.style.display = 'none';
+
     let resolveReady;
     const readyPromise = new Promise((resolve) => { resolveReady = resolve; });
     window.waitForGeminiKey = () => readyPromise;
@@ -75,13 +83,9 @@
         });
     }
 
-    (async function start() {
-        await waitForAuth();
-
-        if (hasGeminiApiKey()) {
-            resolveReady();
-        } else {
-            buildForm();
-        }
-    })();
+    if (hasGeminiApiKey()) {
+        resolveReady();
+    } else {
+        buildForm();
+    }
 })();

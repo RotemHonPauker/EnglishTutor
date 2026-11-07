@@ -93,6 +93,17 @@
                     <button type="button" class="mode-toggle-btn" data-theme-choice="light" onclick="setTheme('light')">☀️ Light</button>
                 </div>
             </div>
+            <div id="backup-section">
+                <div id="space-rules-header">Backup</div>
+                <div id="backup-intro">All your data lives only on this device. Export it to keep a safety copy, or to move it to a new device.</div>
+                <div class="mode-toggle">
+                    <button type="button" class="mode-toggle-btn active" onclick="handleExportBackupClick()">📤 Export data</button>
+                    <label class="mode-toggle-btn active" for="backup-import-input">📥 Import data</label>
+                    <input type="file" id="backup-import-input" accept="application/json" style="display:none" onchange="handleImportBackupFileSelected(this)">
+                </div>
+                <span id="backup-export-status" class="backup-status"></span>
+                <span id="backup-import-status" class="backup-status"></span>
+            </div>
             <div id="space-rules-section">
                 <div id="space-rules-header">Space Setup</div>
                 <div id="space-rules-intro">This is where you help sharpen the translations.<br>These fields become part of the AI prompt.</div>
@@ -385,20 +396,13 @@
 <script src="theme.js"></script>
 <script src="loadingOverlay.js"></script>
 
-<!-- Supabase connection (URL/key entered once, see connectionGate.js) -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabaseClient.js"></script>
-<script src="connectionGate.js"></script>
-
-<!-- Login (Supabase Auth) -->
-<script src="authGate.js"></script>
-
 <!-- Gemini API key (entered once, see geminiKeyGate.js) -->
 <script src="geminiClient.js"></script>
 <script src="geminiKeyGate.js"></script>
 
-<!-- Data layer + AI engines (all run client-side now) -->
-<script src="remoteDb.js"></script>
+<!-- Data layer + AI engines (all run client-side; localDb.js = IndexedDB, nothing shared or remote) -->
+<script src="localDb.js"></script>
+<script src="backup.js"></script>
 <script src="promptTemplates.js"></script>
 <script src="translationEngine.js"></script>
 <script src="dictionaryEngine.js"></script>
