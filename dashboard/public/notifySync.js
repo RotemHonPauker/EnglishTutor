@@ -103,105 +103,71 @@ async function syncSlotsToNotifyServer() {
 //
 // IMPORTANT: the caller (slots.js) must call this as close as possible to
 // the actual click/tap — before any other await (an IndexedDB write, a
-// re-render, etc). Testing showed OneSignal.Notifications.requestPermission()
-// hangs forever (no native prompt ever appears, no error, no resolve) when
-// it's reached after other async work has already run since the click —
-// Chrome silently refuses to show a permission prompt once it decides the
-// call isn't tied closely enough to a real user gesture any more. This
-// function does NOT sync to the Worker itself any more (it used to) —
-// the caller does that afterward, once it knows the final slot state, so a
-// slot created concurrently with this call isn't missed by an early sync.
+// re-render, etc). Chrome may silently refuse to show the permission
+// prompt at all once it decides the call isn't tied closely enough to a
+// real user gesture any more. This function does NOT sync to the Worker
+// itself any more (it used to) — the caller does that afterward, once it
+// knows the final slot state, so a slot created concurrently with this
+// call isn't missed by an early sync.
+//
+// IMPORTANT #2 — do not wrap the actual requestPermission()/optIn() call
+// below in a Promise.race() timeout. A real browser permission prompt
+// waits indefinitely for an actual tap/click from the person — there's no
+// way to know in advance how long that takes, and nothing is wrong if it
+// takes a few seconds. An earlier version of this code raced that call
+// against an 8-second timeout (while debugging a suspected OneSignal
+// hang) combined with a chain of alert() debug popups. That combination
+// was itself the real bug: each alert() is a blocking native dialog, so
+// while the person was still reading/dismissing one, the 8-second timer
+// kept running in the background regardless — and the code gave up on,
+// and reported a "timeout" for, a permission request that was actually
+// still open on screen, patiently waiting for a tap that hadn't happened
+// yet. Confirmed on a real device: the native "Allow/Block" prompt
+// appeared correctly every single time; our own artificial timeout (plus
+// the alert()s racing against it) was just abandoning it before there was
+// ever a real chance to answer it.
 async function requestNotificationPermission() {
-    // TEMPORARY DEBUG — every theory tried so far (user-gesture timing,
-    // alert()s delaying things, OneSignal init not finished yet) still
-    // ends in the same inconsistent hang/fake-success, even with the
-    // Web Push platform now configured in OneSignal's dashboard (0 real
-    // subscribers there throughout). This test bypasses OneSignal
-    // entirely first — plain Notification.requestPermission(), nothing
-    // OneSignal-related — to see whether the browser's own native
-    // permission flow works at all on its own, independent of OneSignal's
-    // subscribe logic. Remove once this is confirmed fixed.
-    alert('[debug] requestNotificationPermission called'); // confirms the function is even reached
-    if (typeof Notification === 'undefined') {
-        alert('[debug] Notification API unavailable');
-        return;
-    }
-
-    alert('[debug] checkpoint 2 — about to call Notification.requestPermission()');
-
-    const rawStart = Date.now();
-    let rawResult;
-    try {
-        const rawTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('RAW_TIMEOUT_8S')), 8000));
-        rawResult = await Promise.race([Notification.requestPermission(), rawTimeout]);
-    } catch (err) {
-        rawResult = 'ERROR: ' + (err && err.message ? err.message : err);
-    }
-
-    alert('[debug] checkpoint 3 — RAW call settled: ' + rawResult);
-
-    let debugMsg = '[debug] RAW Notification.requestPermission(): ' + rawResult + ' (' + (Date.now() - rawStart) + 'ms). ';
-
-    if (typeof OneSignal === 'undefined') {
-        alert(debugMsg + 'OneSignal undefined.');
-        if (typeof updateSlotsPermissionWarning === 'function') updateSlotsPermissionWarning();
-        return;
-    }
+    if (typeof Notification === 'undefined') return;
 
     // Waits for OneSignal.init() to have actually finished (see index.html)
-    // before doing anything else. Testing isolated the hang to EXACTLY
-    // this wait — OneSignal.init() itself sometimes never resolves at all
-    // (a network issue reaching OneSignal's own servers during init,
-    // seemingly) — so this now has its own timeout/visibility too, instead
-    // of hanging silently forever like before.
+    // before doing anything else. This one IS safe to time out — unlike
+    // the permission prompt below, it's a plain network/setup call with no
+    // user interaction involved, so if it hasn't resolved after 15s
+    // something has genuinely gone wrong (rather than just "waiting on a
+    // tap"), and giving up is the right call.
     if (typeof window.oneSignalReady !== 'undefined') {
-        alert('[debug] checkpoint 4 — waiting for OneSignal.init() to finish...');
         try {
             const initTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('INIT_TIMEOUT_15S')), 15000));
             await Promise.race([window.oneSignalReady, initTimeout]);
-            alert('[debug] checkpoint 5 — OneSignal.init() finished');
         } catch (initErr) {
-            alert('[debug] checkpoint 5 — OneSignal.init() never finished: ' + (initErr && initErr.message ? initErr.message : initErr));
+            console.error('OneSignal.init() did not finish in time:', initErr);
             if (typeof updateSlotsPermissionWarning === 'function') updateSlotsPermissionWarning();
             return;
         }
     }
 
-    const currentPermission = (typeof Notification !== 'undefined') ? Notification.permission : 'unavailable';
-    debugMsg += 'OneSignal: permission was: ' + currentPermission + '. ';
+    if (typeof OneSignal === 'undefined') {
+        if (typeof updateSlotsPermissionWarning === 'function') updateSlotsPermissionWarning();
+        return;
+    }
 
     try {
-        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_8S')), 8000));
-        const action = (currentPermission === 'granted')
-            ? OneSignal.User.PushSubscription.optIn()
-            : OneSignal.Notifications.requestPermission();
-        await Promise.race([action, timeout]);
-
-        const subId = OneSignal.User?.PushSubscription?.id || null;
-        const optedIn = OneSignal.User?.PushSubscription?.optedIn;
-        debugMsg += 'Done. PushSubscription.id: ' + subId + ' | optedIn: ' + optedIn + ' | permission now: ' + (typeof Notification !== 'undefined' ? Notification.permission : 'n/a');
-
-        // Checks the RAW browser-level push subscription directly (not
-        // through OneSignal at all) — this tells us whether the actual
-        // handshake with the browser's push service (Google's FCM, for
-        // Chrome) succeeded, independent of whatever OneSignal's own
-        // "optedIn" bookkeeping says. OneSignal's dashboard is showing 0
-        // real subscribers despite optedIn:true client-side, so this
-        // narrows down whether the browser itself ever got a subscription
-        // at all.
-        try {
-            const reg = await navigator.serviceWorker.ready;
-            const rawSub = await reg.pushManager.getSubscription();
-            debugMsg += ' | RAW browser subscription: ' + (rawSub ? ('endpoint=' + rawSub.endpoint.slice(0, 60) + '...') : 'NONE');
-        } catch (rawErr) {
-            debugMsg += ' | RAW check threw: ' + (rawErr && rawErr.message ? rawErr.message : rawErr);
+        const currentPermission = Notification.permission;
+        if (currentPermission === 'granted') {
+            // Already granted at the browser level (e.g. re-enabling a
+            // slot after opting out) — just (re)opt in with OneSignal,
+            // no native prompt involved.
+            await OneSignal.User.PushSubscription.optIn();
+        } else {
+            // Shows the native browser prompt and waits for the actual
+            // tap — see the big comment above on why this must not be
+            // raced against a timeout.
+            await OneSignal.Notifications.requestPermission();
         }
     } catch (err) {
-        debugMsg += 'Threw or timed out: ' + (err && err.message ? err.message : err);
         console.error('Notification permission request failed:', err);
     }
 
-    alert(debugMsg);
     if (typeof updateSlotsPermissionWarning === 'function') updateSlotsPermissionWarning(); // slots.js
 }
 
