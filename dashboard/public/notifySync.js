@@ -121,7 +121,11 @@ async function requestNotificationPermission() {
     // OneSignal-related — to see whether the browser's own native
     // permission flow works at all on its own, independent of OneSignal's
     // subscribe logic. Remove once this is confirmed fixed.
-    if (typeof Notification === 'undefined') return;
+    alert('[debug] requestNotificationPermission called'); // confirms the function is even reached
+    if (typeof Notification === 'undefined') {
+        alert('[debug] Notification API unavailable');
+        return;
+    }
 
     const rawStart = Date.now();
     let rawResult;
