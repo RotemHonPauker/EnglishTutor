@@ -149,13 +149,22 @@ async function requestNotificationPermission() {
     }
 
     // Waits for OneSignal.init() to have actually finished (see index.html)
-    // before doing anything else — testing showed inconsistent results
-    // (sometimes hanging, sometimes "succeeding" without a real
-    // subscription) when the SDK wasn't fully initialized yet. This
-    // normally resolves instantly, since init() finishes well before a
-    // person can tap anything — but guards the rare case where it hasn't.
+    // before doing anything else. Testing isolated the hang to EXACTLY
+    // this wait — OneSignal.init() itself sometimes never resolves at all
+    // (a network issue reaching OneSignal's own servers during init,
+    // seemingly) — so this now has its own timeout/visibility too, instead
+    // of hanging silently forever like before.
     if (typeof window.oneSignalReady !== 'undefined') {
-        await window.oneSignalReady;
+        alert('[debug] checkpoint 4 — waiting for OneSignal.init() to finish...');
+        try {
+            const initTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('INIT_TIMEOUT_8S')), 8000));
+            await Promise.race([window.oneSignalReady, initTimeout]);
+            alert('[debug] checkpoint 5 — OneSignal.init() finished');
+        } catch (initErr) {
+            alert('[debug] checkpoint 5 — OneSignal.init() never finished: ' + (initErr && initErr.message ? initErr.message : initErr));
+            if (typeof updateSlotsPermissionWarning === 'function') updateSlotsPermissionWarning();
+            return;
+        }
     }
 
     const currentPermission = (typeof Notification !== 'undefined') ? Notification.permission : 'unavailable';
