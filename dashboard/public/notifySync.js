@@ -105,42 +105,37 @@ async function syncSlotsToNotifyServer() {
 // (updateSlotsPermissionWarning, slots.js) so it reflects the outcome
 // right away rather than waiting for the next tab load.
 async function requestNotificationPermission() {
-    // TEMPORARY DEBUG — the native permission prompt isn't appearing even
-    // in a fresh incognito tab, so something earlier in this flow must be
-    // silently failing. These alerts stand in for DevTools console access
-    // on the phone. Remove once this is solved.
+    // TEMPORARY DEBUG — confirmed by testing: Notification.permission is
+    // already "granted" on this device/browser (the person approved it at
+    // the OS level), but OneSignal.Notifications.requestPermission() just
+    // hangs forever when called in that state (times out after 8s below,
+    // never resolves or throws on its own). requestPermission() is for
+    // triggering the native browser prompt — there's nothing for it to
+    // prompt when permission is already decided, which is apparently what
+    // breaks it. OneSignal.User.PushSubscription.optIn() is the call that
+    // actually creates the push subscription itself (what's genuinely
+    // missing — oneSignalPlayerId has been null in every synced record so
+    // far); it's used here instead whenever permission is already granted,
+    // and still works correctly to trigger the native prompt AND then
+    // subscribe when permission hasn't been decided yet ("default"). Remove
+    // all the alert()s once this is confirmed fixed.
     alert('[debug] requestNotificationPermission called. OneSignal defined? ' + (typeof OneSignal !== 'undefined'));
     if (typeof OneSignal !== 'undefined') {
-        // Confirmed by a previous test: Notification.permission is already
-        // "granted" at this point, yet requestPermission() below never
-        // resolves or throws — it just hangs. That points at the service
-        // worker OneSignal needs for the actual push subscription (not the
-        // permission prompt itself, which has nothing to show since
-        // permission is already decided). This checks its registration
-        // state before even calling requestPermission(), so we can see
-        // whether it's stuck installing/waiting rather than active.
-        try {
-            const regs = await navigator.serviceWorker.getRegistrations();
-            const summary = regs.length === 0
-                ? 'no service worker registrations at all'
-                : regs.map(r => `scope=${r.scope} active=${!!r.active} waiting=${!!r.waiting} installing=${!!r.installing}`).join(' | ');
-            alert('[debug] SW registrations: ' + summary);
-        } catch (err) {
-            alert('[debug] getRegistrations() threw: ' + (err && err.message ? err.message : err));
-        }
+        const currentPermission = (typeof Notification !== 'undefined') ? Notification.permission : 'unavailable';
+        alert('[debug] Notification.permission: ' + currentPermission + ' — using ' + (currentPermission === 'granted' ? 'optIn()' : 'requestPermission()'));
 
         try {
-            alert('[debug] Notification.permission before request: ' + (typeof Notification !== 'undefined' ? Notification.permission : 'Notification API unavailable'));
-
-            // Race against a timeout so a hang produces a visible alert
-            // instead of silence forever — this is what we actually expect
-            // to fire, based on the previous test.
             const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_8S')), 8000));
-            const result = await Promise.race([OneSignal.Notifications.requestPermission(), timeout]);
+            const action = (currentPermission === 'granted')
+                ? OneSignal.User.PushSubscription.optIn()
+                : OneSignal.Notifications.requestPermission();
+            await Promise.race([action, timeout]);
 
-            alert('[debug] requestPermission() resolved: ' + result + ' | Notification.permission after: ' + (typeof Notification !== 'undefined' ? Notification.permission : 'n/a'));
+            const subId = OneSignal.User?.PushSubscription?.id || null;
+            const optedIn = OneSignal.User?.PushSubscription?.optedIn;
+            alert('[debug] done. PushSubscription.id: ' + subId + ' | optedIn: ' + optedIn + ' | Notification.permission now: ' + (typeof Notification !== 'undefined' ? Notification.permission : 'n/a'));
         } catch (err) {
-            alert('[debug] requestPermission() threw or timed out: ' + (err && err.message ? err.message : err));
+            alert('[debug] threw or timed out: ' + (err && err.message ? err.message : err));
             console.error('Notification permission request failed:', err);
         }
     } // else: OneSignal hasn't finished loading yet (rare — only right at
