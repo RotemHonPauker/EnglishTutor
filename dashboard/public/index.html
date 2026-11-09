@@ -29,10 +29,37 @@
     <link rel="stylesheet" href="styles/modal.css">
     <link rel="stylesheet" href="styles/tags.css">
     <link rel="stylesheet" href="styles/spaceRules.css">
-    <link rel="stylesheet" href="styles/analytics.css">
+    <link rel="stylesheet" href="styles/slots.css">
     <link rel="stylesheet" href="styles/tabs.css">
     <link rel="stylesheet" href="styles/capture.css">
     <link rel="stylesheet" href="styles/dictionary.css">
+
+    <!-- OneSignal (push notifications — see notifySync.js and the Worker
+         at fraza-notify.rotemhon.workers.dev for the rest of this
+         feature). serviceWorkerPath/serviceWorkerParam point OneSignal at
+         this app's EXISTING sw.js (which already imports OneSignal's own
+         worker code at its top — see sw.js) instead of the default
+         OneSignalSDKWorker.js filename it'd otherwise look for. The scope
+         is "/EnglishTutor/", not "/", because this app is served from a
+         GitHub Pages PROJECT path, not the domain root — a service worker
+         can only control the directory it's served from (or narrower),
+         and GitHub Pages doesn't let us widen that with a response header. -->
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        window.OneSignalDeferred.push(async function (OneSignal) {
+            await OneSignal.init({
+                appId: '38cf765b-d75a-4822-ad40-bf93ee21cea8',
+                serviceWorkerPath: 'sw.js',
+                serviceWorkerParam: { scope: '/EnglishTutor/' }
+            });
+            // Keep the Worker's copy of this device's push-subscription id
+            // current whenever it changes (granted, revoked, renewed).
+            OneSignal.User.PushSubscription.addEventListener('change', () => {
+                if (typeof syncSlotsToNotifyServer === 'function') syncSlotsToNotifyServer();
+            });
+        });
+    </script>
 </head>
 <body>
 
@@ -44,9 +71,10 @@
 </div>
 
 <!-- SPACE HEADER: shown above every tab, always. Tapping it opens the
-     space picker/create modal. -->
+     space picker/create modal. (Internal id/name kept as "space" — only
+     the displayed text says "Routine", per the UI-only rename.) -->
 <header id="space-header" onclick="requestOpenSpacePicker()">
-    <span id="space-header-name">Select a space</span>
+    <span id="space-header-name">Select a routine</span>
     <span class="space-header-chevron">▾</span>
 </header>
 
@@ -83,15 +111,16 @@
         </div>
     </div>
 
-    <!-- TAGS + SPACE SETUP VIEW -->
+    <!-- ROUTINE SETUP VIEW (Tags now live on the Slots tab instead — see
+         view-slots below) -->
     <div id="view-tags" class="view">
         <div id="setup-scroll">
-            <div id="theme-section">
-                <div id="space-rules-header">Appearance</div>
-                <div class="mode-toggle">
-                    <button type="button" class="mode-toggle-btn active" data-theme-choice="dark" onclick="setTheme('dark')">🌙 Dark</button>
-                    <button type="button" class="mode-toggle-btn" data-theme-choice="light" onclick="setTheme('light')">☀️ Light</button>
-                </div>
+            <!-- Plain, unwrapped row — no card, no "Appearance" header —
+                 same pattern as #slots-header-actions (slots.css), to cut
+                 down on this tab's visual clutter. -->
+            <div class="mode-toggle" id="theme-toggle-actions">
+                <button type="button" class="mode-toggle-btn active" data-theme-choice="dark" onclick="setTheme('dark')">🌙 Dark</button>
+                <button type="button" class="mode-toggle-btn" data-theme-choice="light" onclick="setTheme('light')">☀️ Light</button>
             </div>
             <div id="backup-section">
                 <div id="space-rules-header">Backup</div>
@@ -105,12 +134,12 @@
                 <span id="backup-import-status" class="backup-status"></span>
             </div>
             <div id="space-rules-section">
-                <div id="space-rules-header">Space Setup</div>
+                <div id="space-rules-header">Routine Setup</div>
                 <div id="space-rules-intro">This is where you help sharpen the translations.<br>These fields become part of the AI prompt.</div>
                 <div class="space-rules-accordion">
                     <div class="space-rules-item" data-field="about">
                         <button type="button" class="space-rules-item-header" onclick="toggleSpaceRuleItem('about')">
-                            <span class="space-rules-item-title">About this space</span>
+                            <span class="space-rules-item-title">About this routine</span>
                             <span class="space-rules-item-chevron">▾</span>
                         </button>
                         <div class="space-rules-item-body">
@@ -174,33 +203,47 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- SLOTS VIEW (repurposed former Analytics tab slot): time-of-day
+         reminders for the currently active Routine, AND that routine's own
+         Tags — tags moved here from Setup (which was getting crowded) since
+         they're really a slot concern now: a slot's tags are what a phrase
+         captured during it gets auto-tagged with. Scoped to that one
+         routine's own slots/tags — the only place every routine's slots
+         are shown together is the "view full day" overlay below. -->
+    <div id="view-slots" class="view">
+        <div id="slots-scroll">
+            <!-- Reuses the shared .mode-toggle / .mode-toggle-btn classes
+                 (base.css) — same look as Export/Import in the Backup
+                 section and Dark/Light in Appearance, rather than a
+                 one-off button style. No separate title here any more:
+                 the tab itself is now labeled "Reminders" (see #tab-bar
+                 below), so it would've just repeated that. -->
+            <div class="mode-toggle" id="slots-header-actions">
+                <button class="mode-toggle-btn active" onclick="openFullDayOverlay()">🗓️ Full schedule</button>
+                <button class="mode-toggle-btn active" onclick="openSlotModal(null)">+ Add reminder</button>
+            </div>
+            <!-- There's no separate "Enable reminders" button any more —
+                 each reminder has its own on/off toggle (slots.js's
+                 renderSlotsList), defaulting to on for a new reminder, and
+                 turning one on is itself the user gesture that triggers the
+                 browser's push-permission prompt (see
+                 notifySync.js's requestNotificationPermission). This banner
+                 only shows up if that permission ends up blocked, so a
+                 reminder that's "on" here doesn't silently fail to ever
+                 notify without explanation. -->
+            <div id="slots-permission-warning" class="slots-permission-warning" style="display:none">
+                🔕 Notifications are blocked in this browser — your reminders are set, but won't actually notify you until you allow notifications for this site in your browser settings.
+            </div>
+            <div id="slots-list"></div>
             <div id="tag-sidebar">
                 <div id="sidebar-header">
                     Tags
                     <button onclick="openAddTagModal()">+ tag</button>
                 </div>
                 <div id="tag-list"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ANALYTICS VIEW -->
-    <div id="view-analytics" class="view">
-        <div id="analytics-section">
-            <div class="mode-toggle" id="analytics-granularity-toggle">
-                <button class="mode-toggle-btn active" data-granularity="day" onclick="setAnalyticsGranularity('day', this)">Daily</button>
-                <button class="mode-toggle-btn" data-granularity="week" onclick="setAnalyticsGranularity('week', this)">Weekly</button>
-                <button class="mode-toggle-btn" data-granularity="month" onclick="setAnalyticsGranularity('month', this)">Monthly</button>
-            </div>
-            <div class="mode-toggle" id="analytics-mode-toggle">
-                <button class="mode-toggle-btn active" data-mode="tag" onclick="setAnalyticsMode('tag', this)">By tag</button>
-                <button class="mode-toggle-btn" data-mode="learned" onclick="setAnalyticsMode('learned', this)">Learned</button>
-            </div>
-            <div id="analytics-chart-bars"></div>
-            <div id="analytics-chart-legend"></div>
-            <div id="analytics-chart-notes">
-                <div id="analytics-chart-note">Bars are grouped by creation date. The color indicates their current status.</div>
-                <div id="analytics-chart-note-2">Only the last 30 periods appear here.</div>
             </div>
         </div>
     </div>
@@ -259,9 +302,34 @@
         <span class="tab-icon">📋</span>
         <span>Practice</span>
     </button>
-    <button class="tab-btn" data-view="analytics" onclick="requestTabSwitch('analytics', this)">
-        <span class="tab-icon">📊</span>
-        <span>Analytics</span>
+    <!-- GLOBAL RECORD BUTTON (globalRecord.js): not a tab — doesn't switch
+         views or carry a data-view. Not scoped to any one Routine; tap to
+         start/stop an in-browser recording from anywhere in the app. -->
+    <div class="global-record-wrap">
+        <!-- A classic microphone icon, drawn as a flat inline SVG (single
+             solid fill, no gradient/shading) rather than the 🎙️ emoji
+             (which renders in multiple shaded tones depending on platform)
+             or a plain ring. Same icon in every state — idle/recording/
+             processing is shown by the button's color/pulse and the label
+             below it, not by swapping the icon.
+
+             Deliberately no width/height attributes here — only the
+             viewBox. Sizing comes from CSS alone (.global-record-btn svg
+             in tabs.css); having both HTML width/height attributes AND a
+             CSS size on the same <svg> is what caused the earlier bug
+             where the rendered width stayed stuck at a value neither one
+             of them specified, regardless of what the CSS rule said. -->
+        <button id="global-record-btn" class="global-record-btn" type="button" title="Record a phrase">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+            </svg>
+        </button>
+        <span id="global-record-label" class="global-record-label">Record</span>
+    </div>
+    <button class="tab-btn" data-view="slots" onclick="requestTabSwitch('slots', this)">
+        <span class="tab-icon">🔔</span>
+        <span>Reminder</span>
     </button>
     <button class="tab-btn" data-view="tags" onclick="requestTabSwitch('tags', this)">
         <span class="tab-icon">⚙️</span>
@@ -318,14 +386,14 @@
 <div id="space-picker-modal-overlay" style="display:none">
     <div id="space-picker-modal" class="confirm-modal">
         <div class="modal-header">
-            <span>Spaces</span>
+            <span>Routines</span>
             <button onclick="closeSpacePicker()">✕</button>
         </div>
         <div id="space-picker-list"></div>
         <div id="space-picker-new-form"></div>
         <div class="modal-footer">
             <button onclick="closeSpacePicker()">Cancel</button>
-            <button class="primary" onclick="openSpaceCreateModal()">+ New space</button>
+            <button class="primary" onclick="openSpaceCreateModal()">+ New routine</button>
         </div>
     </div>
 </div>
@@ -333,7 +401,7 @@
 <div id="space-create-modal-overlay" style="display:none">
     <div id="space-create-modal" class="confirm-modal">
         <div class="modal-header">
-            <span>New Space</span>
+            <span>New Routine</span>
             <button onclick="closeSpaceCreateModal()">✕</button>
         </div>
         <div id="space-create-form"></div>
@@ -361,6 +429,24 @@
         <div id="move-phrase-list" class="tag-picker-chip-list"></div>
         <div class="modal-footer">
             <button onclick="closeMovePhraseModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- RECORD ROUTINE PICKER (globalRecord.js): shown every time the global
+     record button is tapped, BEFORE recording starts — asks which routine
+     this recording belongs to. Large/high-contrast on purpose (styled by
+     id/its own classes in tabs.css, not the regular small chip-picker
+     styling), since it needs to be read and tapped in a hurry. -->
+<div id="record-routine-modal-overlay" style="display:none">
+    <div id="record-routine-modal" class="confirm-modal">
+        <div class="modal-header">
+            <span>Record for which routine?</span>
+            <button onclick="cancelRecordRoutinePicker()">✕</button>
+        </div>
+        <div id="record-routine-list"></div>
+        <div class="modal-footer">
+            <button onclick="cancelRecordRoutinePicker()">Cancel</button>
         </div>
     </div>
 </div>
@@ -393,6 +479,63 @@
     </div>
 </div>
 
+<!-- SLOT ADD/EDIT MODAL -->
+<div id="slot-modal-overlay" style="display:none">
+    <div id="slot-modal">
+        <div class="modal-header">
+            <span id="slot-modal-title">New reminder</span>
+            <button onclick="closeSlotModal()">✕</button>
+        </div>
+        <!-- Start/end time as a plain typed "HH:MM" text field, not a
+             native <input type="time"> — the native control renders in
+             whatever 12h/24h format the browser's locale picks. This is
+             always exactly what's typed: slots.js auto-inserts the ":" as
+             digits are entered and validates strictly as 24-hour on
+             submit. -->
+        <div class="slot-time-row">
+            <div class="slot-time-field">
+                <label for="slot-start-time">Start</label>
+                <input type="text" id="slot-start-time" inputmode="numeric" maxlength="5" placeholder="20:00" autocomplete="off" oninput="formatSlotTimeInput(this)">
+            </div>
+            <div class="slot-time-field">
+                <label for="slot-end-time">End</label>
+                <input type="text" id="slot-end-time" inputmode="numeric" maxlength="5" placeholder="20:30" autocomplete="off" oninput="formatSlotTimeInput(this)">
+            </div>
+        </div>
+        <!-- Just a short name — the notification's actual wording is a
+             fixed template defined in code (slots.js's
+             buildSlotNotificationText), not free text typed here. -->
+        <div class="slot-name-field">
+            <label for="slot-name-input">Name</label>
+            <input type="text" id="slot-name-input" placeholder="e.g. Morning coffee" autocomplete="off">
+        </div>
+        <div class="tag-picker-section">
+            <div class="tag-picker-label">Tags (optional)</div>
+            <div id="slot-tag-picker" class="tag-picker-chip-list"></div>
+        </div>
+        <div id="slot-modal-error"></div>
+        <div class="slot-modal-footer">
+            <button id="slot-modal-delete-btn" class="danger" onclick="deleteSlotFromModal()" style="display:none">🗑️ Delete</button>
+            <div class="slot-modal-footer-right">
+                <button onclick="closeSlotModal()">Cancel</button>
+                <button class="primary" onclick="submitSlot()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- "VIEW FULL DAY" OVERLAY: every routine's slots merged into one
+     time-sorted list, color-coded per routine. -->
+<div id="full-day-modal-overlay" style="display:none">
+    <div id="full-day-modal">
+        <div class="modal-header">
+            <span>Full day</span>
+            <button onclick="closeFullDayOverlay()">✕</button>
+        </div>
+        <div id="full-day-list"></div>
+    </div>
+</div>
+
 <script src="theme.js"></script>
 <script src="loadingOverlay.js"></script>
 
@@ -419,8 +562,10 @@
 <script src="tags.js"></script>
 <script src="phrasesTable.js"></script>
 <script src="practiceDateScroll.js"></script>
-<script src="analyticsChart.js"></script>
+<script src="slots.js"></script>
 <script src="captureTab.js"></script>
+<script src="globalRecord.js"></script>
+<script src="notifySync.js"></script>
 <script src="app.js"></script>
 
 </body>

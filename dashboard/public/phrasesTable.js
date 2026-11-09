@@ -132,7 +132,6 @@ async function loadTable() {
     if (typeof renderDateScroll === 'function') renderDateScroll();
     renderTable();
     if (typeof renderSidebar === 'function') renderSidebar();
-    if (typeof renderAnalyticsChart === 'function') renderAnalyticsChart();
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000; // also used by practiceDateScroll.js
@@ -496,7 +495,7 @@ function renderMovePhraseList() {
         .filter(s => s.id !== activeSpaceId && s.space_type !== 'dictionary');
     container.innerHTML = candidates.length
         ? candidates.map(s => `<div class="tag-chip" onclick="confirmBulkMove('${s.id}')">${escapeHtml(s.name)}</div>`).join('')
-        : `<div class="tag-name">No other phrase space to move these into.</div>`;
+        : `<div class="tag-name">No other phrase routine to move these into.</div>`;
 }
 
 async function confirmBulkMove(targetSpaceId) {

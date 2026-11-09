@@ -1,0 +1,377 @@
+/* slots.css — the Slots screen (repurposed former-Analytics tab) and its
+   two modals: the add/edit reminder modal, and the "view full day"
+   merged-timeline overlay. Reuses existing patterns from the rest of the
+   app (tag-chip grid from tags.css/modal.css, accordion spacing from
+   spaceRules.css) rather than inventing new ones. */
+
+/* #view-slots itself gets NO layout rules here — display/flex-direction
+   are owned by the shared .view/.view.active toggle in tabs.css
+   (showView() adds/removes "active" to switch tabs). An
+   #view-slots { display: flex } rule here would beat .view's
+   { display: none } by CSS specificity (ID > class) and leave this view
+   permanently visible underneath whichever tab is actually active — that
+   was the bug the first time this file shipped. All the actual layout
+   (scrolling, padding, gap) lives on #slots-scroll instead, the one and
+   only child of #view-slots — same pattern as #setup-scroll on the Setup
+   tab (spaceRules.css). */
+#slots-scroll {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 12px;
+}
+
+/* #slots-header-actions uses the shared .mode-toggle / .mode-toggle-btn
+   classes (base.css) for its own look — same two-blue-pill style as
+   Export/Import in the Backup section and Dark/Light in Appearance. Only
+   addition needed here is this padding reset, same reasoning as
+   #backup-section's own override in spaceRules.css: .mode-toggle's default
+   side padding (10px 24px 0) would otherwise stack on top of
+   #slots-scroll's own 12px padding, making these two buttons noticeably
+   narrower than everywhere else that reuses this class. */
+#slots-header-actions {
+    padding: 0;
+}
+
+.slots-permission-warning {
+    background: rgba(248, 113, 113, 0.12);
+    border: 1px solid rgba(248, 113, 113, 0.3);
+    color: #f87171;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+}
+
+.slots-empty {
+    padding: 24px 12px;
+    text-align: center;
+    color: var(--text-faint);
+    font-size: 0.875rem;
+    line-height: 1.6;
+}
+
+/* ===== Per-routine slot list ===== */
+
+#slots-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Dimmed, at-a-glance "this one won't fire" look for a reminder whose
+   toggle is off — the whole card, not just the toggle, so it reads as
+   inactive from a glance at the list rather than only when looking closely
+   at the switch. Same brightness-dip technique as .phrase-card.learned
+   (table.css). */
+.slot-card.disabled {
+    opacity: 0.55;
+}
+
+.slot-card {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+/* Time, name and tags all live directly in this one row now — no inner
+   wrapper splitting name+tags onto a second line. The name (.slot-card-text)
+   takes whatever space is left; tags (.slot-card-tags) shrink to fit and
+   stack vertically instead of wrapping the row. */
+.slot-card-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    padding: 12px 14px;
+    cursor: pointer;
+}
+
+.slot-card-main:hover {
+    background: var(--surface-2);
+}
+
+/* Each child sets its own trailing margin instead of a shared .slot-card-main
+   gap, so the time-to-name spacing can be tighter than the name-to-tags
+   spacing rather than the same value between every pair. */
+.slot-card-time {
+    flex-shrink: 0;
+    margin-inline-end: 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-2);
+    min-width: 92px;
+}
+
+.slot-card-text {
+    flex: 1;
+    min-width: 0;
+    margin-inline-end: 12px;
+    font-size: 0.9375rem;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Stacks vertically (not the row-wrapping .tag-picker-chip-list/#tag-list
+   pattern used elsewhere) — the first tag stays on the main row, any
+   further ones stack underneath it in this same narrow column, by design,
+   rather than wrapping the whole card onto a second line. */
+.slot-card-tags {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+.slot-tag-chip {
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+/* Per-reminder on/off toggle — a classic checkbox-driven switch (the
+   checkbox itself is visually hidden; its :checked state drives the
+   track's look via the adjacent-sibling selector below). Sits between the
+   clickable main area and the delete button, as its own flex child, so
+   tapping it never also opens the edit modal. */
+.slot-enable-toggle {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    padding: 0 12px 0 6px;
+    cursor: pointer;
+}
+
+.slot-enable-toggle input[type="checkbox"] {
+    display: none;
+}
+
+.slot-enable-toggle-track {
+    position: relative;
+    width: 40px;
+    height: 24px;
+    border-radius: 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.slot-enable-toggle-track::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--text-faint);
+    transition: transform 0.15s, background 0.15s;
+}
+
+.slot-enable-toggle input[type="checkbox"]:checked + .slot-enable-toggle-track {
+    background: #2563eb;
+    border-color: #2563eb;
+}
+
+.slot-enable-toggle input[type="checkbox"]:checked + .slot-enable-toggle-track::after {
+    transform: translateX(16px);
+    background: #fff;
+}
+
+/* ===== Add/edit slot modal ===== */
+
+#slot-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--overlay);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+#slot-modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: 100%;
+    max-width: 380px;
+    max-height: 85vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    padding: 18px;
+    gap: 16px;
+}
+
+.slot-time-row {
+    display: flex;
+    gap: 10px;
+}
+
+.slot-time-field {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.slot-time-field label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* A plain typed "HH:MM" field instead of a native <input type="time">, so
+   the shown value is always exactly what's typed — never reformatted into
+   whatever 12h/24h shape the browser's locale would otherwise pick.
+   formatSlotTimeInput (slots.js) auto-inserts the ":" as digits land. */
+.slot-time-field input[type="text"] {
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    color: var(--text);
+    font-size: 1rem;
+    text-align: center;
+    letter-spacing: 0.05em;
+    outline: none;
+    width: 100%;
+}
+
+.slot-time-field input[type="text"]:focus {
+    border-color: #2563eb;
+}
+
+.slot-name-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.slot-name-field label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.slot-name-field input[type="text"] {
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    color: var(--text);
+    font-size: 1rem;
+    outline: none;
+    width: 100%;
+}
+
+.slot-name-field input[type="text"]:focus {
+    border-color: #2563eb;
+}
+
+#slot-modal-error {
+    display: none;
+    font-size: 0.8125rem;
+    color: #ef4444;
+    line-height: 1.5;
+}
+
+.slot-modal-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.slot-modal-footer-right {
+    display: flex;
+    gap: 10px;
+}
+
+/* ===== "View full day" overlay ===== */
+
+#full-day-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--overlay);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+#full-day-modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: 100%;
+    max-width: 420px;
+    max-height: 85vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    padding: 18px;
+    gap: 14px;
+}
+
+#full-day-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.full-day-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 12px;
+    background: var(--surface-2);
+    border-radius: 8px;
+    border-inline-start: 4px solid transparent;
+}
+
+.full-day-row-time {
+    flex-shrink: 0;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-2);
+    min-width: 84px;
+}
+
+.full-day-row-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.full-day-row-routine {
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.full-day-row-text {
+    font-size: 0.875rem;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

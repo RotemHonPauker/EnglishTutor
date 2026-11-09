@@ -20,10 +20,12 @@
 
 #tab-bar {
     display: flex;
+    align-items: flex-end; /* lets .global-record-wrap's negative margin raise the button above the bar without clipping */
     flex-shrink: 0;
     border-top: 1px solid var(--divider-soft);
     background: var(--bg);
     padding-bottom: env(safe-area-inset-bottom);
+    position: relative;
 }
 
 .tab-btn {
@@ -54,7 +56,7 @@
     color: #60a5fa;
 }
 
-/* Analytics/Setup while in dictionary mode — neither applies there. */
+/* Slots/Setup while in dictionary mode — neither applies there. */
 .tab-btn:disabled {
     opacity: 0.3;
     cursor: default;
@@ -63,4 +65,134 @@
 
 .tab-btn:disabled:hover {
     background: none;
+}
+
+/* ===== Global record button — the red, circular, always-available
+   recording trigger, raised up out of the middle of the tab bar (not
+   scoped to any one tab/routine — see globalRecord.js). Sits between
+   Practice and Slots in the markup, which centers it visually. ===== */
+
+.global-record-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding-bottom: 8px;
+}
+
+.global-record-btn {
+    width: 52px;
+    height: 52px;
+    margin-top: -22px; /* raises it above the bar's top edge */
+    border-radius: 50%;
+    border: 3px solid var(--bg);
+    background: #ef4444;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+/* The mic icon (inline SVG in index.html) — one flat solid fill, no
+   gradient/shading, same in every state. Icon rendered size currently
+   still doesn't match this (unresolved — see conversation; not a cascade
+   issue, ruled out even !important). Revisit later. */
+.global-record-btn svg {
+    display: block;
+    width: 34px;
+    height: 34px;
+    fill: #fff;
+}
+
+.global-record-btn:hover {
+    background: #dc2626;
+}
+
+.global-record-btn:disabled {
+    cursor: default;
+    opacity: 0.7;
+}
+
+/* Actively recording — the same ring, now pulsing outward as the
+   stop/start feedback moment the redesign asked for. */
+.global-record-btn.recording {
+    background: #b91c1c;
+    animation: global-record-pulse 1.4s ease-out infinite;
+}
+
+@keyframes global-record-pulse {
+    0% { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), 0 0 0 0 rgba(239, 68, 68, 0.55); }
+    70% { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), 0 0 0 12px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.global-record-btn.processing {
+    background: var(--surface-3, #444);
+    animation: none;
+}
+
+.global-record-btn.processing svg {
+    opacity: 0.6;
+}
+
+.global-record-label {
+    font-size: 0.6875rem;
+    color: var(--text-faint);
+    font-variant-numeric: tabular-nums; /* keeps the "0:00" timer from jittering in width as digits change */
+}
+
+/* ===== Record routine picker (globalRecord.js) — shown every time the
+   record button is tapped, before recording starts. Deliberately bigger
+   and higher-contrast than the small chip-pickers used elsewhere in the
+   app (tags, move-to), since this one needs to be read and tapped in a
+   hurry rather than browsed. Targets #record-routine-modal/-list by id so
+   it doesn't depend on or fight with the regular .confirm-modal sizing
+   used by every other modal. ===== */
+
+/* This overlay isn't in modal.css's own list of known overlay ids (every
+   other *-modal-overlay there gets centered full-screen positioning from
+   a rule we don't have visibility into), so without this it just renders
+   inline at the bottom of the page instead of as a centered overlay.
+   Self-contained here rather than guessing at modal.css's exact rule. */
+#record-routine-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--overlay);
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 16px;
+}
+
+#record-routine-modal {
+    width: min(92vw, 420px);
+}
+
+#record-routine-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 6px 0 2px;
+}
+
+.record-routine-option {
+    display: block;
+    width: 100%;
+    padding: 20px 16px;
+    font-size: 1.1875rem;
+    font-weight: 600;
+    text-align: center;
+    border-radius: 14px;
+    border: 1px solid var(--divider-soft);
+    background: var(--surface);
+    cursor: pointer;
+}
+
+.record-routine-option:active {
+    background: #ef4444;
+    color: #fff;
+    border-color: #ef4444;
 }

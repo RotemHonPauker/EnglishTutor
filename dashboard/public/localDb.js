@@ -19,8 +19,13 @@
 // database.js was with a real Postgres transaction.
 
 const DB_NAME = 'fraza-db';
-const DB_VERSION = 1;
-const STORE_NAMES = ['spaces', 'tags', 'phrases', 'dictionary', 'transcripts'];
+// v2 adds the 'slots' store (time-based reminders — see the Slots
+// section below and slots.js). openDb()'s onupgradeneeded guards every
+// store behind objectStoreNames.contains(...) so bumping this version on
+// a device that already has a v1 database only adds what's missing,
+// instead of trying (and failing) to recreate stores that already exist.
+const DB_VERSION = 2;
+const STORE_NAMES = ['spaces', 'tags', 'phrases', 'dictionary', 'transcripts', 'slots'];
 
 const TAG_COLORS = [
     '#AD1457', '#D81B60', '#E67C73', '#F4511E',
@@ -43,21 +48,49 @@ function openDb() {
         const req = indexedDB.open(DB_NAME, DB_VERSION);
         req.onupgradeneeded = () => {
             const db = req.result;
-            const spaces = db.createObjectStore('spaces', { keyPath: 'id' });
-            spaces.createIndex('created_at', 'created_at');
 
-            const tags = db.createObjectStore('tags', { keyPath: 'id' });
-            tags.createIndex('space_id', 'space_id');
+            // Every store creation is guarded — onupgradeneeded re-runs
+            // this whole function on an existing v1 database jumping to
+            // v2, and createObjectStore() throws if the store is already
+            // there (stores persist across versions; only the *new*
+            // version's additions actually need creating).
+            if (!db.objectStoreNames.contains('spaces')) {
+                const spaces = db.createObjectStore('spaces', { keyPath: 'id' });
+                spaces.createIndex('created_at', 'created_at');
+            }
 
-            const phrases = db.createObjectStore('phrases', { keyPath: 'id' });
-            phrases.createIndex('space_id', 'space_id');
-            phrases.createIndex('tag_id', 'tag_id');
+            if (!db.objectStoreNames.contains('tags')) {
+                const tags = db.createObjectStore('tags', { keyPath: 'id' });
+                tags.createIndex('space_id', 'space_id');
+            }
 
-            const dictionary = db.createObjectStore('dictionary', { keyPath: 'id' });
-            dictionary.createIndex('space_id', 'space_id');
+            if (!db.objectStoreNames.contains('phrases')) {
+                const phrases = db.createObjectStore('phrases', { keyPath: 'id' });
+                phrases.createIndex('space_id', 'space_id');
+                phrases.createIndex('tag_id', 'tag_id');
+            }
 
-            const transcripts = db.createObjectStore('transcripts', { keyPath: 'id' });
-            transcripts.createIndex('space_id', 'space_id');
+            if (!db.objectStoreNames.contains('dictionary')) {
+                const dictionary = db.createObjectStore('dictionary', { keyPath: 'id' });
+                dictionary.createIndex('space_id', 'space_id');
+            }
+
+            if (!db.objectStoreNames.contains('transcripts')) {
+                const transcripts = db.createObjectStore('transcripts', { keyPath: 'id' });
+                transcripts.createIndex('space_id', 'space_id');
+            }
+
+            // v2: Slots — a time-of-day reminder, linked to one Routine
+            // (space_id) and zero-or-more of that routine's own tags
+            // (tag_ids, see the Slots section below). Overlap validation
+            // (findOverlappingSlot) scans every slot regardless of
+            // space_id, so no extra index is needed for that — the
+            // space_id index here is only for loading one routine's own
+            // slots in the Slots screen (slots.js).
+            if (!db.objectStoreNames.contains('slots')) {
+                const slots = db.createObjectStore('slots', { keyPath: 'id' });
+                slots.createIndex('space_id', 'space_id');
+            }
         };
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error);
@@ -279,18 +312,22 @@ const updateSpace = async ({ id, name, aboutThisSpace, variant1Notes, variant2No
 // Deletes everything scoped to a space, then the space itself — same
 // order as the original (phrases, dictionary, transcripts, tags, space),
 // all inside one IndexedDB transaction, so it's genuinely all-or-nothing.
+// Also removes this routine's own slots (see the Slots section below) —
+// a slot with no routine left to belong to has no reminder to send, so it
+// cannot be allowed to linger as an orphan the next time slots are
+// listed or checked for overlap.
 // Doesn't touch IndexedDB-cached TTS audio — the caller (phrasesTable.js
 // / ttsStorage.js) cleans that up itself, same pattern as a single
 // phrase delete.
 const deleteSpace = async (id) => {
     const db = await openDb();
-    const tx = db.transaction(['spaces', 'tags', 'phrases', 'dictionary', 'transcripts'], 'readwrite');
+    const tx = db.transaction(['spaces', 'tags', 'phrases', 'dictionary', 'transcripts', 'slots'], 'readwrite');
 
     const spaceStore = tx.objectStore('spaces');
     const existing = await reqToPromise(spaceStore.get(id));
     if (!existing) { tx.abort(); throw notFoundError('spaces', id); }
 
-    for (const storeName of ['phrases', 'dictionary', 'transcripts', 'tags']) {
+    for (const storeName of ['phrases', 'dictionary', 'transcripts', 'tags', 'slots']) {
         const store = tx.objectStore(storeName);
         const index = store.index('space_id');
         const rows = await reqToPromise(index.getAll(id));
@@ -302,7 +339,12 @@ const deleteSpace = async (id) => {
     return existing;
 };
 
-const MAX_TRANSCRIPTS_PER_SPACE_MIGRATION = 3;
+// Single source of truth for "how many saved transcripts is too many for
+// one routine" — used here as the hard cap on merging two routines'
+// transcripts together, and also read by captureTab.js to decide when to
+// show its own "consider deleting old ones" warning. Keep both in sync by
+// always going through this constant rather than a hardcoded number.
+const MAX_TRANSCRIPTS_PER_SPACE = 5;
 
 const migrateSpace = async ({ sourceId, targetId, dropSourceTranscripts = false }) => {
     if (sourceId === targetId) {
@@ -314,7 +356,7 @@ const migrateSpace = async ({ sourceId, targetId, dropSourceTranscripts = false 
             idbCountByIndex('transcripts', 'space_id', sourceId),
             idbCountByIndex('transcripts', 'space_id', targetId)
         ]);
-        if (sourceCount + targetCount > MAX_TRANSCRIPTS_PER_SPACE_MIGRATION) {
+        if (sourceCount + targetCount > MAX_TRANSCRIPTS_PER_SPACE) {
             const err = new Error('Too many transcripts to migrate');
             err.code = 'TOO_MANY_TRANSCRIPTS';
             err.sourceCount = sourceCount;
@@ -498,5 +540,104 @@ const deleteDictionaryEntry = async (id) => {
     const existing = await idbGet('dictionary', id);
     if (!existing) return null;
     await idbDelete('dictionary', id);
+    return existing;
+};
+
+// --- Slots ----------------------------------------------------------------
+// A Slot is a time-of-day reminder window: a start-end range (both stored
+// as minutes-since-midnight, 0-1439, for easy arithmetic — see
+// getSelectedMinutes/setTimeSelects in slots.js for the <-> hour/minute
+// <select> conversion), a short name (NOT free-typed notification text —
+// see buildSlotNotificationText in slots.js), the one Routine (space_id)
+// it belongs to, and zero-or-more of that routine's own tag ids. Which single tag actually
+// lands on a phrase captured during a multi-tag slot is decided later, at
+// capture time, by Gemini (same per-phrase suggestion call
+// translatePhrase() already makes — see translationEngine.js) — this
+// store only holds the slot's own candidate tag list.
+
+const getSlots = async (spaceId) => {
+    const rows = await idbGetAllByIndex('slots', 'space_id', spaceId);
+    return [...rows].sort((a, b) => a.start_minutes - b.start_minutes);
+};
+
+// Every slot from every routine — used only by the "view full day"
+// merged overlay (slots.js), the one place slots from different routines
+// are shown together.
+const getAllSlots = async () => {
+    const rows = await idbGetAll('slots');
+    return [...rows].sort((a, b) => a.start_minutes - b.start_minutes);
+};
+
+function slotRangesOverlap(aStart, aEnd, bStart, bEnd) {
+    return aStart < bEnd && bStart < aEnd;
+}
+
+// The hard-block overlap check, across ALL routines — not just the one
+// being edited, per the agreed design (a reminder at 8:15 for "Breakfast"
+// and another at 8:00-8:30 for "Commute" conflict regardless of which
+// routine either belongs to). excludeId lets editing an existing slot
+// compare against every OTHER slot without the slot flagging itself.
+// Returns the first conflicting slot, or null.
+const findOverlappingSlot = async ({ startMinutes, endMinutes, excludeId }) => {
+    const all = await idbGetAll('slots');
+    return all.find(s => s.id !== excludeId && slotRangesOverlap(startMinutes, endMinutes, s.start_minutes, s.end_minutes)) || null;
+};
+
+// NOTE: a slot no longer carries free-typed notification text — just a
+// short `name` the person gives it (e.g. "Morning coffee"). The actual
+// push-notification body is a fixed template built from that name in
+// code (see slots.js's buildSlotNotificationText), not something typed
+// per-slot. (Any slot stored under the earlier field name, `reminder_text`,
+// from before this change simply won't have a `name` — harmless, and
+// there's no real data yet to migrate.)
+
+// `enabled` defaults to true for every new reminder — per the agreed
+// design, a freshly created reminder should notify unless the person
+// explicitly turns it off afterwards (see setSlotEnabled below, wired to
+// the per-reminder toggle in slots.js).
+const createSlot = async ({ spaceId, startMinutes, endMinutes, name, tagIds }) => {
+    const row = {
+        id: newId(),
+        space_id: spaceId,
+        start_minutes: startMinutes,
+        end_minutes: endMinutes,
+        name,
+        tag_ids: Array.isArray(tagIds) ? tagIds : [],
+        enabled: true,
+        created_at: new Date().toISOString()
+    };
+    return idbPut('slots', row);
+};
+
+// Deliberately doesn't touch `enabled` — editing a reminder's time/name/
+// tags from the modal shouldn't silently flip its notification state one
+// way or the other; that's only ever changed via setSlotEnabled below.
+const updateSlot = async ({ id, startMinutes, endMinutes, name, tagIds }) => {
+    const existing = await idbGet('slots', id);
+    if (!existing) throw notFoundError('slots', id);
+    const updated = {
+        ...existing,
+        start_minutes: startMinutes,
+        end_minutes: endMinutes,
+        name,
+        tag_ids: Array.isArray(tagIds) ? tagIds : []
+    };
+    return idbPut('slots', updated);
+};
+
+// Flips just the per-reminder on/off toggle (slots.js) — a separate,
+// narrower action from updateSlot on purpose, so toggling notifications
+// off/on can never accidentally touch the time/name/tags fields.
+const setSlotEnabled = async (id, enabled) => {
+    const existing = await idbGet('slots', id);
+    if (!existing) throw notFoundError('slots', id);
+    const updated = { ...existing, enabled: !!enabled };
+    return idbPut('slots', updated);
+};
+
+const deleteSlot = async (id) => {
+    const existing = await idbGet('slots', id);
+    if (!existing) return null;
+    await idbDelete('slots', id);
     return existing;
 };

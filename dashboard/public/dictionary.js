@@ -7,7 +7,7 @@
 // capture, and a different Practice card shape. It repurposes Practice
 // (own data source + card template, sharing the date-scroll/learned-filter
 // machinery already built for phrases) and Add (Send becomes a word lookup
-// instead of a phrase capture). Analytics and Setup don't apply and are
+// instead of a phrase capture). Slots and Setup don't apply and are
 // disabled while a dictionary space is active.
 // Needs remoteDb.js, dictionaryEngine.js and geminiClient.js loaded first.
 
@@ -33,11 +33,11 @@ function getPracticeItems() {
 function applyDictionaryModeUI() {
     const dict = isDictionarySpace();
 
-    // Tab bar — Analytics (phrase-only) and Setup (space-rules only) don't
-    // apply to a dictionary space.
-    const analyticsBtn = document.querySelector('.tab-btn[data-view="analytics"]');
+    // Tab bar — Slots (phrase/tag-only reminders) and Setup (space-rules
+    // only) don't apply to a dictionary space.
+    const slotsBtn = document.querySelector('.tab-btn[data-view="slots"]');
     const setupBtn = document.querySelector('.tab-btn[data-view="tags"]');
-    [analyticsBtn, setupBtn].forEach(btn => {
+    [slotsBtn, setupBtn].forEach(btn => {
         if (btn) btn.disabled = dict;
     });
 
@@ -76,7 +76,7 @@ function resolveDictionarySpaceIdAndProceed(onResolved) {
     }
     const dictSpaces = (typeof spaces !== 'undefined' ? spaces : []).filter(s => s.space_type === 'dictionary');
     if (dictSpaces.length === 0) {
-        addCaptureMessage('No dictionary space yet — create one from the space picker first.');
+        addCaptureMessage('No dictionary routine yet — create one from the routine picker first.');
         return;
     }
     if (dictSpaces.length === 1) {

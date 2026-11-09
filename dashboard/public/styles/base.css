@@ -98,7 +98,16 @@ body {
     border-inline: 1px solid var(--divider);
 }
 
+/* font-family/font: inherit added here — without it, a real <button>
+   picks up the browser's own default UI font rather than this page's
+   'Segoe UI' (browsers don't automatically inherit font onto form
+   controls the way they do for plain text elements). That meant a
+   <button class="mode-toggle-btn"> and a <label class="mode-toggle-btn">
+   sitting right next to each other (see Import data, spaceRules.css)
+   could render in two visibly different fonts despite sharing the exact
+   same class — not a sizing/color issue, a missing inherit. */
 button {
+    font: inherit;
     background: var(--btn-bg);
     color: var(--text-2);
     border: 1px solid var(--input-border);
@@ -189,7 +198,9 @@ button.danger:hover { background: #b91c1c; }
 }
 
 /* Shared mode toggle (Capture a phrase / Check my English) — used on both
-   the Type and Record tabs. */
+   the Type and Record tabs. Also reused, plain/unwrapped (no card, no
+   header) for a row of standalone action buttons — see #slots-header-actions
+   (slots.css) and #theme-toggle-actions (spaceRules.css). */
 .mode-toggle {
     display: flex;
     gap: 6px;
@@ -221,19 +232,4 @@ button.danger:hover { background: #b91c1c; }
     opacity: 0.35;
     cursor: default;
     pointer-events: none;
-}
-/* ===== Appearance section (Setup tab) ===== */
-
-#theme-section {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-#theme-section .mode-toggle {
-    padding: 0;
 }

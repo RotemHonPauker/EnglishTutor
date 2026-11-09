@@ -13,7 +13,11 @@
 // both been used independently. See the Setup tab UI (spaceRules.js) for
 // where these are wired to buttons.
 
-const BACKUP_STORE_ORDER = ['spaces', 'tags', 'phrases', 'dictionary', 'transcripts'];
+// 'slots' added here (was missing before — export/import silently skipped
+// reminders entirely until now). Listed after 'tags' since a slot's
+// tag_ids reference tag rows, same dependency-order reasoning as the rest
+// of this list.
+const BACKUP_STORE_ORDER = ['spaces', 'tags', 'slots', 'phrases', 'dictionary', 'transcripts'];
 
 // Reads every row from every store, in one object, and triggers a
 // download of it as a timestamped .json file. IDs are kept exactly as
@@ -114,6 +118,7 @@ function readFileAsJson(file) {
 const BACKUP_STORE_LABELS = {
     spaces: 'space',
     tags: 'tag',
+    slots: 'reminder',
     phrases: 'phrase',
     dictionary: 'dictionary entry',
     transcripts: 'transcript',

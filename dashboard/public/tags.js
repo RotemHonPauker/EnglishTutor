@@ -18,7 +18,11 @@ async function loadTags() {
     tags = await getTags(activeSpaceId);
     if (typeof renderTable === 'function') renderTable();
     renderSidebar();
-    if (typeof renderAnalyticsChart === 'function') renderAnalyticsChart();
+    // The Analytics tab was removed and repurposed into the Slots screen
+    // (slots.js) — a tag rename/recolor/delete/merge there can change a
+    // slot's own tag chips or its tag picker's choices, so refresh those
+    // instead of the old renderAnalyticsChart() call.
+    if (typeof refreshSlotsAfterTagsChanged === 'function') refreshSlotsAfterTagsChanged();
     // The active-filter chips above Practice's toolbar show a tag's name/
     // color at the time the filter was applied — stale if that tag gets
     // renamed/recolored elsewhere before you come back.

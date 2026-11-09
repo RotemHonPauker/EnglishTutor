@@ -7,7 +7,8 @@
 // them share a name with helpers in dictionaryEngine.js / audioEngine.js
 // (e.g. parseResponse-style JSON cleanup), and as plain global scripts
 // those would otherwise silently collide.
-// Needs promptTemplates.js, geminiClient.js and remoteDb.js loaded first.
+// Needs promptTemplates.js, geminiClient.js, remoteDb.js and slots.js
+// (findActiveSlotNow) loaded first.
 
 const translatePhrase = (function () {
     function parseTranslationResponse(rawText) {
@@ -16,21 +17,21 @@ const translatePhrase = (function () {
     }
 
     // Deliberately never invites the model to invent a new tag — only to
-    // pick from what's given, or say null. If the space has no tags yet,
-    // skip asking entirely.
-    function buildExistingTagsSection(spaceTags) {
-        if (!spaceTags.length) {
-            return 'This space has no tags defined yet, so always put null for "tag".';
+    // pick from what's given, or say null. If there are no candidate tags
+    // to offer, skip asking entirely.
+    function buildExistingTagsSection(candidateTags) {
+        if (!candidateTags.length) {
+            return 'There are no candidate tags for this phrase right now, so always put null for "tag".';
         }
-        const names = spaceTags.map(t => t.name).join(', ');
-        return `This space has the following tags: ${names}\nIf one of these tags clearly and confidently fits this phrase's topic, put its exact name (as written above) in "tag". If none fit well, or you're not confident, put null instead — never guess, and never invent a tag name that isn't in the list above.`;
+        const names = candidateTags.map(t => t.name).join(', ');
+        return `The following tags are candidates for this phrase: ${names}\nIf one of these tags clearly and confidently fits this phrase's topic, put its exact name (as written above) in "tag". If none fit well, or you're not confident, put null instead — never guess, and never invent a tag name that isn't in the list above.`;
     }
 
     // Never trusts the model's tag name directly — resolves it against the
-    // tags actually fetched for this space (case-insensitive exact match).
-    function resolveTagId(tagName, spaceTags) {
+    // candidate tags actually passed in (case-insensitive exact match).
+    function resolveTagId(tagName, candidateTags) {
         if (!tagName) return null;
-        const match = spaceTags.find(t => t.name.toLowerCase() === String(tagName).toLowerCase());
+        const match = candidateTags.find(t => t.name.toLowerCase() === String(tagName).toLowerCase());
         return match ? match.id : null;
     }
 
@@ -68,12 +69,24 @@ const translatePhrase = (function () {
             getTags(spaceId)
         ]);
 
+        // Tagging is now driven entirely by whichever Slot is active right
+        // now (see slots.js's findActiveSlotNow) — NOT by this routine's
+        // whole tag list, the way it used to work. No active slot (or one
+        // belonging to a different routine) means no candidate tags at
+        // all, so Gemini is only ever offered — and can only ever pick
+        // from — the active slot's own tag(s). Same resolveTagId lookup as
+        // before; it just runs against this narrower candidate list now.
+        const activeSlot = typeof findActiveSlotNow === 'function' ? await findActiveSlotNow() : null;
+        const candidateTags = (activeSlot && activeSlot.space_id === spaceId)
+            ? spaceTags.filter(t => (activeSlot.tag_ids || []).includes(t.id))
+            : [];
+
         const content = TRANSLATION_PROMPT_TEMPLATE
             .replace(/\$\{sourceLanguage\}/g, spaceFields.sourceLanguage)
             .replace(/\$\{targetLanguage\}/g, spaceFields.targetLanguage)
             .replace('${translationStep}', buildTranslationStep(spaceFields))
             .replace('${spaceRulesSection}', buildSpaceRulesSection(spaceFields))
-            .replace('${existingTagsSection}', buildExistingTagsSection(spaceTags))
+            .replace('${existingTagsSection}', buildExistingTagsSection(candidateTags))
             .replace('${phrase}', sourceText);
 
         const response = await geminiGenerateContent({
@@ -89,7 +102,7 @@ const translatePhrase = (function () {
             correctedSource: result.correctedSource,
             variant1: result.variant1,
             variant2: result.variant2,
-            tagId: resolveTagId(result.tag, spaceTags)
+            tagId: resolveTagId(result.tag, candidateTags)
         };
     };
 })();

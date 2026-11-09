@@ -203,7 +203,7 @@ function resetCaptureLog() {
     const hasActiveSpace = typeof getActiveSpace === 'function' && !!getActiveSpace();
     applyNoSpaceUI(!hasActiveSpace);
     if (!hasActiveSpace) {
-        captureLog.innerHTML = '<div class="recording-info-note">👋<br>No space yet — tap the title above, then "+ New space" to create one. Come back here once it\'s made.</div>';
+        captureLog.innerHTML = '<div class="recording-info-note">👋<br>No routine yet — tap the title above, then "+ New routine" to create one. Come back here once it\'s made.</div>';
         return;
     }
 
@@ -230,7 +230,7 @@ async function submitTypedPhrase() {
 
     if ((typeof isDictionarySpace === 'function' && isDictionarySpace()) || addInputMode === 'dictionary') {
         // Only warn when there's an actual Type mode to switch to — a
-        // dictionary SPACE has no alternative, so there's nothing to
+        // dictionary routine has no alternative, so there's nothing to
         // mistake it for.
         const canSwitchToType = !(typeof isDictionarySpace === 'function' && isDictionarySpace());
         if (canSwitchToType && looksLikeSentence(text)) {
@@ -423,19 +423,7 @@ async function handleRecordingFileSelected(inputEl) {
             mode: captureMode
         });
 
-        await createTranscript({ spaceId: activeSpaceId, content: transcript });
-
-        // Recording and the transcript toggle can't coexist, so switch out
-        // of Record into Type first, then open the toggle straight onto
-        // the fresh transcript, ready to select from.
-        if (addInputMode === 'record') {
-            applyAddInputModeUI('type');
-        }
-        transcriptsOpen = true;
-        if (transcriptsPanel) transcriptsPanel.style.display = 'flex';
-        applyTranscriptsButtonUI();
-        await loadTranscripts();
-        if (transcripts.length) toggleTranscript(transcripts[0].id);
+        await finishRecordingIntoTranscript(activeSpaceId, transcript);
     } catch (err) {
         addCaptureMessage(
             err.code === 'NO_API_KEY'
@@ -445,6 +433,45 @@ async function handleRecordingFileSelected(inputEl) {
     } finally {
         langBtns.forEach(b => b.disabled = false);
     }
+}
+
+// Shared by both ways a recording turns into a transcript: picking a file
+// via the Add tab's own Record mode (handleRecordingFileSelected, above)
+// and the global record button (globalRecord.js) — which can be tapped
+// from any tab, for any routine, not necessarily the one currently open.
+// Saves the transcript, switches to whichever routine it belongs to if
+// that's not already the active one, lands on the Add tab, and opens it
+// straight onto the fresh transcript, ready to pick lines from.
+async function finishRecordingIntoTranscript(spaceId, transcriptText) {
+    await createTranscript({ spaceId, content: transcriptText });
+
+    if (spaceId !== activeSpaceId) {
+        // Also reloads tags/phrases/slots for the new routine, and (via
+        // resetCaptureLog, called inside setActiveSpace) clears whatever
+        // the Add tab happened to be showing — expected here, since the
+        // fresh transcript is opened right below anyway.
+        await setActiveSpace(spaceId);
+    }
+
+    // Plain showView (not navigateToTab/enterCaptureTab) deliberately
+    // skips both the unsaved-space-rules-field guard and
+    // enterCaptureTab's own resetCaptureLog() — the global record button
+    // can be tapped from any tab, and landing here is an automatic
+    // consequence of finishing a recording, not an explicit tab switch to
+    // confirm or guard.
+    showView('add', document.querySelector('.tab-btn[data-view="add"]'));
+
+    // Recording and the transcript toggle can't coexist, so switch out of
+    // Record into Type first, then open the toggle straight onto the
+    // fresh transcript, ready to select from.
+    if (addInputMode === 'record') {
+        applyAddInputModeUI('type');
+    }
+    transcriptsOpen = true;
+    if (transcriptsPanel) transcriptsPanel.style.display = 'flex';
+    applyTranscriptsButtonUI();
+    await loadTranscripts();
+    if (transcripts.length) toggleTranscript(transcripts[0].id);
 }
 
 function fileToBase64(file) {
@@ -487,7 +514,10 @@ async function loadTranscripts() {
 }
 
 function renderTranscripts() {
-    const warningHtml = transcripts.length > 3
+    // MAX_TRANSCRIPTS_PER_SPACE (localDb.js) is the same number used as the
+    // hard cap when merging two routines' transcripts together — keep this
+    // warning threshold in sync with that constant rather than a separate number.
+    const warningHtml = transcripts.length > MAX_TRANSCRIPTS_PER_SPACE
         ? `<div id="transcripts-warning">You have ${transcripts.length} saved transcripts — consider deleting old ones you've already reviewed.</div>`
         : '';
 
