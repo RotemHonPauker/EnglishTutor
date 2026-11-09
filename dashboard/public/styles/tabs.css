@@ -82,9 +82,9 @@
 }
 
 .global-record-btn {
-    width: 52px;
-    height: 52px;
-    margin-top: -22px; /* raises it above the bar's top edge */
+    width: 60px;
+    height: 60px;
+    margin-top: -25px; /* raises it above the bar's top edge */
     border-radius: 50%;
     border: 3px solid var(--bg);
     background: #ef4444;
@@ -102,8 +102,8 @@
    issue, ruled out even !important). Revisit later. */
 .global-record-btn svg {
     display: block;
-    width: 34px;
-    height: 34px;
+    width: 38px;
+    height: 38px;
     fill: #fff;
 }
 

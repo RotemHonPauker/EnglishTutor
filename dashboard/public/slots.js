@@ -34,14 +34,68 @@ let slots = []; // the ACTIVE routine's own slots only
 // localDb.js's slotRangesOverlap); these helpers convert to/from that.
 
 // Called on the input's own oninput (index.html) as the person types —
-// inserts the ":" automatically once there are enough digits, and caps
-// input at 4 digits (HHMM) so it can never grow past "23:59".
+// inserts the ":" right after the 2nd digit (completing the hour), not
+// only once a 3rd digit (the first minute digit) has also been typed. Caps
+// input at 4 digits (HHMM) total. Also clamps each half live as soon as
+// there are enough digits to judge it, rather than letting something like
+// "99:99" sit there until Save rejects it — typing "99" for the hour
+// becomes "23" immediately, typing "99" for the minutes becomes "59"
+// immediately.
 function formatSlotTimeInput(el) {
+    const prevFormatted = el.dataset.prevFormatted || '';
+    const isDeleting = el.value.length < prevFormatted.length;
     const caretWasAtEnd = el.selectionStart === el.value.length;
-    const digits = el.value.replace(/\D/g, '').slice(0, 4);
-    const formatted = digits.length > 2 ? `${digits.slice(0, 2)}:${digits.slice(2)}` : digits;
+
+    let digits = el.value.replace(/\D/g, '').slice(0, 4);
+
+    // Backspacing the auto-inserted ":" itself would otherwise just get it
+    // immediately re-added (the digits before/after it are unchanged), so
+    // a straight backspace could never get past "20:" back down to "2".
+    // Catching that one case — the delete that just removed the colon —
+    // and dropping the hour's own last digit too makes backspace behave
+    // the way it looks like it should.
+    if (isDeleting && prevFormatted.endsWith(':') && digits.length === 2) {
+        digits = digits.slice(0, 1);
+    }
+
+    if (digits.length >= 2) {
+        const hh = Math.min(parseInt(digits.slice(0, 2), 10), 23);
+        digits = String(hh).padStart(2, '0') + digits.slice(2);
+    }
+    if (digits.length >= 4) {
+        const mm = Math.min(parseInt(digits.slice(2, 4), 10), 59);
+        digits = digits.slice(0, 2) + String(mm).padStart(2, '0');
+    }
+
+    const formatted = digits.length >= 2 ? `${digits.slice(0, 2)}:${digits.slice(2)}` : digits;
     el.value = formatted;
+    el.dataset.prevFormatted = formatted;
     if (caretWasAtEnd) el.setSelectionRange(formatted.length, formatted.length);
+}
+
+// Called on the input's own onblur (index.html) — if what's left in the
+// field isn't a complete, valid HH:MM when the person tries to leave it
+// (tabbing away, tapping elsewhere), refocus it right back instead of
+// letting them wander off with a half-typed or invalid time sitting there
+// unnoticed. An empty field is left alone here — submitSlot's own
+// validation already catches a genuinely blank time, and trapping focus on
+// an untouched field would be more annoying than useful.
+function validateSlotTimeField(el) {
+    const value = el.value.trim();
+    if (!value) {
+        el.classList.remove('invalid');
+        return;
+    }
+    if (parseTimeInputMinutes(value) !== null) {
+        el.classList.remove('invalid');
+        return;
+    }
+    el.classList.add('invalid');
+    // The blur has already happened by the time this runs — refocusing is
+    // what actually keeps the person in this field. Deferred so it doesn't
+    // fight whatever just took focus (e.g. closing the modal via Cancel
+    // hides the field first, making this a harmless no-op).
+    setTimeout(() => el.focus(), 0);
 }
 
 // Strict "H:MM" / "HH:MM" parse, 24-hour range only. Returns
@@ -223,8 +277,15 @@ function openSlotModal(slotId) {
     const slot = slotId ? slots.find(s => s.id === slotId) : null;
 
     document.getElementById('slot-modal-title').textContent = slot ? 'Edit reminder' : 'New reminder';
-    document.getElementById('slot-start-time').value = minutesToTimeInputValue(slot ? slot.start_minutes : 8 * 60);
-    document.getElementById('slot-end-time').value = minutesToTimeInputValue(slot ? slot.end_minutes : 8 * 60 + 30);
+    const startTimeInput = document.getElementById('slot-start-time');
+    const endTimeInput = document.getElementById('slot-end-time');
+    startTimeInput.value = minutesToTimeInputValue(slot ? slot.start_minutes : 8 * 60);
+    endTimeInput.value = minutesToTimeInputValue(slot ? slot.end_minutes : 8 * 60 + 30);
+    // Keeps formatSlotTimeInput's own backspace-tracking (prevFormatted) in
+    // sync with the value the field is actually opening with, rather than
+    // comparing the first real keystroke against a stale/empty baseline.
+    startTimeInput.dataset.prevFormatted = startTimeInput.value;
+    endTimeInput.dataset.prevFormatted = endTimeInput.value;
     document.getElementById('slot-name-input').value = slot ? (slot.name || '') : '';
     document.getElementById('slot-modal-error').style.display = 'none';
     document.getElementById('slot-modal-error').textContent = '';

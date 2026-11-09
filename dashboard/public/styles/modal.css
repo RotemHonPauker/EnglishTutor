@@ -27,9 +27,13 @@
     gap: 8px;
 }
 
+/* Deliberately slimmer and less rounded than the .mode-toggle-btn buttons
+   (base.css) — the two were sitting at oddly similar visual weight before
+   (tags looked "fatter" than the buttons meant to be the more prominent
+   actions), so this moves in the opposite direction from that change. */
 .tag-chip {
-    padding: 6px 14px;
-    border-radius: 16px;
+    padding: 4px 12px;
+    border-radius: 10px;
     border: 2px solid transparent;
     cursor: pointer;
     font-size: 0.875rem;

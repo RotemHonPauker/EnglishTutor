@@ -105,10 +105,18 @@ async function syncSlotsToNotifyServer() {
 // (updateSlotsPermissionWarning, slots.js) so it reflects the outcome
 // right away rather than waiting for the next tab load.
 async function requestNotificationPermission() {
+    // TEMPORARY DEBUG — the native permission prompt isn't appearing even
+    // in a fresh incognito tab, so something earlier in this flow must be
+    // silently failing. These alerts stand in for DevTools console access
+    // on the phone. Remove once this is solved.
+    alert('[debug] requestNotificationPermission called. OneSignal defined? ' + (typeof OneSignal !== 'undefined'));
     if (typeof OneSignal !== 'undefined') {
         try {
-            await OneSignal.Notifications.requestPermission();
+            alert('[debug] Notification.permission before request: ' + (typeof Notification !== 'undefined' ? Notification.permission : 'Notification API unavailable'));
+            const result = await OneSignal.Notifications.requestPermission();
+            alert('[debug] requestPermission() resolved: ' + result + ' | Notification.permission after: ' + (typeof Notification !== 'undefined' ? Notification.permission : 'n/a'));
         } catch (err) {
+            alert('[debug] requestPermission() threw: ' + (err && err.message ? err.message : err));
             console.error('Notification permission request failed:', err);
         }
     } // else: OneSignal hasn't finished loading yet (rare — only right at

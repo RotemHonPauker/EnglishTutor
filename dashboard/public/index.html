@@ -495,11 +495,11 @@
         <div class="slot-time-row">
             <div class="slot-time-field">
                 <label for="slot-start-time">Start</label>
-                <input type="text" id="slot-start-time" inputmode="numeric" maxlength="5" placeholder="20:00" autocomplete="off" oninput="formatSlotTimeInput(this)">
+                <input type="text" id="slot-start-time" inputmode="numeric" maxlength="5" placeholder="20:00" autocomplete="off" oninput="formatSlotTimeInput(this)" onblur="validateSlotTimeField(this)">
             </div>
             <div class="slot-time-field">
                 <label for="slot-end-time">End</label>
-                <input type="text" id="slot-end-time" inputmode="numeric" maxlength="5" placeholder="20:30" autocomplete="off" oninput="formatSlotTimeInput(this)">
+                <input type="text" id="slot-end-time" inputmode="numeric" maxlength="5" placeholder="20:30" autocomplete="off" oninput="formatSlotTimeInput(this)" onblur="validateSlotTimeField(this)">
             </div>
         </div>
         <!-- Just a short name — the notification's actual wording is a

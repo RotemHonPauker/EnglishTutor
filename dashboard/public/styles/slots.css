@@ -256,6 +256,12 @@
     border-color: #2563eb;
 }
 
+/* Set by validateSlotTimeField (slots.js) when the field's value isn't a
+   complete, valid time at the moment the person tries to leave it. */
+.slot-time-field input[type="text"].invalid {
+    border-color: #ef4444;
+}
+
 .slot-name-field {
     display: flex;
     flex-direction: column;
