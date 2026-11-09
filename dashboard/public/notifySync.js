@@ -157,7 +157,7 @@ async function requestNotificationPermission() {
     if (typeof window.oneSignalReady !== 'undefined') {
         alert('[debug] checkpoint 4 — waiting for OneSignal.init() to finish...');
         try {
-            const initTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('INIT_TIMEOUT_8S')), 8000));
+            const initTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('INIT_TIMEOUT_15S')), 15000));
             await Promise.race([window.oneSignalReady, initTimeout]);
             alert('[debug] checkpoint 5 — OneSignal.init() finished');
         } catch (initErr) {
