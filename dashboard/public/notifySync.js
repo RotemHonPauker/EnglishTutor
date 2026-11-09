@@ -127,6 +127,8 @@ async function requestNotificationPermission() {
         return;
     }
 
+    alert('[debug] checkpoint 2 — about to call Notification.requestPermission()');
+
     const rawStart = Date.now();
     let rawResult;
     try {
@@ -135,6 +137,9 @@ async function requestNotificationPermission() {
     } catch (err) {
         rawResult = 'ERROR: ' + (err && err.message ? err.message : err);
     }
+
+    alert('[debug] checkpoint 3 — RAW call settled: ' + rawResult);
+
     let debugMsg = '[debug] RAW Notification.requestPermission(): ' + rawResult + ' (' + (Date.now() - rawStart) + 'ms). ';
 
     if (typeof OneSignal === 'undefined') {
