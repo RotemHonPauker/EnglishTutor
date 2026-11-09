@@ -46,6 +46,20 @@
          and GitHub Pages doesn't let us widen that with a response header. -->
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
     <script>
+        // window.oneSignalReady resolves once OneSignal.init() has actually
+        // finished (not just once the `OneSignal` object exists — the
+        // OneSignalDeferred queue hands it over before init() has
+        // necessarily completed, since init() is itself async). Testing
+        // showed OneSignal.Notifications.requestPermission()/
+        // User.PushSubscription.optIn() behave inconsistently (sometimes
+        // hanging, sometimes "succeeding" without actually creating a real
+        // subscription) when called too soon after page load — this lets
+        // notifySync.js's requestNotificationPermission() wait for true
+        // readiness first, which normally resolves near-instantly anyway
+        // since init() finishes well before a person can tap anything.
+        let resolveOneSignalReady;
+        window.oneSignalReady = new Promise((resolve) => { resolveOneSignalReady = resolve; });
+
         window.OneSignalDeferred = window.OneSignalDeferred || [];
         window.OneSignalDeferred.push(async function (OneSignal) {
             await OneSignal.init({
@@ -58,6 +72,7 @@
             OneSignal.User.PushSubscription.addEventListener('change', () => {
                 if (typeof syncSlotsToNotifyServer === 'function') syncSlotsToNotifyServer();
             });
+            resolveOneSignalReady();
         });
     </script>
 </head>

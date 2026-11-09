@@ -129,6 +129,16 @@ async function requestNotificationPermission() {
         return;
     }
 
+    // Waits for OneSignal.init() to have actually finished (see index.html)
+    // before doing anything else — testing showed inconsistent results
+    // (sometimes hanging, sometimes "succeeding" without a real
+    // subscription) when the SDK wasn't fully initialized yet. This
+    // normally resolves instantly, since init() finishes well before a
+    // person can tap anything — but guards the rare case where it hasn't.
+    if (typeof window.oneSignalReady !== 'undefined') {
+        await window.oneSignalReady;
+    }
+
     const currentPermission = (typeof Notification !== 'undefined') ? Notification.permission : 'unavailable';
     let debugMsg = '[debug] permission was: ' + currentPermission + '. ';
 
