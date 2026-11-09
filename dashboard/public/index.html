@@ -43,7 +43,15 @@
          is "/EnglishTutor/", not "/", because this app is served from a
          GitHub Pages PROJECT path, not the domain root — a service worker
          can only control the directory it's served from (or narrower),
-         and GitHub Pages doesn't let us widen that with a response header. -->
+         and GitHub Pages doesn't let us widen that with a response header.
+
+         IMPORTANT: serviceWorkerPath is resolved against the SITE ROOT,
+         not against the current page's own folder — confirmed on a real
+         device: a plain 'sw.js' here made OneSignal try to fetch
+         https://rotemhonpauker.github.io/sw.js (404), even though the
+         actual file lives at .../EnglishTutor/sw.js right next to this
+         page. So this has to spell out the full path from the root,
+         'EnglishTutor/sw.js', not just the filename. -->
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
     <script>
         // window.oneSignalReady resolves once OneSignal.init() has actually
@@ -64,7 +72,7 @@
         window.OneSignalDeferred.push(async function (OneSignal) {
             await OneSignal.init({
                 appId: '38cf765b-d75a-4822-ad40-bf93ee21cea8',
-                serviceWorkerPath: 'sw.js',
+                serviceWorkerPath: 'EnglishTutor/sw.js',
                 serviceWorkerParam: { scope: '/EnglishTutor/' }
             });
             // Keep the Worker's copy of this device's push-subscription id
