@@ -112,19 +112,29 @@ async function syncSlotsToNotifyServer() {
 // the caller does that afterward, once it knows the final slot state, so a
 // slot created concurrently with this call isn't missed by an early sync.
 async function requestNotificationPermission() {
-    // TEMPORARY DEBUG — a new theory being tested: the earlier alert()s in
-    // this function (now removed) may themselves have been the problem —
-    // each one blocks until manually dismissed, which could be exactly
-    // what was breaking the browser's "this is a direct response to a
-    // user tap" requirement for showing a permission prompt. So this
-    // version shows NOTHING until after the OneSignal call has already
-    // settled (resolved, thrown, or timed out) — the call itself now runs
-    // completely undelayed, right as this function starts. Combined with
-    // slots.js now calling this function itself as early as possible (see
-    // its own comments), this should be as close to the original tap as
-    // this code can get it. One summary alert at the end either way.
-    // Remove once this is confirmed fixed.
+    // TEMPORARY DEBUG — every theory tried so far (user-gesture timing,
+    // alert()s delaying things, OneSignal init not finished yet) still
+    // ends in the same inconsistent hang/fake-success, even with the
+    // Web Push platform now configured in OneSignal's dashboard (0 real
+    // subscribers there throughout). This test bypasses OneSignal
+    // entirely first — plain Notification.requestPermission(), nothing
+    // OneSignal-related — to see whether the browser's own native
+    // permission flow works at all on its own, independent of OneSignal's
+    // subscribe logic. Remove once this is confirmed fixed.
+    if (typeof Notification === 'undefined') return;
+
+    const rawStart = Date.now();
+    let rawResult;
+    try {
+        const rawTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('RAW_TIMEOUT_8S')), 8000));
+        rawResult = await Promise.race([Notification.requestPermission(), rawTimeout]);
+    } catch (err) {
+        rawResult = 'ERROR: ' + (err && err.message ? err.message : err);
+    }
+    let debugMsg = '[debug] RAW Notification.requestPermission(): ' + rawResult + ' (' + (Date.now() - rawStart) + 'ms). ';
+
     if (typeof OneSignal === 'undefined') {
+        alert(debugMsg + 'OneSignal undefined.');
         if (typeof updateSlotsPermissionWarning === 'function') updateSlotsPermissionWarning();
         return;
     }
@@ -140,7 +150,7 @@ async function requestNotificationPermission() {
     }
 
     const currentPermission = (typeof Notification !== 'undefined') ? Notification.permission : 'unavailable';
-    let debugMsg = '[debug] permission was: ' + currentPermission + '. ';
+    debugMsg += 'OneSignal: permission was: ' + currentPermission + '. ';
 
     try {
         const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_8S')), 8000));
