@@ -111,12 +111,36 @@ async function requestNotificationPermission() {
     // on the phone. Remove once this is solved.
     alert('[debug] requestNotificationPermission called. OneSignal defined? ' + (typeof OneSignal !== 'undefined'));
     if (typeof OneSignal !== 'undefined') {
+        // Confirmed by a previous test: Notification.permission is already
+        // "granted" at this point, yet requestPermission() below never
+        // resolves or throws — it just hangs. That points at the service
+        // worker OneSignal needs for the actual push subscription (not the
+        // permission prompt itself, which has nothing to show since
+        // permission is already decided). This checks its registration
+        // state before even calling requestPermission(), so we can see
+        // whether it's stuck installing/waiting rather than active.
+        try {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            const summary = regs.length === 0
+                ? 'no service worker registrations at all'
+                : regs.map(r => `scope=${r.scope} active=${!!r.active} waiting=${!!r.waiting} installing=${!!r.installing}`).join(' | ');
+            alert('[debug] SW registrations: ' + summary);
+        } catch (err) {
+            alert('[debug] getRegistrations() threw: ' + (err && err.message ? err.message : err));
+        }
+
         try {
             alert('[debug] Notification.permission before request: ' + (typeof Notification !== 'undefined' ? Notification.permission : 'Notification API unavailable'));
-            const result = await OneSignal.Notifications.requestPermission();
+
+            // Race against a timeout so a hang produces a visible alert
+            // instead of silence forever — this is what we actually expect
+            // to fire, based on the previous test.
+            const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_8S')), 8000));
+            const result = await Promise.race([OneSignal.Notifications.requestPermission(), timeout]);
+
             alert('[debug] requestPermission() resolved: ' + result + ' | Notification.permission after: ' + (typeof Notification !== 'undefined' ? Notification.permission : 'n/a'));
         } catch (err) {
-            alert('[debug] requestPermission() threw: ' + (err && err.message ? err.message : err));
+            alert('[debug] requestPermission() threw or timed out: ' + (err && err.message ? err.message : err));
             console.error('Notification permission request failed:', err);
         }
     } // else: OneSignal hasn't finished loading yet (rare — only right at
