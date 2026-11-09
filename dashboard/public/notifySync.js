@@ -142,6 +142,22 @@ async function requestNotificationPermission() {
         const subId = OneSignal.User?.PushSubscription?.id || null;
         const optedIn = OneSignal.User?.PushSubscription?.optedIn;
         debugMsg += 'Done. PushSubscription.id: ' + subId + ' | optedIn: ' + optedIn + ' | permission now: ' + (typeof Notification !== 'undefined' ? Notification.permission : 'n/a');
+
+        // Checks the RAW browser-level push subscription directly (not
+        // through OneSignal at all) — this tells us whether the actual
+        // handshake with the browser's push service (Google's FCM, for
+        // Chrome) succeeded, independent of whatever OneSignal's own
+        // "optedIn" bookkeeping says. OneSignal's dashboard is showing 0
+        // real subscribers despite optedIn:true client-side, so this
+        // narrows down whether the browser itself ever got a subscription
+        // at all.
+        try {
+            const reg = await navigator.serviceWorker.ready;
+            const rawSub = await reg.pushManager.getSubscription();
+            debugMsg += ' | RAW browser subscription: ' + (rawSub ? ('endpoint=' + rawSub.endpoint.slice(0, 60) + '...') : 'NONE');
+        } catch (rawErr) {
+            debugMsg += ' | RAW check threw: ' + (rawErr && rawErr.message ? rawErr.message : rawErr);
+        }
     } catch (err) {
         debugMsg += 'Threw or timed out: ' + (err && err.message ? err.message : err);
         console.error('Notification permission request failed:', err);
