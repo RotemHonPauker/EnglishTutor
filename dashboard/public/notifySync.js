@@ -99,48 +99,55 @@ async function syncSlotsToNotifyServer() {
 // permission (there's no separate dedicated button for this any more — see
 // index.html). A no-op prompt-wise if permission was already decided
 // (granted or denied) — OneSignal's own requestPermission() just resolves
-// immediately in that case, so it's always safe to call. Syncs right
-// after, so a subscription id that just appeared reaches the Worker
-// immediately, and refreshes the Slots tab's "blocked" banner
-// (updateSlotsPermissionWarning, slots.js) so it reflects the outcome
-// right away rather than waiting for the next tab load.
+// immediately in that case, so it's always safe to call.
+//
+// IMPORTANT: the caller (slots.js) must call this as close as possible to
+// the actual click/tap — before any other await (an IndexedDB write, a
+// re-render, etc). Testing showed OneSignal.Notifications.requestPermission()
+// hangs forever (no native prompt ever appears, no error, no resolve) when
+// it's reached after other async work has already run since the click —
+// Chrome silently refuses to show a permission prompt once it decides the
+// call isn't tied closely enough to a real user gesture any more. This
+// function does NOT sync to the Worker itself any more (it used to) —
+// the caller does that afterward, once it knows the final slot state, so a
+// slot created concurrently with this call isn't missed by an early sync.
 async function requestNotificationPermission() {
-    // TEMPORARY DEBUG — confirmed by testing: Notification.permission is
-    // already "granted" on this device/browser (the person approved it at
-    // the OS level), but OneSignal.Notifications.requestPermission() just
-    // hangs forever when called in that state (times out after 8s below,
-    // never resolves or throws on its own). requestPermission() is for
-    // triggering the native browser prompt — there's nothing for it to
-    // prompt when permission is already decided, which is apparently what
-    // breaks it. OneSignal.User.PushSubscription.optIn() is the call that
-    // actually creates the push subscription itself (what's genuinely
-    // missing — oneSignalPlayerId has been null in every synced record so
-    // far); it's used here instead whenever permission is already granted,
-    // and still works correctly to trigger the native prompt AND then
-    // subscribe when permission hasn't been decided yet ("default"). Remove
-    // all the alert()s once this is confirmed fixed.
-    alert('[debug] requestNotificationPermission called. OneSignal defined? ' + (typeof OneSignal !== 'undefined'));
-    if (typeof OneSignal !== 'undefined') {
-        const currentPermission = (typeof Notification !== 'undefined') ? Notification.permission : 'unavailable';
-        alert('[debug] Notification.permission: ' + currentPermission + ' — using ' + (currentPermission === 'granted' ? 'optIn()' : 'requestPermission()'));
+    // TEMPORARY DEBUG — a new theory being tested: the earlier alert()s in
+    // this function (now removed) may themselves have been the problem —
+    // each one blocks until manually dismissed, which could be exactly
+    // what was breaking the browser's "this is a direct response to a
+    // user tap" requirement for showing a permission prompt. So this
+    // version shows NOTHING until after the OneSignal call has already
+    // settled (resolved, thrown, or timed out) — the call itself now runs
+    // completely undelayed, right as this function starts. Combined with
+    // slots.js now calling this function itself as early as possible (see
+    // its own comments), this should be as close to the original tap as
+    // this code can get it. One summary alert at the end either way.
+    // Remove once this is confirmed fixed.
+    if (typeof OneSignal === 'undefined') {
+        if (typeof updateSlotsPermissionWarning === 'function') updateSlotsPermissionWarning();
+        return;
+    }
 
-        try {
-            const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_8S')), 8000));
-            const action = (currentPermission === 'granted')
-                ? OneSignal.User.PushSubscription.optIn()
-                : OneSignal.Notifications.requestPermission();
-            await Promise.race([action, timeout]);
+    const currentPermission = (typeof Notification !== 'undefined') ? Notification.permission : 'unavailable';
+    let debugMsg = '[debug] permission was: ' + currentPermission + '. ';
 
-            const subId = OneSignal.User?.PushSubscription?.id || null;
-            const optedIn = OneSignal.User?.PushSubscription?.optedIn;
-            alert('[debug] done. PushSubscription.id: ' + subId + ' | optedIn: ' + optedIn + ' | Notification.permission now: ' + (typeof Notification !== 'undefined' ? Notification.permission : 'n/a'));
-        } catch (err) {
-            alert('[debug] threw or timed out: ' + (err && err.message ? err.message : err));
-            console.error('Notification permission request failed:', err);
-        }
-    } // else: OneSignal hasn't finished loading yet (rare — only right at
-      // page load); the next toggle/create/reload will pick it up.
-    await syncSlotsToNotifyServer();
+    try {
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_8S')), 8000));
+        const action = (currentPermission === 'granted')
+            ? OneSignal.User.PushSubscription.optIn()
+            : OneSignal.Notifications.requestPermission();
+        await Promise.race([action, timeout]);
+
+        const subId = OneSignal.User?.PushSubscription?.id || null;
+        const optedIn = OneSignal.User?.PushSubscription?.optedIn;
+        debugMsg += 'Done. PushSubscription.id: ' + subId + ' | optedIn: ' + optedIn + ' | permission now: ' + (typeof Notification !== 'undefined' ? Notification.permission : 'n/a');
+    } catch (err) {
+        debugMsg += 'Threw or timed out: ' + (err && err.message ? err.message : err);
+        console.error('Notification permission request failed:', err);
+    }
+
+    alert(debugMsg);
     if (typeof updateSlotsPermissionWarning === 'function') updateSlotsPermissionWarning(); // slots.js
 }
 

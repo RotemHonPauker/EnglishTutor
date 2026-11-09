@@ -343,6 +343,19 @@ function showSlotModalError(message) {
 // cross-routine overlap check — see localDb.js's findOverlappingSlot),
 // then creates or updates.
 async function submitSlot() {
+    const isNewSlot = !editingSlotId; // plain variable read, no await — safe to check this early
+
+    // Fired HERE, before any other await below (not after creating the
+    // slot, like before) — see notifySync.js's own comment on
+    // requestNotificationPermission for why: it must stay as close as
+    // possible to this actual click, or Chrome silently refuses to show
+    // the permission prompt at all. Not awaited yet — it runs concurrently
+    // with the rest of this function and is only awaited at the very end,
+    // so it doesn't block validation/saving.
+    const permissionPromise = (isNewSlot && typeof requestNotificationPermission === 'function')
+        ? requestNotificationPermission()
+        : null;
+
     const name = document.getElementById('slot-name-input').value.trim();
     if (!name) {
         showSlotModalError('Please give this reminder a name.');
@@ -383,29 +396,33 @@ async function submitSlot() {
         return;
     }
 
-    const isNewSlot = !editingSlotId; // about to be cleared by closeSlotModal — capture first
-
     closeSlotModal();
     await loadSlotsScreen();
 
-    // A new reminder is created already-on (createSlot's enabled: true
-    // default) — that's exactly the kind of gesture that should also ask
-    // for push permission, same reasoning as toggleSlotEnabled below, so a
-    // first-time user isn't left with an "on" reminder that silently never
-    // got permission to actually notify. Editing an existing reminder's
-    // time/name/tags doesn't change its on/off state, so a plain sync is
-    // enough there.
-    if (isNewSlot && typeof requestNotificationPermission === 'function') {
-        await requestNotificationPermission(); // notifySync.js — also syncs
-    } else if (typeof syncSlotsToNotifyServer === 'function') {
-        syncSlotsToNotifyServer(); // notifySync.js
-    }
+    // The permission request (if any) was already fired at the very top of
+    // this function, right as Save was tapped — just wait for it to finish
+    // here. Then sync, now that the new/edited slot actually exists in the
+    // local DB (syncing any earlier would have missed it) — this also
+    // covers the subscription id that requestNotificationPermission may
+    // have just obtained, so the Worker learns about both in one go.
+    if (permissionPromise) await permissionPromise;
+    if (typeof syncSlotsToNotifyServer === 'function') await syncSlotsToNotifyServer(); // notifySync.js
 }
 
 // Wired to each reminder's own on/off toggle (renderSlotsList). wasEnabled
 // is the state BEFORE this click (captured at render time), so the new
 // state is simply its opposite.
 async function toggleSlotEnabled(id, wasEnabled) {
+    // Turning a reminder ON is itself the explicit user gesture browsers
+    // require before they'll prompt for push permission (a no-op if
+    // already granted/denied) — fired HERE, before the setSlotEnabled
+    // write below, same reasoning as submitSlot: it has to stay as close
+    // as possible to this actual tap, or Chrome silently never shows the
+    // permission prompt at all. Not awaited yet — only at the very end.
+    const permissionPromise = (!wasEnabled && typeof requestNotificationPermission === 'function')
+        ? requestNotificationPermission()
+        : null;
+
     try {
         await setSlotEnabled(id, !wasEnabled); // localDb.js
     } catch (err) {
@@ -415,15 +432,10 @@ async function toggleSlotEnabled(id, wasEnabled) {
     }
     await loadSlotsScreen();
 
-    // Turning a reminder ON is itself the explicit user gesture browsers
-    // require before they'll prompt for push permission — ask right here
-    // (a no-op if already granted) instead of needing a separate dedicated
-    // button. Turning one off never needs permission, just a sync.
-    if (!wasEnabled && typeof requestNotificationPermission === 'function') {
-        await requestNotificationPermission(); // notifySync.js — also syncs
-    } else if (typeof syncSlotsToNotifyServer === 'function') {
-        syncSlotsToNotifyServer(); // notifySync.js
-    }
+    // Turning one off never needed permission — just a sync either way,
+    // once the permission request (if any) has finished.
+    if (permissionPromise) await permissionPromise;
+    if (typeof syncSlotsToNotifyServer === 'function') await syncSlotsToNotifyServer(); // notifySync.js
 }
 
 // Deleting is modal-only now — open the reminder (tap its card) and use
