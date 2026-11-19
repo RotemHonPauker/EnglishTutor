@@ -1,23 +1,29 @@
-// slots.js — the Slots screen: the repurposed former-Analytics tab slot
-// in the bottom nav, now used to manage time-of-day reminders for the
-// currently active Routine (see localDb.js's Slots section for the
-// underlying data: start/end minutes, name, space_id, tag_ids).
+// slots.js — the Schedule screen (repurposed former-Analytics tab slot in
+// the bottom nav), used to manage time-of-day slots for the currently
+// active Routine (see localDb.js's Slots section for the underlying
+// data: start/end minutes, name, space_id, color). Tags are gone — each
+// slot carries its own color directly now, and that color/name is what a
+// phrase captured during its time window gets labeled with, with no
+// separate tag entity in between (see translationEngine.js's
+// translatePhrase and localDb.js's getPhrases).
 //
 // Two views live here:
-//   1. The per-routine Slots list (#view-slots) — scoped to activeSpaceId,
-//      showing only that routine's own slots and only that routine's own
-//      tags in the add/edit form. This is the main, everyday view.
-//   2. The "view full day" overlay (#full-day-modal-overlay) — reachable
-//      from a button on the Slots screen — merges every slot from every
-//      Routine into one time-sorted list, color-coded per routine. This
-//      is the ONLY place slots from different routines are shown
-//      together; the per-routine list never leaks another routine's
-//      slots in.
+//   1. The per-routine Schedule list (#view-slots) — scoped to
+//      activeSpaceId, showing only that routine's own slots. This is the
+//      main, everyday view.
+//   2. The "Full schedule" overlay (#full-day-modal-overlay) — reachable
+//      from a button on the Schedule screen — merges every slot from
+//      every Routine into one time-sorted list, each shown in its own
+//      color. This is the ONLY place slots from different routines are
+//      shown together; the per-routine list never leaks another
+//      routine's slots in.
 //
 // Needs localDb.js (getSlots/getAllSlots/createSlot/updateSlot/deleteSlot/
-// findOverlappingSlot), spacesState.js (spaces/activeSpaceId/getActiveSpace)
-// and tags.js (tags) loaded first. COLORS (colorUtils.js) is reused for the
-// full-day overlay's per-routine color coding.
+// findOverlappingSlot) and spacesState.js (spaces/activeSpaceId/
+// getActiveSpace) loaded first. COLORS (colorUtils.js) is the shared pool
+// every slot's color comes from, app-wide (see localDb.js's
+// MAX_SLOTS_TOTAL) — the same list backs both the add/edit modal's color
+// picker and the "Full schedule" overlay's per-slot coloring.
 
 let slots = []; // the ACTIVE routine's own slots only
 
@@ -155,34 +161,18 @@ function formatSlotRange(startMinutes, endMinutes) {
 
 // ===== Which slot is active right now? =====
 // Global across every routine, not just the active one — used by
-// translationEngine.js (restricting a captured phrase's candidate tags to
-// the active slot's own tags, instead of the whole routine's tag list)
-// and by globalRecord.js (deciding which routine to route a fresh
-// recording's transcript into). At most one slot can ever match at a
-// given instant, since overlapping slots are blocked at creation time
-// regardless of which routine they belong to (see localDb.js's
-// findOverlappingSlot) — so there's nothing to disambiguate here.
+// translationEngine.js (deciding a freshly captured phrase's slot
+// directly, with no model call involved) and by globalRecord.js (deciding
+// which routine to route a fresh recording's transcript into). At most
+// one slot can ever match at a given instant, since overlapping slots are
+// blocked at creation time regardless of which routine they belong to
+// (see localDb.js's findOverlappingSlot) — so there's nothing to
+// disambiguate here.
 async function findActiveSlotNow() {
     const now = new Date();
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
     const all = await getAllSlots();
     return all.find(s => s.start_minutes <= nowMinutes && nowMinutes < s.end_minutes) || null;
-}
-
-// ===== Deterministic per-routine color (for the full-day overlay) =====
-// Routines have no color field of their own today — this derives a
-// stable pick from the existing tag-color palette (colorUtils.js) purely
-// for telling routines apart on the merged timeline. Nothing here is
-// saved; the same routine id always hashes to the same color, which is
-// all the overlay needs.
-
-function routineColorForId(spaceId) {
-    if (!spaceId || typeof COLORS === 'undefined' || !COLORS.length) return '#333';
-    let hash = 0;
-    for (let i = 0; i < spaceId.length; i++) {
-        hash = (hash * 31 + spaceId.charCodeAt(i)) >>> 0;
-    }
-    return COLORS[hash % COLORS.length];
 }
 
 // ===== Entering / leaving the tab =====
@@ -194,12 +184,12 @@ function enterSlotsTab(btnEl) {
 
 // Called on initial load and on every routine switch (spacesState.js) —
 // same pattern as renderSpaceRulesForm/renderAnalyticsChart: safe to call
-// even when the Slots view isn't the one currently on screen, since it
+// even when the Schedule view isn't the one currently on screen, since it
 // just no-ops if the view's elements aren't there, and otherwise leaves
 // it already up to date for the next time the tab is opened.
 async function loadSlotsScreen() {
     const list = document.getElementById('slots-list');
-    if (!list) return; // not on the Slots tab yet
+    if (!list) return; // not on the Schedule tab yet
 
     const active = typeof getActiveSpace === 'function' ? getActiveSpace() : null;
     if (!active) {
@@ -217,27 +207,15 @@ async function loadSlotsScreen() {
 // browser's own push permission is currently denied — checked every time
 // the tab loads, and again right after any attempt to request permission
 // (see notifySync.js's requestNotificationPermission), so it never shows
-// stale info. A reminder's own on/off toggle is a separate, per-reminder
-// concern (see renderSlotsList/toggleSlotEnabled) from this: this banner is
-// about whether the browser will deliver ANY notification at all,
-// regardless of which reminders are individually turned on.
+// stale info. A slot's own on/off toggle is a separate, per-slot concern
+// (see renderSlotsList/toggleSlotEnabled) from this: this banner is about
+// whether the browser will deliver ANY notification at all, regardless of
+// which slots are individually turned on.
 function updateSlotsPermissionWarning() {
     const warning = document.getElementById('slots-permission-warning');
     if (!warning) return;
     const blocked = typeof Notification !== 'undefined' && Notification.permission === 'denied';
     warning.style.display = blocked ? '' : 'none';
-}
-
-// Re-renders just the list (and the tag picker, if the add/edit modal is
-// open) without re-fetching — called from tags.js's loadTags() whenever
-// the active routine's tags change (added, renamed, recolored, deleted,
-// merged), so a slot's tag chips and the picker's choices never show a
-// stale name/color.
-function refreshSlotsAfterTagsChanged() {
-    if (document.getElementById('slots-list')) renderSlotsList();
-    if (document.getElementById('slot-modal-overlay')?.style.display === 'flex') {
-        renderSlotTagPicker();
-    }
 }
 
 // ===== Rendering the per-routine list =====
@@ -247,39 +225,29 @@ function renderSlotsList() {
     if (!list) return;
 
     if (!slots.length) {
-        list.innerHTML = '<div class="slots-empty">No reminders yet for this routine — add one to get notified when it\'s time to record.</div>';
+        list.innerHTML = '<div class="slots-empty">No time slots yet for this routine — add one to get notified when it\'s time to record.</div>';
         return;
     }
 
     list.innerHTML = slots.map(s => {
-        const tagChips = (s.tag_ids || [])
-            .map(id => tags.find(t => t.id === id))
-            .filter(Boolean)
-            .map(t => {
-                const contrast = getContrastColor(t.color);
-                return `<span class="slot-tag-chip" style="background:${t.color || '#333'}; color:${contrast}">${escapeHtml(t.name)}</span>`;
-            }).join('');
-
         // A slot saved before this toggle existed has no `enabled` field at
         // all — treated as on (true), same as a freshly created one, never
         // as silently off.
         const enabled = s.enabled !== false;
+        const color = s.color || '#333';
 
-        // Time, name, and tags all sit in one row now (no wrapping to a
-        // second line) — the first tag stays inline, and any further tags
-        // stack vertically underneath it in their own narrow column,
-        // rather than wrapping the whole row. Deleting is modal-only now
-        // (the edit modal's own Delete button) — removing the card's own
-        // trash icon freed up the room for this. See .disabled below for
-        // the dimmed look when the toggle is off.
+        // The slot's own color is its at-a-glance identity now (same
+        // border-accent language as .full-day-row below) — no more tag
+        // chips stacked on the card. Deleting is modal-only (the edit
+        // modal's own Delete button). See .disabled below for the dimmed
+        // look when the toggle is off.
         return `
-        <div class="slot-card${enabled ? '' : ' disabled'}">
+        <div class="slot-card${enabled ? '' : ' disabled'}" style="border-inline-start-color:${color}">
             <div class="slot-card-main" onclick="openSlotModal('${s.id}')">
                 <div class="slot-card-time">${formatSlotRange(s.start_minutes, s.end_minutes)}</div>
                 <div class="slot-card-text">${escapeHtml(s.name || '')}</div>
-                ${tagChips ? `<div class="slot-card-tags">${tagChips}</div>` : ''}
             </div>
-            <label class="slot-enable-toggle" title="${enabled ? 'Reminder on — tap to turn off' : 'Reminder off — tap to turn on'}">
+            <label class="slot-enable-toggle" title="${enabled ? 'Time slot on — tap to turn off' : 'Time slot off — tap to turn on'}">
                 <input type="checkbox" ${enabled ? 'checked' : ''} onchange="toggleSlotEnabled('${s.id}', ${enabled})">
                 <span class="slot-enable-toggle-track"></span>
             </label>
@@ -291,9 +259,9 @@ function renderSlotsList() {
 // ===== Add/edit modal =====
 
 let editingSlotId = null;
-let selectedSlotTagIds = new Set();
+let selectedSlotColor = null;
 
-function openSlotModal(slotId) {
+async function openSlotModal(slotId) {
     const active = typeof getActiveSpace === 'function' ? getActiveSpace() : null;
     if (!active) return;
 
@@ -317,44 +285,49 @@ function openSlotModal(slotId) {
     const deleteBtn = document.getElementById('slot-modal-delete-btn');
     if (deleteBtn) deleteBtn.style.display = slot ? '' : 'none';
 
-    selectedSlotTagIds = new Set(slot ? (slot.tag_ids || []) : []);
-    renderSlotTagPicker();
+    selectedSlotColor = slot ? (slot.color || null) : null;
+    await renderSlotColorPicker();
 
     document.getElementById('slot-modal-overlay').style.display = 'flex';
 }
 
 function closeSlotModal() {
     editingSlotId = null;
-    selectedSlotTagIds = new Set();
+    selectedSlotColor = null;
     document.getElementById('slot-modal-overlay').style.display = 'none';
 }
 
-// Only the ACTIVE routine's own tags are offered — avoids tag-list
-// clutter/confusion from every other routine's tags, per the agreed
-// design. Multi-select: tapping a chip toggles it in/out of the set.
-function renderSlotTagPicker() {
-    const container = document.getElementById('slot-tag-picker');
+// Every slot across every routine shares ONE pool of colors (see
+// localDb.js's MAX_SLOTS_TOTAL) — a slot's color IS its identity, so two
+// slots can never share one anywhere in the app. Checked against every
+// slot (getAllSlots), not just this routine's own; the slot currently
+// being edited never disables its own color.
+async function renderSlotColorPicker() {
+    const container = document.getElementById('slot-color-picker');
     if (!container) return;
 
-    if (!tags.length) {
-        container.innerHTML = '<div class="slots-empty">This routine has no tags yet — you can still save this reminder without one.</div>';
-        return;
-    }
+    const allSlots = await getAllSlots();
+    const usedColors = allSlots
+        .filter(s => s.id !== editingSlotId && s.color)
+        .map(s => s.color);
 
-    container.innerHTML = tags.map(t => {
-        const contrast = getContrastColor(t.color);
-        const selected = selectedSlotTagIds.has(t.id);
-        return `<div class="tag-chip ${selected ? 'selected' : ''}" style="background:${t.color || '#333'}; color:${contrast}" onclick="toggleSlotTagChip('${t.id}')">${escapeHtml(t.name)}</div>`;
+    container.innerHTML = COLORS.map(c => {
+        const taken = usedColors.includes(c);
+        return `
+            <div class="color-circle ${selectedSlotColor === c ? 'selected' : ''} ${taken ? 'disabled' : ''}"
+                style="background:${c}"
+                onclick="${taken ? '' : `selectSlotColor('${c}')`}"
+                data-color="${c}">
+            </div>
+        `;
     }).join('');
 }
 
-function toggleSlotTagChip(tagId) {
-    if (selectedSlotTagIds.has(tagId)) {
-        selectedSlotTagIds.delete(tagId);
-    } else {
-        selectedSlotTagIds.add(tagId);
-    }
-    renderSlotTagPicker();
+function selectSlotColor(color) {
+    selectedSlotColor = color;
+    document.querySelectorAll('#slot-color-picker .color-circle').forEach(el => {
+        el.classList.toggle('selected', el.dataset.color === color);
+    });
 }
 
 function showSlotModalError(message) {
@@ -363,9 +336,9 @@ function showSlotModalError(message) {
     err.style.display = 'block';
 }
 
-// Validates (name present, same-day range, then the hard-block
-// cross-routine overlap check — see localDb.js's findOverlappingSlot),
-// then creates or updates.
+// Validates (name present, color chosen, same-day range, then the
+// hard-block cross-routine overlap check — see localDb.js's
+// findOverlappingSlot), then creates or updates.
 async function submitSlot() {
     const isNewSlot = !editingSlotId; // plain variable read, no await — safe to check this early
 
@@ -382,7 +355,12 @@ async function submitSlot() {
 
     const name = document.getElementById('slot-name-input').value.trim();
     if (!name) {
-        showSlotModalError('Please give this reminder a name.');
+        showSlotModalError('Please give this time slot a name.');
+        return;
+    }
+
+    if (!selectedSlotColor) {
+        showSlotModalError('Please pick a color for this time slot.');
         return;
     }
 
@@ -395,7 +373,7 @@ async function submitSlot() {
     }
 
     if (endMinutes <= startMinutes) {
-        showSlotModalError("End time must be after start time — reminders can't cross midnight yet.");
+        showSlotModalError("End time must be after start time — time slots can't cross midnight yet.");
         return;
     }
 
@@ -403,20 +381,18 @@ async function submitSlot() {
     if (conflict) {
         const conflictSpace = (typeof spaces !== 'undefined' ? spaces : []).find(s => s.id === conflict.space_id);
         const conflictRoutineName = conflictSpace ? conflictSpace.name : 'another routine';
-        showSlotModalError(`That overlaps an existing reminder: "${conflict.name}" (${formatSlotRange(conflict.start_minutes, conflict.end_minutes)}, ${conflictRoutineName}). Adjust one of the times first.`);
+        showSlotModalError(`That overlaps an existing time slot: "${conflict.name}" (${formatSlotRange(conflict.start_minutes, conflict.end_minutes)}, ${conflictRoutineName}). Adjust one of the times first.`);
         return;
     }
 
-    const tagIds = [...selectedSlotTagIds];
-
     try {
         if (editingSlotId) {
-            await updateSlot({ id: editingSlotId, startMinutes, endMinutes, name, tagIds });
+            await updateSlot({ id: editingSlotId, startMinutes, endMinutes, name, color: selectedSlotColor });
         } else {
-            await createSlot({ spaceId: activeSpaceId, startMinutes, endMinutes, name, tagIds });
+            await createSlot({ spaceId: activeSpaceId, startMinutes, endMinutes, name, color: selectedSlotColor });
         }
     } catch (err) {
-        showSlotModalError(err.message || 'Failed to save reminder.');
+        showSlotModalError(err.message || 'Failed to save time slot.');
         return;
     }
 
@@ -433,11 +409,11 @@ async function submitSlot() {
     if (typeof syncSlotsToNotifyServer === 'function') await syncSlotsToNotifyServer(); // notifySync.js
 }
 
-// Wired to each reminder's own on/off toggle (renderSlotsList). wasEnabled
-// is the state BEFORE this click (captured at render time), so the new
+// Wired to each slot's own on/off toggle (renderSlotsList). wasEnabled is
+// the state BEFORE this click (captured at render time), so the new
 // state is simply its opposite.
 async function toggleSlotEnabled(id, wasEnabled) {
-    // Turning a reminder ON is itself the explicit user gesture browsers
+    // Turning a slot ON is itself the explicit user gesture browsers
     // require before they'll prompt for push permission (a no-op if
     // already granted/denied) — fired HERE, before the setSlotEnabled
     // write below, same reasoning as submitSlot: it has to stay as close
@@ -450,7 +426,7 @@ async function toggleSlotEnabled(id, wasEnabled) {
     try {
         await setSlotEnabled(id, !wasEnabled); // localDb.js
     } catch (err) {
-        alert('Failed to update reminder.');
+        alert('Failed to update time slot.');
         await loadSlotsScreen(); // reverts the checkbox's own optimistic UI state back to what's actually stored
         return;
     }
@@ -462,13 +438,13 @@ async function toggleSlotEnabled(id, wasEnabled) {
     if (typeof syncSlotsToNotifyServer === 'function') await syncSlotsToNotifyServer(); // notifySync.js
 }
 
-// Deleting is modal-only now — open the reminder (tap its card) and use
-// the Delete button there. There's no longer a quick-delete icon directly
-// on the card itself (see renderSlotsList).
+// Deleting is modal-only — open the slot (tap its card) and use the
+// Delete button there. There's no quick-delete icon directly on the card
+// itself (see renderSlotsList).
 async function deleteSlotFromModal() {
     if (!editingSlotId) return;
     const id = editingSlotId;
-    const confirmed = confirm('Delete this reminder? This can\'t be undone.');
+    const confirmed = confirm('Delete this time slot? This can\'t be undone.');
     if (!confirmed) return;
     try {
         await deleteSlot(id);
@@ -476,27 +452,27 @@ async function deleteSlotFromModal() {
         await loadSlotsScreen();
         if (typeof syncSlotsToNotifyServer === 'function') syncSlotsToNotifyServer(); // notifySync.js
     } catch (err) {
-        showSlotModalError('Failed to delete reminder.');
+        showSlotModalError('Failed to delete time slot.');
     }
 }
 
-// ===== "View full day" overlay — every routine's slots together =====
+// ===== "Full schedule" overlay — every routine's slots together =====
 
 async function openFullDayOverlay() {
-    // Only on reminders — a reminder someone turned off still exists and
-    // can still be edited, but it won't actually notify, so including it
-    // here would make this merged timeline misrepresent what's really
-    // going to happen today.
+    // Only enabled slots — one someone turned off still exists and can
+    // still be edited, but it won't actually notify, so including it here
+    // would make this merged timeline misrepresent what's really going to
+    // happen today.
     const all = (await getAllSlots()).filter(s => s.enabled !== false);
     const container = document.getElementById('full-day-list');
 
     if (!all.length) {
-        container.innerHTML = '<div class="slots-empty">No active reminders in any routine right now.</div>';
+        container.innerHTML = '<div class="slots-empty">No active time slots in any routine right now.</div>';
     } else {
         const spaceById = new Map((typeof spaces !== 'undefined' ? spaces : []).map(s => [s.id, s]));
         container.innerHTML = all.map(s => {
             const routine = spaceById.get(s.space_id);
-            const color = routineColorForId(s.space_id);
+            const color = s.color || '#333';
             const routineName = routine ? routine.name : 'Deleted routine';
             return `
             <div class="full-day-row" style="border-inline-start-color:${color}">
@@ -522,8 +498,7 @@ function closeFullDayOverlay() {
 // doesn't type notification copy. The actual push-notification body
 // (Step 3: OneSignal) is always built from this one fixed template, so
 // every notification reads the same way regardless of what the slot is
-// for. Not called anywhere yet — defined here, next to the Slot entity
-// itself, ready for when push notifications are wired up.
+// for.
 function buildSlotNotificationText(slot) {
     return `Time to record: ${slot.name}`;
 }

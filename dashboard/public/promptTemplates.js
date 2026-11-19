@@ -11,6 +11,13 @@
 // Content must stay byte-for-byte identical to the .txt files it mirrors
 // — if those change on the server side (while it still exists) or get
 // deleted later, update this file to match.
+//
+// NOTE: TRANSLATION_PROMPT_TEMPLATE used to have a "Step 3: Suggest a
+// Tag" section asking Gemini to pick a tag out of the active slot's
+// candidate list. That's gone — a captured phrase's slot is now decided
+// entirely in code (translationEngine.js just checks which slot's time
+// window is open right now), so there's nothing left for the model to be
+// asked about here.
 
 const TRANSLATION_PROMPT_TEMPLATE = `## Input
 You will receive a phrase.
@@ -31,15 +38,12 @@ If any \${sourceLanguage} words are mixed in, translate just those words into \$
 \${translationStep}
 \${spaceRulesSection}
 
-## Step 3: Suggest a Tag
-\${existingTagsSection}
-
 ## Phrase
 "\${phrase}"
 
 ## Output
 Respond ONLY with valid JSON in this exact format, no other text:
-{"correctedSource": "...", "variant1": "...", "variant2": "...", "tag": "..." or null}`;
+{"correctedSource": "...", "variant1": "...", "variant2": "..."}`;
 
 const VARIANT_GUIDANCE_TEMPLATE = `Translate into two natural \${targetLanguage} variants that convey the same meaning but differ slightly in character. Guidance on how each variant should specifically sound is provided below, if this space has defined any.
 

@@ -33,7 +33,7 @@ function getPracticeItems() {
 function applyDictionaryModeUI() {
     const dict = isDictionarySpace();
 
-    // Tab bar — Slots (phrase/tag-only reminders) and Setup (space-rules
+    // Tab bar — Schedule (phrase-only time slots) and Setup (space-rules
     // only) don't apply to a dictionary space.
     const slotsBtn = document.querySelector('.tab-btn[data-view="slots"]');
     const setupBtn = document.querySelector('.tab-btn[data-view="tags"]');
@@ -55,9 +55,9 @@ function applyDictionaryModeUI() {
         setAddInputMode('dictionary');
     }
 
-    // Practice — tags don't apply to dictionary entries.
-    const tagsBtn = document.getElementById('practice-tags-btn');
-    if (tagsBtn) tagsBtn.style.display = dict ? 'none' : '';
+    // Practice — time slots don't apply to dictionary entries.
+    const slotsFilterBtn = document.getElementById('practice-slots-btn');
+    if (slotsFilterBtn) slotsFilterBtn.style.display = dict ? 'none' : '';
 }
 
 // ===== Quick lookup from a non-dictionary space =====
@@ -241,7 +241,7 @@ async function loadDictionaryEntries(spaceId) {
 
 // Called from renderTable() (phrasesTable.js) when the active space is a
 // dictionary — a different card shape (word / part of speech / synonyms /
-// example), no tag badge, no 🔊. Reuses .phrase-card/.phrase-card-header/
+// example), no slot badge, no 🔊. Reuses .phrase-card/.phrase-card-header/
 // .phrase-card-icons/.phrase-card-main and the learned-state styling
 // as-is, so only the dictionary-specific inner pieces need their own CSS.
 function renderDictionaryCards() {

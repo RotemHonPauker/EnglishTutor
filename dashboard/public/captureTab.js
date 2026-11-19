@@ -280,7 +280,7 @@ async function submitPhraseDirect(text) {
             variant1: result.variant1,
             variant2: result.variant2,
             spaceId: activeSpaceId,
-            tagId: result.tagId
+            slotId: result.slotId
         });
         addCaptureResult(phrase);
         loadTable(); // so it's already there if the user switches to Practice
@@ -446,7 +446,7 @@ async function finishRecordingIntoTranscript(spaceId, transcriptText) {
     await createTranscript({ spaceId, content: transcriptText });
 
     if (spaceId !== activeSpaceId) {
-        // Also reloads tags/phrases/slots for the new routine, and (via
+        // Also reloads phrases/slots for the new routine, and (via
         // resetCaptureLog, called inside setActiveSpace) clears whatever
         // the Add tab happened to be showing — expected here, since the
         // fresh transcript is opened right below anyway.

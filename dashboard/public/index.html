@@ -27,7 +27,6 @@
     <link rel="stylesheet" href="styles/base.css">
     <link rel="stylesheet" href="styles/table.css">
     <link rel="stylesheet" href="styles/modal.css">
-    <link rel="stylesheet" href="styles/tags.css">
     <link rel="stylesheet" href="styles/spaceRules.css">
     <link rel="stylesheet" href="styles/slots.css">
     <link rel="stylesheet" href="styles/tabs.css">
@@ -86,7 +85,7 @@
 </head>
 <body>
 
-<!-- APP LOADING OVERLAY: shown until initial data (tags + phrases) has
+<!-- APP LOADING OVERLAY: shown until initial data (spaces + phrases) has
      loaded, then faded out — covers the whole app regardless of which tab
      is active, since the same brief load happens once at startup. -->
 <div id="app-loading-overlay">
@@ -117,11 +116,11 @@
             <div id="table-section">
                 <div id="table-toolbar">
                     <span id="phrase-count"></span>
-                    <button id="practice-tags-btn" onclick="openTagFilterModal()">Tags</button>
+                    <button id="practice-slots-btn" onclick="openSlotFilterModal()">Slots</button>
                     <button id="learned-filter-btn" onclick="toggleLearnedFilter()">All</button>
                     <button id="select-mode-btn" onclick="toggleSelectMode()">Select</button>
                 </div>
-                <div id="active-tag-filters" class="active-filters-row" style="display:none"></div>
+                <div id="active-slot-filters" class="active-filters-row" style="display:none"></div>
                 <div id="selection-action-bar" style="display:none">
                     <span id="selection-count"></span>
                     <button onclick="toggleSelectMode()">Cancel</button>
@@ -245,45 +244,39 @@
         </div>
     </div>
 
-    <!-- SLOTS VIEW (repurposed former Analytics tab slot): time-of-day
-         reminders for the currently active Routine, AND that routine's own
-         Tags — tags moved here from Setup (which was getting crowded) since
-         they're really a slot concern now: a slot's tags are what a phrase
-         captured during it gets auto-tagged with. Scoped to that one
-         routine's own slots/tags — the only place every routine's slots
-         are shown together is the "view full day" overlay below. -->
+    <!-- SCHEDULE VIEW (repurposed former Analytics tab slot): time-of-day
+         slots for the currently active Routine. Tags are gone — each
+         slot carries its own color directly (see the color picker in the
+         slot modal below), and that's what a phrase captured during its
+         window gets labeled/colored with, with no separate tag entity in
+         between. Scoped to that one routine's own slots — the only place
+         every routine's slots are shown together is the "Full schedule"
+         overlay below. -->
     <div id="view-slots" class="view">
         <div id="slots-scroll">
             <!-- Reuses the shared .mode-toggle / .mode-toggle-btn classes
                  (base.css) — same look as Export/Import in the Backup
                  section and Dark/Light in Appearance, rather than a
                  one-off button style. No separate title here any more:
-                 the tab itself is now labeled "Reminders" (see #tab-bar
+                 the tab itself is now labeled "Schedule" (see #tab-bar
                  below), so it would've just repeated that. -->
             <div class="mode-toggle" id="slots-header-actions">
                 <button class="mode-toggle-btn active" onclick="openFullDayOverlay()">🗓️ Full schedule</button>
                 <button class="mode-toggle-btn active" onclick="openSlotModal(null)">+ Add time slot</button>
             </div>
-            <!-- There's no separate "Enable reminders" button any more —
-                 each reminder has its own on/off toggle (slots.js's
-                 renderSlotsList), defaulting to on for a new reminder, and
+            <!-- There's no separate "Enable notifications" button any more
+                 — each time slot has its own on/off toggle (slots.js's
+                 renderSlotsList), defaulting to on for a new slot, and
                  turning one on is itself the user gesture that triggers the
                  browser's push-permission prompt (see
                  notifySync.js's requestNotificationPermission). This banner
                  only shows up if that permission ends up blocked, so a
-                 reminder that's "on" here doesn't silently fail to ever
-                 notify without explanation. -->
+                 slot that's "on" here doesn't silently fail to ever notify
+                 without explanation. -->
             <div id="slots-permission-warning" class="slots-permission-warning" style="display:none">
-                🔕 Notifications are blocked in this browser — your reminders are set, but won't actually notify you until you allow notifications for this site in your browser settings.
+                🔕 Notifications are blocked in this browser — your time slots are set, but won't actually notify you until you allow notifications for this site in your browser settings.
             </div>
             <div id="slots-list"></div>
-            <div id="tag-sidebar">
-                <div id="sidebar-header">
-                    Tags
-                    <button onclick="openAddTagModal()">+ tag</button>
-                </div>
-                <div id="tag-list"></div>
-            </div>
         </div>
     </div>
 
@@ -367,8 +360,8 @@
         <span id="global-record-label" class="global-record-label">Record</span>
     </div>
     <button class="tab-btn" data-view="slots" onclick="requestTabSwitch('slots', this)">
-        <span class="tab-icon">🔔</span>
-        <span>Reminder</span>
+        <span class="tab-icon">🕐</span>
+        <span>Schedule</span>
     </button>
     <button class="tab-btn" data-view="tags" onclick="requestTabSwitch('tags', this)">
         <span class="tab-icon">⚙️</span>
@@ -377,47 +370,35 @@
 </nav>
 
 
-<!-- TAG FILTER MODAL -->
-<div id="tag-filter-modal-overlay" style="display:none">
-    <div id="tag-filter-modal" class="confirm-modal">
+<!-- SLOT FILTER MODAL -->
+<div id="slot-filter-modal-overlay" style="display:none">
+    <div id="slot-filter-modal" class="confirm-modal">
         <div class="modal-header">
-            <span>Filter by tag</span>
-            <button onclick="closeTagFilterModal()">✕</button>
+            <span>Filter by time slot</span>
+            <button onclick="closeSlotFilterModal()">✕</button>
         </div>
-        <div id="tag-filter-groups"></div>
+        <div id="slot-filter-groups"></div>
         <div class="modal-footer">
-            <button onclick="clearTagFilter()">Clear</button>
-            <button class="primary" onclick="applyTagFilter()">Apply</button>
+            <button onclick="clearSlotFilter()">Clear</button>
+            <button class="primary" onclick="applySlotFilter()">Apply</button>
         </div>
     </div>
 </div>
 
-<!-- TAG PICKER MODAL -->
-<div id="tag-picker-modal-overlay" style="display:none">
-    <div id="tag-picker-modal" class="confirm-modal">
+<!-- SLOT PICKER MODAL (reassigning a phrase's time slot from Practice) -->
+<div id="slot-picker-modal-overlay" style="display:none">
+    <div id="slot-picker-modal" class="confirm-modal">
         <div class="modal-header">
-            <span>Choose a tag</span>
-            <button onclick="closeTagPicker()">✕</button>
+            <span>Choose a time slot</span>
+            <button onclick="closeSlotPicker()">✕</button>
         </div>
         <div class="tag-picker-section">
-            <div id="tag-picker-list" class="tag-picker-chip-list"></div>
+            <div id="slot-picker-list" class="tag-picker-chip-list"></div>
         </div>
         <div class="modal-footer">
-            <button onclick="closeTagPicker()">Cancel</button>
-            <button class="primary" id="tag-picker-confirm-btn" onclick="confirmTagPick()">Confirm</button>
+            <button onclick="closeSlotPicker()">Cancel</button>
+            <button class="primary" id="slot-picker-confirm-btn" onclick="confirmSlotPick()">Confirm</button>
         </div>
-    </div>
-</div>
-
-<!-- TAG EDIT MODAL (delete / edit, and add-tag) -->
-<div id="tag-edit-modal-overlay" style="display:none">
-    <div id="tag-edit-modal" class="confirm-modal">
-        <div class="modal-header">
-            <span id="tag-edit-modal-title">Tag</span>
-            <button onclick="closeTagEditModal()">✕</button>
-        </div>
-        <div id="tag-edit-modal-body"></div>
-        <div id="tag-edit-modal-footer" class="modal-footer"></div>
     </div>
 </div>
 
@@ -522,7 +503,7 @@
 <div id="slot-modal-overlay" style="display:none">
     <div id="slot-modal">
         <div class="modal-header">
-            <span id="slot-modal-title">New reminder</span>
+            <span id="slot-modal-title">New time slot</span>
             <button onclick="closeSlotModal()">✕</button>
         </div>
         <!-- Start/end time as a plain typed "HH:MM" text field, not a
@@ -537,26 +518,35 @@
                 <input type="text" id="slot-start-time" inputmode="numeric" maxlength="5" placeholder="20:00" autocomplete="off" oninput="formatSlotTimeInput(this)" onblur="validateSlotTimeField(this)">
             </div>
             <div class="slot-time-field">
-                <label for="slot-end-time">Tag until</label>
+                <label for="slot-end-time">Active until</label>
                 <input type="text" id="slot-end-time" inputmode="numeric" maxlength="5" placeholder="20:30" autocomplete="off" oninput="formatSlotTimeInput(this)" onblur="validateSlotTimeField(this)">
             </div>
         </div>
-        <!-- One-line explainer so "Tag until" doesn't read as just a second
-             reminder time. The push notification only ever fires once, at
-             "Notify at" — "Tag until" instead defines how long this slot's
-             auto-tagging window stays open, for any phrase captured in that
-             stretch of time (see slots.js's own comments on this concept). -->
-        <div class="slot-time-explainer">The reminder fires once, at "Notify at." "Tag until" just sets how long this slot's time window stays open for auto-tagging anything you capture in it.</div>
+        <!-- One-line explainer so "Active until" doesn't read as just a
+             second reminder time. The push notification only ever fires
+             once, at "Notify at" — "Active until" instead defines how long
+             this slot's own time window stays open, for any phrase
+             captured in that stretch of time (see slots.js's own comments
+             on this concept). -->
+        <div class="slot-time-explainer">The reminder fires once, at "Notify at." "Active until" just sets how long this slot's time window stays open for assigning anything you capture in it.</div>
         <!-- Just a short name — the notification's actual wording is a
              fixed template defined in code (slots.js's
-             buildSlotNotificationText), not free text typed here. -->
+             buildSlotNotificationText), not free text typed here. Capped
+             at 18 characters so it always fits on one line on the slot
+             card (slots.css's .slot-card-text) and the slot badge
+             (table.css's .slot-badge) without relying on their ellipsis
+             truncation to hide an overly long name. -->
         <div class="slot-name-field">
             <label for="slot-name-input">Name</label>
-            <input type="text" id="slot-name-input" placeholder="e.g. Morning coffee" autocomplete="off">
+            <input type="text" id="slot-name-input" maxlength="18" placeholder="e.g. Morning coffee" autocomplete="off">
         </div>
-        <div class="tag-picker-section">
-            <div class="tag-picker-label">Tags (optional)</div>
-            <div id="slot-tag-picker" class="tag-picker-chip-list"></div>
+        <!-- A slot's color IS its identity now (replaces the old per-tag
+             coloring) — shared across every routine in the app, so two
+             slots anywhere can never have the same color (see slots.js's
+             renderSlotColorPicker and localDb.js's MAX_SLOTS_TOTAL). -->
+        <div class="slot-color-field">
+            <label>Color</label>
+            <div id="slot-color-picker" class="color-grid"></div>
         </div>
         <div id="slot-modal-error"></div>
         <div class="slot-modal-footer">
@@ -604,7 +594,6 @@
 <script src="spacesState.js"></script>
 <script src="spaceRules.js"></script>
 <script src="dictionary.js"></script>
-<script src="tags.js"></script>
 <script src="phrasesTable.js"></script>
 <script src="practiceDateScroll.js"></script>
 <script src="slots.js"></script>

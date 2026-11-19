@@ -57,9 +57,8 @@
 }
 
 #delete-modal-overlay,
-#tag-picker-modal-overlay,
-#tag-filter-modal-overlay,
-#tag-edit-modal-overlay,
+#slot-picker-modal-overlay,
+#slot-filter-modal-overlay,
 #space-picker-modal-overlay,
 #space-create-modal-overlay,
 #unsaved-rules-modal-overlay,
@@ -87,22 +86,35 @@
     gap: 16px;
 }
 
-#tag-picker-modal,
-#tag-filter-modal,
+#slot-picker-modal,
+#slot-filter-modal,
 #move-phrase-modal {
     max-height: 80vh;
     overflow-y: auto;
 }
 
-.tag-filter-group {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-bottom: 14px;
+/* Generic modal body text — used by Space migrate/delete confirmations
+   (spacesState.js) as well as the slot filter/picker "empty" states. Used
+   to live in tags.css, which no longer exists now that tags are gone. */
+.tag-name {
+    font-size: 1rem;
+    color: var(--text);
+    line-height: 1.4;
 }
 
-.tag-filter-group:last-child {
-    margin-bottom: 0;
+/* Shared Cancel/Save footer row and inline error line — used throughout
+   the Space picker's forms (spacesState.js) and the slot modal. Used to
+   live in tags.css, which no longer exists now that tags are gone. */
+.form-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.form-error {
+    color: #f87171;
+    font-size: 0.875rem;
+    line-height: 1.5;
 }
 
 #delete-modal-text {

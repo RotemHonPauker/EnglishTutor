@@ -16,25 +16,6 @@ const translatePhrase = (function () {
         return JSON.parse(cleaned);
     }
 
-    // Deliberately never invites the model to invent a new tag — only to
-    // pick from what's given, or say null. If there are no candidate tags
-    // to offer, skip asking entirely.
-    function buildExistingTagsSection(candidateTags) {
-        if (!candidateTags.length) {
-            return 'There are no candidate tags for this phrase right now, so always put null for "tag".';
-        }
-        const names = candidateTags.map(t => t.name).join(', ');
-        return `The following tags are candidates for this phrase: ${names}\nIf one of these tags clearly and confidently fits this phrase's topic, put its exact name (as written above) in "tag". If none fit well, or you're not confident, put null instead — never guess, and never invent a tag name that isn't in the list above.`;
-    }
-
-    // Never trusts the model's tag name directly — resolves it against the
-    // candidate tags actually passed in (case-insensitive exact match).
-    function resolveTagId(tagName, candidateTags) {
-        if (!tagName) return null;
-        const match = candidateTags.find(t => t.name.toLowerCase() === String(tagName).toLowerCase());
-        return match ? match.id : null;
-    }
-
     function buildSpaceRulesSection(spaceFields) {
         return spaceFields.aboutThisSpace
             ? `## About This Space\n${spaceFields.aboutThisSpace}\n\n`
@@ -62,31 +43,25 @@ const translatePhrase = (function () {
         return section;
     }
 
-    // Returns { correctedSource, variant1, variant2, tagId }.
+    // Returns { correctedSource, variant1, variant2, slotId }.
     return async function translatePhrase(sourceText, spaceId) {
-        const [spaceFields, spaceTags] = await Promise.all([
-            getSpaceRuleFields(spaceId),
-            getTags(spaceId)
-        ]);
+        const spaceFields = await getSpaceRuleFields(spaceId);
 
-        // Tagging is now driven entirely by whichever Slot is active right
-        // now (see slots.js's findActiveSlotNow) — NOT by this routine's
-        // whole tag list, the way it used to work. No active slot (or one
-        // belonging to a different routine) means no candidate tags at
-        // all, so Gemini is only ever offered — and can only ever pick
-        // from — the active slot's own tag(s). Same resolveTagId lookup as
-        // before; it just runs against this narrower candidate list now.
+        // Slot assignment is a plain time-of-day lookup now, not something
+        // Gemini is asked about — whichever Slot is active right now (see
+        // slots.js's findActiveSlotNow) becomes the phrase's slot
+        // directly, as long as it belongs to THIS routine. A slot active
+        // for a different routine right now simply doesn't apply here
+        // (every routine's Add tab only ever colors phrases with ITS OWN
+        // slots). No model call involved in this decision at all.
         const activeSlot = typeof findActiveSlotNow === 'function' ? await findActiveSlotNow() : null;
-        const candidateTags = (activeSlot && activeSlot.space_id === spaceId)
-            ? spaceTags.filter(t => (activeSlot.tag_ids || []).includes(t.id))
-            : [];
+        const slotId = (activeSlot && activeSlot.space_id === spaceId) ? activeSlot.id : null;
 
         const content = TRANSLATION_PROMPT_TEMPLATE
             .replace(/\$\{sourceLanguage\}/g, spaceFields.sourceLanguage)
             .replace(/\$\{targetLanguage\}/g, spaceFields.targetLanguage)
             .replace('${translationStep}', buildTranslationStep(spaceFields))
             .replace('${spaceRulesSection}', buildSpaceRulesSection(spaceFields))
-            .replace('${existingTagsSection}', buildExistingTagsSection(candidateTags))
             .replace('${phrase}', sourceText);
 
         const response = await geminiGenerateContent({
@@ -102,7 +77,7 @@ const translatePhrase = (function () {
             correctedSource: result.correctedSource,
             variant1: result.variant1,
             variant2: result.variant2,
-            tagId: resolveTagId(result.tag, candidateTags)
+            slotId
         };
     };
 })();

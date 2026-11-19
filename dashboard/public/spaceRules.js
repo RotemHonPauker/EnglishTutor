@@ -11,7 +11,7 @@
 // displayed string below says "routine", but the internal field/dbKey
 // names (space_rules_*, variant_1_notes, etc.) are unchanged.
 
-// ===== Space rules (Setup tab, above the tag list) =====
+// ===== Space rules (Setup tab) =====
 // An accordion — each field starts collapsed, one click opens it for
 // editing, and Save/Cancel/Copy-from all act on that one field only. The
 // fields already come along with every space object from getSpaces() (a

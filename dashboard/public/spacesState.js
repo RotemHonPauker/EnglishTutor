@@ -9,9 +9,10 @@
 let spaces = [];
 let activeSpaceId = localStorage.getItem('activeSpaceId') || null;
 
-// Called once on startup, before anything space-dependent (tags, phrases)
-// loads. If there's no valid active space yet (first-ever visit, or a
-// stored id that no longer exists), falls back to the first space returned.
+// Called once on startup, before anything space-dependent (phrases, time
+// slots) loads. If there's no valid active space yet (first-ever visit,
+// or a stored id that no longer exists), falls back to the first space
+// returned.
 async function loadSpaces() {
     spaces = await getSpaces();
 
@@ -48,16 +49,16 @@ function renderSpaceHeader() {
     if (typeof renderSpaceRulesForm === 'function') renderSpaceRulesForm();
 }
 
-// Switching spaces reloads everything that's scoped to a space — the tag
-// list and the phrase table — same as a fresh page load would, just
-// without actually reloading the page.
+// Switching spaces reloads everything that's scoped to a space — the
+// phrase table and that routine's own time slots — same as a fresh page
+// load would, just without actually reloading the page.
 async function setActiveSpace(id) {
     activeSpaceId = id;
     persistActiveSpace();
     if (typeof applyDictionaryModeUI === 'function') applyDictionaryModeUI();
     renderSpaceHeader();
     closeSpacePicker();
-    if (typeof resetTagFilter === 'function') resetTagFilter();
+    if (typeof resetSlotFilter === 'function') resetSlotFilter();
     if (typeof resetLearnedFilter === 'function') resetLearnedFilter();
     if (typeof resetSelectMode === 'function') resetSelectMode();
     if (typeof resetDateScroll === 'function') resetDateScroll();
@@ -66,12 +67,11 @@ async function setActiveSpace(id) {
     // it's the only way to catch that case, since the tab's own enter-tab
     // reset won't fire without an actual tab click.
     if (typeof resetCaptureLog === 'function') resetCaptureLog();
-    await loadTags();
     await loadTable();
-    // The Slots tab is scoped to whichever routine is active — reload it
-    // too so it's never left showing another routine's reminders. Safe to
-    // call even when the Slots tab isn't the one on screen right now (see
-    // loadSlotsScreen's own no-op guard, slots.js).
+    // The Schedule tab is scoped to whichever routine is active — reload
+    // it too so it's never left showing another routine's time slots.
+    // Safe to call even when the Schedule tab isn't the one on screen
+    // right now (see loadSlotsScreen's own no-op guard, slots.js).
     if (typeof loadSlotsScreen === 'function') await loadSlotsScreen();
 }
 
@@ -153,7 +153,7 @@ function showDeleteSpaceForm(id) {
     const form = document.getElementById('space-picker-new-form');
     form.innerHTML = `
         <div class="tag-name">
-            Delete "${escapeHtml(space.name)}" — its phrases, tags, reminders and transcripts included? This cannot be undone.
+            Delete "${escapeHtml(space.name)}" — its phrases, time slots and transcripts included? This cannot be undone.
         </div>
         <div class="form-buttons">
             <button onclick="document.getElementById('space-picker-new-form').innerHTML = ''">Cancel</button>
@@ -186,11 +186,11 @@ async function submitDeleteSpace(id) {
         await deleteTtsBlobsForPhrase(phrase.id);
     }
 
-    // The deleted routine's own Slots (reminders) are already gone from
+    // The deleted routine's own time slots are already gone from
     // IndexedDB at this point (deleteSpace() cascades to the slots store).
     // Push that updated picture to the notify Worker now too — otherwise
     // its stored copy of this device's slots would keep the deleted
-    // routine's reminders, and the cron could keep sending notifications
+    // routine's time slots, and the cron could keep sending notifications
     // for a routine that no longer exists.
     if (typeof syncSlotsToNotifyServer === 'function') syncSlotsToNotifyServer();
 
@@ -328,10 +328,9 @@ async function submitNewSpace() {
 }
 
 // ===== Space migration =====
-// Moves everything from one space into another, then deletes the source —
-// the space-level equivalent of merging a tag into another. Reuses the
-// same tag-chip/form-button styling as the tag merge flow, just rendered
-// into the space picker's own form slot instead of the tag edit modal.
+// Moves a routine's phrases and transcripts into another routine, then
+// deletes the source. Reuses the same chip/form-button styling used
+// throughout the space picker's own forms.
 
 let migrateSourceSpaceId = null;
 
@@ -382,13 +381,12 @@ function confirmMigrateSpaceTarget(targetId) {
     renderMigrateSpaceConfirm(source, target);
 }
 
-// "Back" returns to the target-picking step of this same flow, same
-// two-step pattern as the tag merge confirmation.
+// "Back" returns to the target-picking step of this same flow.
 function renderMigrateSpaceConfirm(source, target) {
     const form = document.getElementById('space-picker-new-form');
     form.innerHTML = `
         <div class="tag-name">
-            Move all phrases, tags, and transcripts from "${escapeHtml(source.name)}" into "${escapeHtml(target.name)}", and delete "${escapeHtml(source.name)}"?
+            Move all phrases and transcripts from "${escapeHtml(source.name)}" into "${escapeHtml(target.name)}", and delete "${escapeHtml(source.name)}"?
             This cannot be undone.
         </div>
         <div id="migrate-space-error" class="form-error" style="display:none"></div>
@@ -433,11 +431,10 @@ async function submitMigrateSpace(sourceId, targetId, dropSourceTranscripts) {
         await setActiveSpace(spaces[0]?.id || null);
     } else {
         // Otherwise we're still on the same space id — but if it was
-        // the migration's target, its tags/phrases just changed under
-        // it. Refresh both instead of leaving the stale pre-migration
-        // view up until the next manual reload.
+        // the migration's target, its phrases just changed under it.
+        // Refresh it instead of leaving the stale pre-migration view up
+        // until the next manual reload.
         renderSpacePickerList();
-        await loadTags();
         await loadTable();
     }
 }

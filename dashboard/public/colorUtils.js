@@ -1,14 +1,13 @@
-// Fixed palette offered when picking a tag's color. There's no backend
-// anymore to fetch this from (the old GET /colors route is gone, and so
-// is dashboard/colors.js), so the palette is just inlined here directly
-// — same values as before. COLORS is populated immediately at
-// script-load time, so nothing needs to await it anymore. This same
-// palette is also duplicated as TAG_COLORS inside remoteDb.js, which
-// needs it for migrateSpace's color-collision resolution and can't
-// depend on this file loading first — see the comment there.
-
-const DEFAULT_TAG_COLOR = '#ccc';
-
+// Fixed palette offered when picking a time slot's color (slots.js). This
+// is now the direct source of a slot's visual identity — there's no
+// separate Tag entity anymore, so there's no backend to fetch this from
+// either (the old GET /colors route is gone, and so is
+// dashboard/colors.js); the palette is just inlined here directly. COLORS
+// is populated immediately at script-load time, so nothing needs to await
+// it. This same palette is also duplicated as MAX_SLOTS_TOTAL's own
+// implicit size inside localDb.js (one color per slot, one slot per
+// color, 16 of each) — that file can't depend on this one loading first,
+// so it just hardcodes the same count rather than importing this array.
 const COLORS = [
     '#AD1457', '#D81B60', '#E67C73', '#F4511E',
     '#F09300', '#F6BF26', '#7CB342', '#0B8043',
@@ -23,10 +22,4 @@ function getContrastColor(hex) {
     const b = parseInt(hex.slice(5, 7), 16);
     const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
     return luminance > 0.5 ? '#1a1a1a' : '#ffffff';
-}
-
-function getTagColor(tagId) {
-    if (!tagId) return null;
-    const tag = tags.find(t => t.id === tagId);
-    return (tag && tag.color) || null;
 }

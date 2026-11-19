@@ -1,8 +1,8 @@
 // --- SHARED HTML-ESCAPING HELPER ---
-// User-entered text (space names, tag names, phrase text, dictionary
+// User-entered text (space names, slot names, phrase text, dictionary
 // words...) gets interpolated into innerHTML template strings all over
 // this app's UI files. Escaping it here, once, is what actually closes
-// the XSS gap: without it, a space/tag/phrase containing something like
+// the XSS gap: without it, a space/slot/phrase containing something like
 // <img src=x onerror="..."> would have its markup executed instead of
 // just displayed as text. Defined in app.js (loaded first) so every
 // later UI file can use it as a plain global.
@@ -51,9 +51,9 @@ if (window.visualViewport) {
 
 window.onload = async () => {
     // Nothing else runs until the one-time Gemini API key gate has
-    // resolved (geminiKeyGate.js) — everything else (spaces, tags,
-    // phrases) lives in this device's own IndexedDB (localDb.js), so
-    // there's no connection or login step to wait on anymore.
+    // resolved (geminiKeyGate.js) — everything else (spaces, phrases, time
+    // slots) lives in this device's own IndexedDB (localDb.js), so there's
+    // no connection or login step to wait on anymore.
     await waitForGeminiKey();
 
     // LANGUAGES and COLORS are now plain inlined constants
@@ -70,7 +70,10 @@ window.onload = async () => {
     if (typeof applyDictionaryModeUI === 'function') {
         applyDictionaryModeUI();
     }
-    await loadTags();
+    // Tags are gone — there's no separate loadTags() step any more. The
+    // Schedule tab's own time slots load lazily, the first time that tab
+    // is actually opened (see slots.js's enterSlotsTab/loadSlotsScreen),
+    // same as before this change.
     await loadTable();
 };
 

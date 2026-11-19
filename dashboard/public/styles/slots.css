@@ -1,8 +1,10 @@
-/* slots.css — the Slots screen (repurposed former-Analytics tab) and its
-   two modals: the add/edit reminder modal, and the "view full day"
+/* slots.css — the Schedule screen (repurposed former-Analytics tab) and
+   its two modals: the add/edit time-slot modal, and the "Full schedule"
    merged-timeline overlay. Reuses existing patterns from the rest of the
-   app (tag-chip grid from tags.css/modal.css, accordion spacing from
-   spaceRules.css) rather than inventing new ones. */
+   app (the chip-grid look from modal.css, accordion spacing from
+   spaceRules.css) rather than inventing new ones. .color-grid/.color-circle
+   below used to live in tags.css — moved here since the slot modal's own
+   color picker is now their only user, now that tags are gone. */
 
 /* #view-slots itself gets NO layout rules here — display/flex-direction
    are owned by the shared .view/.view.active toggle in tabs.css
@@ -61,10 +63,10 @@
     gap: 10px;
 }
 
-/* Dimmed, at-a-glance "this one won't fire" look for a reminder whose
-   toggle is off — the whole card, not just the toggle, so it reads as
-   inactive from a glance at the list rather than only when looking closely
-   at the switch. Same brightness-dip technique as .phrase-card.learned
+/* Dimmed, at-a-glance "this one won't fire" look for a slot whose toggle
+   is off — the whole card, not just the toggle, so it reads as inactive
+   from a glance at the list rather than only when looking closely at the
+   switch. Same brightness-dip technique as .phrase-card.learned
    (table.css). */
 .slot-card.disabled {
     opacity: 0.55;
@@ -76,14 +78,15 @@
     gap: 10px;
     background: var(--surface);
     border: 1px solid var(--border);
+    /* Default transparent — overridden inline per slot with its own color
+       (slots.js), same border-accent language as .full-day-row below. A
+       slot's color IS its visual identity now, so there's no more stacked
+       tag-chip list on the card the way there used to be. */
+    border-inline-start: 4px solid transparent;
     border-radius: 10px;
     overflow: hidden;
 }
 
-/* Time, name and tags all live directly in this one row now — no inner
-   wrapper splitting name+tags onto a second line. The name (.slot-card-text)
-   takes whatever space is left; tags (.slot-card-tags) shrink to fit and
-   stack vertically instead of wrapping the row. */
 .slot-card-main {
     flex: 1;
     min-width: 0;
@@ -97,9 +100,6 @@
     background: var(--surface-2);
 }
 
-/* Each child sets its own trailing margin instead of a shared .slot-card-main
-   gap, so the time-to-name spacing can be tighter than the name-to-tags
-   spacing rather than the same value between every pair. */
 .slot-card-time {
     flex-shrink: 0;
     margin-inline-end: 6px;
@@ -120,26 +120,7 @@
     white-space: nowrap;
 }
 
-/* Stacks vertically (not the row-wrapping .tag-picker-chip-list/#tag-list
-   pattern used elsewhere) — the first tag stays on the main row, any
-   further ones stack underneath it in this same narrow column, by design,
-   rather than wrapping the whole card onto a second line. */
-.slot-card-tags {
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
-}
-
-.slot-tag-chip {
-    padding: 3px 10px;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 500;
-}
-
-/* Per-reminder on/off toggle — a classic checkbox-driven switch (the
+/* Per-slot on/off toggle — a classic checkbox-driven switch (the
    checkbox itself is visually hidden; its :checked state drives the
    track's look via the adjacent-sibling selector below). Sits between the
    clickable main area and the delete button, as its own flex child, so
@@ -262,7 +243,7 @@
     border-color: #ef4444;
 }
 
-/* One-line explainer under the Notify at / Tag until fields (index.html) —
+/* One-line explainer under the Notify at / Active until fields (index.html) —
    small and muted on purpose, like helper text under a form field, not a
    competing heading. */
 .slot-time-explainer {
@@ -280,7 +261,7 @@
 #slot-modal .modal-header,
 #slot-modal .slot-time-field label,
 #slot-modal .slot-name-field label,
-#slot-modal .tag-picker-label {
+#slot-modal .slot-color-field label {
     color: var(--text-2);
 }
 
@@ -313,6 +294,54 @@
     border-color: #2563eb;
 }
 
+/* A slot's color picker — same shape/spacing as .slot-name-field just
+   above, plus the .color-grid/.color-circle chips below. */
+.slot-color-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.slot-color-field label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ===== Color picker (moved here from tags.css — now exclusively the
+   slot modal's own color picker, since tags are gone) ===== */
+
+.color-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 8px;
+}
+
+.color-circle {
+    width: 100%;
+    aspect-ratio: 1;
+    max-width: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.15s;
+}
+
+.color-circle:hover:not(.disabled) {
+    transform: scale(1.2);
+}
+
+.color-circle.disabled {
+    opacity: 0.2;
+    cursor: not-allowed;
+}
+
+.color-circle.selected {
+    border-color: var(--chip-selected);
+}
+
 #slot-modal-error {
     display: none;
     font-size: 0.8125rem;
@@ -332,7 +361,7 @@
     gap: 10px;
 }
 
-/* ===== "View full day" overlay ===== */
+/* ===== "Full schedule" overlay ===== */
 
 #full-day-modal-overlay {
     position: fixed;

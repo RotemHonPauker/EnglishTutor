@@ -14,16 +14,16 @@
 // where these are wired to buttons.
 
 // 'slots' added here (was missing before — export/import silently skipped
-// reminders entirely until now). Listed after 'tags' since a slot's
-// tag_ids reference tag rows, same dependency-order reasoning as the rest
-// of this list.
-const BACKUP_STORE_ORDER = ['spaces', 'tags', 'slots', 'phrases', 'dictionary', 'transcripts'];
+// time slots entirely until now). Tags are gone — a slot's own color does
+// what a tag used to — so the 'tags' store that used to sit here is gone
+// too.
+const BACKUP_STORE_ORDER = ['spaces', 'slots', 'phrases', 'dictionary', 'transcripts'];
 
 // Reads every row from every store, in one object, and triggers a
 // download of it as a timestamped .json file. IDs are kept exactly as
 // stored, so an import can restore them with all their original
-// relationships (phrase.tag_id -> tag.id, tag.space_id -> space.id, etc.)
-// intact.
+// relationships (phrase.slot_id -> slot.id, slot.space_id -> space.id,
+// etc.) intact.
 async function exportAllData() {
     const db = await openDb();
     const payload = { exportedAt: new Date().toISOString(), tables: {} };
@@ -117,8 +117,7 @@ function readFileAsJson(file) {
 // export, keyed by store name.
 const BACKUP_STORE_LABELS = {
     spaces: 'space',
-    tags: 'tag',
-    slots: 'reminder',
+    slots: 'time slot',
     phrases: 'phrase',
     dictionary: 'dictionary entry',
     transcripts: 'transcript',

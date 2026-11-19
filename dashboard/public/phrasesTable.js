@@ -9,66 +9,69 @@ let allPhrases = [];
 let selectMode = false;
 let selectedPhraseIds = new Set();
 
-// ===== Tag filter =====
+// ===== Slot filter =====
 
-let filterTagIds = new Set();
+let filterSlotIds = new Set();
 
-function phraseMatchesTagFilter(phrase) {
-    if (filterTagIds.size === 0) return true;
-    return filterTagIds.has(phrase.tag_id);
+function phraseMatchesSlotFilter(phrase) {
+    if (filterSlotIds.size === 0) return true;
+    return filterSlotIds.has(phrase.slot_id);
 }
 
-function openTagFilterModal() {
-    renderTagFilterModal();
-    document.getElementById('tag-filter-modal-overlay').style.display = 'flex';
+function openSlotFilterModal() {
+    renderSlotFilterModal();
+    document.getElementById('slot-filter-modal-overlay').style.display = 'flex';
 }
 
-function closeTagFilterModal() {
-    document.getElementById('tag-filter-modal-overlay').style.display = 'none';
+function closeSlotFilterModal() {
+    document.getElementById('slot-filter-modal-overlay').style.display = 'none';
 }
 
-function renderTagFilterModal() {
-    const noTagChip = `<div class="tag-chip none ${filterTagIds.has(null) ? 'selected' : ''}" onclick="toggleFilterTag(null)">No tag</div>`;
-    const chips = tags.map(t => {
-        const contrast = getContrastColor(t.color);
-        const selected = filterTagIds.has(t.id);
-        return `<div class="tag-chip ${selected ? 'selected' : ''}" style="background:${t.color || '#333'}; color:${contrast}" onclick="toggleFilterTag('${t.id}')">${escapeHtml(t.name)}</div>`;
+// `slots` (slots.js) always holds the active routine's own slots — the
+// same list the Schedule tab shows, reused here so the filter options are
+// never out of sync with what actually exists for this routine.
+function renderSlotFilterModal() {
+    const noSlotChip = `<div class="tag-chip none ${filterSlotIds.has(null) ? 'selected' : ''}" onclick="toggleFilterSlot(null)">No slot</div>`;
+    const chips = (typeof slots !== 'undefined' ? slots : []).map(s => {
+        const contrast = getContrastColor(s.color);
+        const selected = filterSlotIds.has(s.id);
+        return `<div class="tag-chip ${selected ? 'selected' : ''}" style="background:${s.color || '#333'}; color:${contrast}" onclick="toggleFilterSlot('${s.id}')">${escapeHtml(s.name)}</div>`;
     }).join('');
-    document.getElementById('tag-filter-groups').innerHTML = `<div class="tag-picker-chip-list">${noTagChip}${chips}</div>`;
+    document.getElementById('slot-filter-groups').innerHTML = `<div class="tag-picker-chip-list">${noSlotChip}${chips}</div>`;
 }
 
-function toggleFilterTag(id) {
-    if (filterTagIds.has(id)) {
-        filterTagIds.delete(id);
+function toggleFilterSlot(id) {
+    if (filterSlotIds.has(id)) {
+        filterSlotIds.delete(id);
     } else {
-        filterTagIds.add(id);
+        filterSlotIds.add(id);
     }
-    renderTagFilterModal();
+    renderSlotFilterModal();
 }
 
-function clearTagFilter() {
-    filterTagIds.clear();
-    renderTagFilterModal();
+function clearSlotFilter() {
+    filterSlotIds.clear();
+    renderSlotFilterModal();
 }
 
 // Full reset for contexts outside the filter modal itself (e.g. switching
 // spaces) — clears the filter AND updates what's actually visible in the
 // table toolbar, not just the modal's own internal state.
-function resetTagFilter() {
-    filterTagIds.clear();
+function resetSlotFilter() {
+    filterSlotIds.clear();
     renderActiveFilterChips();
 }
 
-function applyTagFilter() {
-    closeTagFilterModal();
+function applySlotFilter() {
+    closeSlotFilterModal();
     renderActiveFilterChips();
     if (typeof generateDateBuckets === 'function') generateDateBuckets();
     if (typeof renderDateScroll === 'function') renderDateScroll();
     renderTable();
 }
 
-function removeTagFilter(id) {
-    filterTagIds.delete(id);
+function removeSlotFilter(id) {
+    filterSlotIds.delete(id);
     renderActiveFilterChips();
     if (typeof generateDateBuckets === 'function') generateDateBuckets();
     if (typeof renderDateScroll === 'function') renderDateScroll();
@@ -76,17 +79,17 @@ function removeTagFilter(id) {
 }
 
 function renderActiveFilterChips() {
-    const row = document.getElementById('active-tag-filters');
-    row.innerHTML = [...filterTagIds].map(id => {
+    const row = document.getElementById('active-slot-filters');
+    row.innerHTML = [...filterSlotIds].map(id => {
         if (id === null) {
-            return `<span class="active-filter-chip" style="background:#333; color:#ccc">No tag<button onclick="removeTagFilter(null)">✕</button></span>`;
+            return `<span class="active-filter-chip" style="background:#333; color:#ccc">No slot<button onclick="removeSlotFilter(null)">✕</button></span>`;
         }
-        const tag = tags.find(t => t.id === id);
-        if (!tag) return '';
-        const contrast = getContrastColor(tag.color);
-        return `<span class="active-filter-chip" style="background:${tag.color || '#333'}; color:${contrast}">${escapeHtml(tag.name)}<button onclick="removeTagFilter('${id}')">✕</button></span>`;
+        const slot = (typeof slots !== 'undefined' ? slots : []).find(s => s.id === id);
+        if (!slot) return '';
+        const contrast = getContrastColor(slot.color);
+        return `<span class="active-filter-chip" style="background:${slot.color || '#333'}; color:${contrast}">${escapeHtml(slot.name)}<button onclick="removeSlotFilter('${id}')">✕</button></span>`;
     }).join('');
-    row.style.display = filterTagIds.size ? 'flex' : 'none';
+    row.style.display = filterSlotIds.size ? 'flex' : 'none';
 }
 
 // ===== Learned filter =====
@@ -112,7 +115,7 @@ function toggleLearnedFilter() {
     renderTable();
 }
 
-// Called on space switch, alongside resetTagFilter.
+// Called on space switch, alongside resetSlotFilter.
 function resetLearnedFilter() {
     learnedFilter = 'all';
     const btn = document.getElementById('learned-filter-btn');
@@ -131,7 +134,6 @@ async function loadTable() {
     if (typeof generateDateBuckets === 'function') generateDateBuckets();
     if (typeof renderDateScroll === 'function') renderDateScroll();
     renderTable();
-    if (typeof renderSidebar === 'function') renderSidebar();
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000; // also used by practiceDateScroll.js
@@ -145,7 +147,7 @@ function renderTable() {
     }
 
     const sorted = allPhrases
-        .filter(phraseMatchesTagFilter)
+        .filter(phraseMatchesSlotFilter)
         .filter(phraseMatchesLearnedFilter)
         .filter(phraseMatchesDateFilter)
         // Newest first within whatever's shown — with the date scroll
@@ -165,28 +167,31 @@ function renderTable() {
     const bridgeCode = isBridge && typeof codeForLanguage === 'function' ? codeForLanguage(activeSpace.bridge_language) : null;
 
     tableBody.innerHTML = sorted.map(p => {
-        const tag = tags.find(t => t.id === p.tag_id);
-        const tagColor = tag ? tag.color : null;
-        const cardTextColor = tagColor ? getContrastColor(tagColor) : null;
-        const cardStyle = tagColor ? `background:${tagColor}; border-color:${tagColor}; color:${cardTextColor};` : '';
-        // Same lighter-overlay technique as the tag badge below — a
+        // getPhrases (localDb.js) already joins each phrase onto its own
+        // slot's name/color — no separate lookup against a global list
+        // needed here.
+        const slotColor = p.slot_color || null;
+        const cardTextColor = slotColor ? getContrastColor(slotColor) : null;
+        const cardStyle = slotColor ? `background:${slotColor}; border-color:${slotColor}; color:${cardTextColor};` : '';
+        // Same lighter-overlay technique as the slot badge below — a
         // semi-transparent white/black wash relative to this card's own
         // background, so it reads as "lighter than the card" whatever that
-        // card's color is, instead of one fixed gray regardless of tag color.
-        const iconBg = tagColor
+        // card's color is, instead of one fixed gray regardless of slot
+        // color.
+        const iconBg = slotColor
             ? (cardTextColor === '#ffffff' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)')
             : '';
-        const badgeStyle = tagColor
+        const badgeStyle = slotColor
             ? `background:${iconBg}; color:${cardTextColor};`
             : '';
-        const badgeLabel = tag ? escapeHtml(tag.name) : '—';
+        const badgeLabel = p.slot_name ? escapeHtml(p.slot_name) : '—';
         const isLearned = !!p.learned_at;
         const level = p.level === 2 ? 2 : 1;
         const displayedVariant = level === 2 ? p.variant_2 : p.variant_1;
         const levelBadgeLabel = isBridge ? (level === 2 ? bridgeCode : targetCode) : `Level ${level}`;
         const levelBadgeTitle = isBridge ? 'Tap to switch language' : 'Tap to switch level';
         const isSelected = selectedPhraseIds.has(p.id);
-        const cardClasses = ['phrase-card', tagColor ? 'has-color' : '', isLearned ? 'learned' : '', isSelected ? 'selected' : ''].filter(Boolean).join(' ');
+        const cardClasses = ['phrase-card', slotColor ? 'has-color' : '', isLearned ? 'learned' : '', isSelected ? 'selected' : ''].filter(Boolean).join(' ');
         return `
         <div class="${cardClasses}" style="${cardStyle}" ${selectMode ? `onclick="toggleCardSelection('${p.id}')"` : ''}>
             <div class="phrase-card-header">
@@ -199,7 +204,7 @@ function renderTable() {
                 </div>`}
                 <div class="phrase-card-badges">
                     <button class="level-badge level-${level}" style="${badgeStyle}" title="${levelBadgeTitle}" onclick="toggleLevel('${p.id}')" ${selectMode ? 'disabled' : ''}>${levelBadgeLabel}</button>
-                    <button class="tag-badge" style="${badgeStyle}" onclick="openTagPicker('${p.id}')" ${selectMode ? 'disabled' : ''}>${badgeLabel}</button>
+                    <button class="slot-badge" style="${badgeStyle}" onclick="openSlotPicker('${p.id}')" ${selectMode ? 'disabled' : ''}>${badgeLabel}</button>
                 </div>
             </div>
             <div class="phrase-card-main">
@@ -212,7 +217,7 @@ function renderTable() {
 }
 
 // Only one phrase plays at a time. Tracked here (not per-button) so a new
-// play always stops whatever else was going, and so a re-render (tag
+// play always stops whatever else was going, and so a re-render (slot
 // change, filter, etc.) never leaves audio playing with no visible way to
 // stop it — see the reset at the top of renderTable().
 let currentlyPlayingAudio = null;
@@ -325,12 +330,12 @@ async function confirmDelete() {
     }
 }
 
-async function updatePhraseTagAssignment(id, tagId) {
+async function updatePhraseSlotAssignment(id, slotId) {
     try {
-        await updatePhraseTag({ id, tagId: tagId || null });
+        await updatePhraseSlot({ id, slotId: slotId || null });
         await loadTable();
     } catch (err) {
-        alert('Failed to update tag');
+        alert('Failed to update time slot');
     }
 }
 
@@ -366,7 +371,6 @@ async function toggleLearned(id) {
         const updated = await updatePhraseLearned({ id, learned: nextLearned });
         phrase.learned_at = updated.learned_at;
         renderTable();
-        if (typeof renderSidebar === 'function') renderSidebar();
     } catch (err) {
         phrase.learned_at = nextLearned ? null : new Date().toISOString();
         renderTable();
@@ -374,52 +378,54 @@ async function toggleLearned(id) {
     }
 }
 
-// ===== Tag picker (opened by tapping a card's tag badge) =====
+// ===== Slot picker (opened by tapping a card's slot badge) =====
 
-let tagPickerPhraseId = null;
-let tagPickerSelectedTag = null;
+let slotPickerPhraseId = null;
+let slotPickerSelectedSlot = null;
 
-function openTagPicker(phraseId) {
+function openSlotPicker(phraseId) {
     const phrase = allPhrases.find(p => p.id === phraseId);
     if (!phrase) return;
-    tagPickerPhraseId = phraseId;
-    tagPickerSelectedTag = phrase.tag_id || null;
-    renderTagPickerList();
-    document.getElementById('tag-picker-modal-overlay').style.display = 'flex';
+    slotPickerPhraseId = phraseId;
+    slotPickerSelectedSlot = phrase.slot_id || null;
+    renderSlotPickerList();
+    document.getElementById('slot-picker-modal-overlay').style.display = 'flex';
 }
 
-function closeTagPicker() {
-    tagPickerPhraseId = null;
-    tagPickerSelectedTag = null;
-    document.getElementById('tag-picker-modal-overlay').style.display = 'none';
+function closeSlotPicker() {
+    slotPickerPhraseId = null;
+    slotPickerSelectedSlot = null;
+    document.getElementById('slot-picker-modal-overlay').style.display = 'none';
 }
 
-function renderTagPickerList() {
-    const noneChip = `<div class="tag-chip none ${!tagPickerSelectedTag ? 'selected' : ''}" onclick="selectPickerTag(null)">—</div>`;
-    const chips = tags.map(t => {
-        const contrast = getContrastColor(t.color);
-        const selected = tagPickerSelectedTag === t.id;
-        return `<div class="tag-chip ${selected ? 'selected' : ''}" style="background:${t.color || '#333'}; color:${contrast}" onclick="selectPickerTag('${t.id}')">${escapeHtml(t.name)}</div>`;
+// Only this routine's own slots are offered — same `slots` global
+// (slots.js) the Schedule tab itself reads from.
+function renderSlotPickerList() {
+    const noneChip = `<div class="tag-chip none ${!slotPickerSelectedSlot ? 'selected' : ''}" onclick="selectPickerSlot(null)">—</div>`;
+    const chips = (typeof slots !== 'undefined' ? slots : []).map(s => {
+        const contrast = getContrastColor(s.color);
+        const selected = slotPickerSelectedSlot === s.id;
+        return `<div class="tag-chip ${selected ? 'selected' : ''}" style="background:${s.color || '#333'}; color:${contrast}" onclick="selectPickerSlot('${s.id}')">${escapeHtml(s.name)}</div>`;
     }).join('');
-    document.getElementById('tag-picker-list').innerHTML = noneChip + chips;
+    document.getElementById('slot-picker-list').innerHTML = noneChip + chips;
 }
 
-function selectPickerTag(tagId) {
-    tagPickerSelectedTag = tagId;
-    renderTagPickerList();
+function selectPickerSlot(slotId) {
+    slotPickerSelectedSlot = slotId;
+    renderSlotPickerList();
 }
 
-async function confirmTagPick() {
-    if (!tagPickerPhraseId) return;
-    const phraseId = tagPickerPhraseId;
-    const tagId = tagPickerSelectedTag;
-    closeTagPicker();
-    await updatePhraseTagAssignment(phraseId, tagId);
+async function confirmSlotPick() {
+    if (!slotPickerPhraseId) return;
+    const phraseId = slotPickerPhraseId;
+    const slotId = slotPickerSelectedSlot;
+    closeSlotPicker();
+    await updatePhraseSlotAssignment(phraseId, slotId);
 }
 
 // ===== Select mode (toolbar "Select" toggle) =====
 // Swaps each card's icon row for a checkbox and makes the whole card
-// tappable; the level/tag badges and the audio button are disabled while
+// tappable; the level/slot badges and the audio button are disabled while
 // it's active so a stray tap during selection can't retag/replay/relevel
 // something by accident. Exists purely to feed the bulk "Move to..."
 // action below — there's nothing else to do with a selection right now.
@@ -441,7 +447,7 @@ function exitSelectMode() {
     renderTable();
 }
 
-// Called on space switch (spacesState.js), same as resetTagFilter/
+// Called on space switch (spacesState.js), same as resetSlotFilter/
 // resetLearnedFilter — a selection of specific phrase ids from the space
 // you're leaving has nothing to do with the one you're entering.
 function resetSelectMode() {
@@ -470,8 +476,9 @@ function updateSelectModeUI() {
 
 // ===== Move selected phrases to another space (bulk, from the selection bar) =====
 // A direct space_id update (bulkMovePhrases) — no retranslation, no Add-tab
-// round trip. Level and learned status carry over unchanged; tags don't,
-// since a tag belongs to one specific space (see remoteDb.js).
+// round trip. Level and learned status carry over unchanged; a slot
+// doesn't, since it belongs to one specific routine's own schedule (see
+// localDb.js's bulkMovePhrases).
 
 function openMovePhraseModal() {
     if (!selectedPhraseIds.size) return;
