@@ -191,3 +191,27 @@
 .backup-status.error {
     color: #f87171;
 }
+
+/* ===== Invite a friend section (Setup tab) — same card family as
+   #backup-section right above; see index.html for the markup and
+   backup.js for handleCopyInviteClick(). */
+
+#invite-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#invite-section .mode-toggle {
+    padding: 0;
+}
+
+#invite-intro {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--text-muted);
+}

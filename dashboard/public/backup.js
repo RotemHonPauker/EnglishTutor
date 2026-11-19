@@ -182,3 +182,58 @@ async function handleImportBackupFileSelected(inputEl) {
         console.error('Import failed:', e);
     }
 }
+
+// ===== Invite a friend (Setup tab) =====
+
+// Written as a friend recommending an app they already use and like — not
+// "I built this" (anyone using Fraza should be able to send this, not just
+// Rotem), and not an ad-copy pitch either, per her explicit feedback on
+// earlier drafts: first person throughout, no "while you're busy doing
+// whatever you're doing" filler, and the API key framed as a privacy
+// feature (your own key, your own private account, nothing leaking out
+// through anyone else's) rather than just a setup chore. The app link
+// comes early (right after the hook) and the GitHub link comes last, on
+// purpose — two different "go here" asks sitting close together read as
+// cluttered.
+//
+// A function, not a plain string, because the target-language mention
+// ("...in English") shouldn't be hardcoded — Fraza isn't Hebrew→English
+// specifically, each Space/Routine has its own source/target language
+// pair (see spacesState.js), so this pulls whatever language the person's
+// CURRENTLY ACTIVE space is actually practicing, falling back to
+// "English" only if somehow there's no active space yet to read it from.
+function buildInviteMessage() {
+    const active = (typeof getActiveSpace === 'function') ? getActiveSpace() : null;
+    const targetLanguage = (active && active.target_language) || 'English';
+    return `Meet my new daily companion — Fraza.
+
+I use it to capture the phrases I actually need in everyday life — a quick note, a word lookup, or a hands-free voice recording — so I can start sounding like myself, naturally, in ${targetLanguage}.
+
+Try it: https://rotemhonpauker.github.io/EnglishTutor/
+
+It's free, runs right in your browser, and everything stays on your own device. The only thing you need is your own free Google Gemini API key — the app walks you through creating one — so everything runs through your own private account, with nothing leaking out.
+
+Setup help or questions: https://github.com/rotemhonpauker/EnglishTutor`;
+}
+
+async function handleCopyInviteClick() {
+    const statusEl = document.getElementById('invite-status');
+    const message = buildInviteMessage();
+    try {
+        await navigator.clipboard.writeText(message);
+        if (statusEl) {
+            statusEl.textContent = 'Copied! Paste it into WhatsApp or wherever.';
+            statusEl.classList.remove('error');
+        }
+    } catch (e) {
+        // navigator.clipboard can be unavailable/denied in some contexts
+        // (older browsers, non-HTTPS, permission blocked) — fall back to
+        // just showing the text so it can still be copied by hand.
+        if (statusEl) {
+            statusEl.textContent = 'Could not copy automatically — select and copy the message below:';
+            statusEl.classList.add('error');
+        }
+        console.error('Clipboard copy failed:', e);
+        alert(message);
+    }
+}

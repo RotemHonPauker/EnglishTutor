@@ -43,19 +43,36 @@ let slots = []; // the ACTIVE routine's own slots only
 // immediately.
 function formatSlotTimeInput(el) {
     const prevFormatted = el.dataset.prevFormatted || '';
+    const caretPos = el.selectionStart;
     const isDeleting = el.value.length < prevFormatted.length;
-    const caretWasAtEnd = el.selectionStart === el.value.length;
+    // The character this edit removed, when exactly one char was removed —
+    // works for both Backspace and forward-Delete, since either way the
+    // removed character sat at index caretPos of the OLD (prevFormatted)
+    // value (Backspace moves the caret back onto it; forward-Delete leaves
+    // the caret sitting right where it already was, in front of it).
+    const removedChar = (isDeleting && prevFormatted.length - el.value.length === 1)
+        ? prevFormatted.charAt(caretPos)
+        : null;
+
+    // How many digits sit before the caret in the just-edited value — this
+    // is what lets the caret land back in the right spot after reformatting
+    // below, instead of always snapping to the end of the field (assigning
+    // el.value resets the caret to the end by default, which is exactly
+    // what was making deleting a digit in the MIDDLE of the time jump the
+    // caret to the end and scramble whatever was typed next).
+    let digitsBeforeCaret = el.value.slice(0, caretPos).replace(/\D/g, '').length;
 
     let digits = el.value.replace(/\D/g, '').slice(0, 4);
 
-    // Backspacing the auto-inserted ":" itself would otherwise just get it
-    // immediately re-added (the digits before/after it are unchanged), so
-    // a straight backspace could never get past "20:" back down to "2".
-    // Catching that one case — the delete that just removed the colon —
-    // and dropping the hour's own last digit too makes backspace behave
-    // the way it looks like it should.
-    if (isDeleting && prevFormatted.endsWith(':') && digits.length === 2) {
+    // Backspacing/deleting the auto-inserted ":" itself would otherwise
+    // just get it immediately re-added (the digits before/after it are
+    // unchanged), so it could never actually remove anything. Only kicks
+    // in while just the hour's been typed (no minute digits yet, i.e.
+    // digits.length === 2) — dropping the hour's own last digit too is
+    // what makes it feel like a real delete instead of a no-op.
+    if (removedChar === ':' && digits.length === 2) {
         digits = digits.slice(0, 1);
+        digitsBeforeCaret = Math.min(digitsBeforeCaret, digits.length);
     }
 
     if (digits.length >= 2) {
@@ -66,11 +83,18 @@ function formatSlotTimeInput(el) {
         const mm = Math.min(parseInt(digits.slice(2, 4), 10), 59);
         digits = digits.slice(0, 2) + String(mm).padStart(2, '0');
     }
+    digitsBeforeCaret = Math.min(digitsBeforeCaret, digits.length);
 
     const formatted = digits.length >= 2 ? `${digits.slice(0, 2)}:${digits.slice(2)}` : digits;
     el.value = formatted;
     el.dataset.prevFormatted = formatted;
-    if (caretWasAtEnd) el.setSelectionRange(formatted.length, formatted.length);
+
+    // Caret goes right after the same number of digits it was after
+    // before this edit, plus one more step once it's past the hour, to
+    // skip over the auto-inserted ":" rather than land in front of it.
+    // Clamped to the field's new length as a safety net.
+    const caretTarget = Math.min(digitsBeforeCaret + (digitsBeforeCaret >= 2 ? 1 : 0), formatted.length);
+    el.setSelectionRange(caretTarget, caretTarget);
 }
 
 // Called on the input's own onblur (index.html) — if what's left in the
@@ -276,7 +300,7 @@ function openSlotModal(slotId) {
     editingSlotId = slotId || null;
     const slot = slotId ? slots.find(s => s.id === slotId) : null;
 
-    document.getElementById('slot-modal-title').textContent = slot ? 'Edit reminder' : 'New reminder';
+    document.getElementById('slot-modal-title').textContent = slot ? 'Edit time slot' : 'New time slot';
     const startTimeInput = document.getElementById('slot-start-time');
     const endTimeInput = document.getElementById('slot-end-time');
     startTimeInput.value = minutesToTimeInputValue(slot ? slot.start_minutes : 8 * 60);

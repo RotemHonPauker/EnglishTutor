@@ -156,6 +156,22 @@
                 <span id="backup-export-status" class="backup-status"></span>
                 <span id="backup-import-status" class="backup-status"></span>
             </div>
+            <!-- INVITE A FRIEND: copies a ready-made invite message (app
+                 link + a short heads-up that they'll need a free Gemini
+                 API key, which the app's own first-run gate already walks
+                 them through — see INVITE_MESSAGE in backup.js) to the
+                 clipboard, so Rotem can paste it straight into WhatsApp or
+                 wherever without typing it out herself each time. Styled
+                 as the same family of Setup-tab card as #backup-section
+                 (see spaceRules.css). -->
+            <div id="invite-section">
+                <div id="space-rules-header">Invite a friend</div>
+                <div id="invite-intro">Copies a ready-to-send message with the app link, for WhatsApp or anywhere else.</div>
+                <div class="mode-toggle">
+                    <button type="button" class="mode-toggle-btn active" onclick="handleCopyInviteClick()">👋 Copy invite message</button>
+                </div>
+                <span id="invite-status" class="backup-status"></span>
+            </div>
             <div id="space-rules-section">
                 <div id="space-rules-header">Routine Setup</div>
                 <div id="space-rules-intro">This is where you help sharpen the translations.<br>These fields become part of the AI prompt.</div>
@@ -246,7 +262,7 @@
                  below), so it would've just repeated that. -->
             <div class="mode-toggle" id="slots-header-actions">
                 <button class="mode-toggle-btn active" onclick="openFullDayOverlay()">🗓️ Full schedule</button>
-                <button class="mode-toggle-btn active" onclick="openSlotModal(null)">+ Add reminder</button>
+                <button class="mode-toggle-btn active" onclick="openSlotModal(null)">+ Add time slot</button>
             </div>
             <!-- There's no separate "Enable reminders" button any more —
                  each reminder has its own on/off toggle (slots.js's
@@ -517,14 +533,20 @@
              submit. -->
         <div class="slot-time-row">
             <div class="slot-time-field">
-                <label for="slot-start-time">Start</label>
+                <label for="slot-start-time">Notify at</label>
                 <input type="text" id="slot-start-time" inputmode="numeric" maxlength="5" placeholder="20:00" autocomplete="off" oninput="formatSlotTimeInput(this)" onblur="validateSlotTimeField(this)">
             </div>
             <div class="slot-time-field">
-                <label for="slot-end-time">End</label>
+                <label for="slot-end-time">Tag until</label>
                 <input type="text" id="slot-end-time" inputmode="numeric" maxlength="5" placeholder="20:30" autocomplete="off" oninput="formatSlotTimeInput(this)" onblur="validateSlotTimeField(this)">
             </div>
         </div>
+        <!-- One-line explainer so "Tag until" doesn't read as just a second
+             reminder time. The push notification only ever fires once, at
+             "Notify at" — "Tag until" instead defines how long this slot's
+             auto-tagging window stays open, for any phrase captured in that
+             stretch of time (see slots.js's own comments on this concept). -->
+        <div class="slot-time-explainer">The reminder fires once, at "Notify at." "Tag until" just sets how long this slot's time window stays open for auto-tagging anything you capture in it.</div>
         <!-- Just a short name — the notification's actual wording is a
              fixed template defined in code (slots.js's
              buildSlotNotificationText), not free text typed here. -->

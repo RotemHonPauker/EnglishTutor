@@ -262,6 +262,28 @@
     border-color: #ef4444;
 }
 
+/* One-line explainer under the Notify at / Tag until fields (index.html) —
+   small and muted on purpose, like helper text under a form field, not a
+   competing heading. */
+.slot-time-explainer {
+    font-size: 0.78rem;
+    color: var(--text-2);
+    line-height: 1.4;
+    margin: -4px 0 4px;
+}
+
+/* Brighter heading/labels inside the slot add/edit modal specifically, to
+   match the Setup tab's heading color (--text-2, see spaceRules.css's
+   .space-rules-item-title) instead of the more muted defaults used by
+   .modal-header (--text-muted) and ordinary form labels (--text-faint) —
+   those read as washed-out in light mode in particular. */
+#slot-modal .modal-header,
+#slot-modal .slot-time-field label,
+#slot-modal .slot-name-field label,
+#slot-modal .tag-picker-label {
+    color: var(--text-2);
+}
+
 .slot-name-field {
     display: flex;
     flex-direction: column;
