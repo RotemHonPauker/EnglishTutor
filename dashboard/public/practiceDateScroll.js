@@ -8,12 +8,28 @@
 // bucketIdFor/bucketLabelFor/startOfDay/startOfWeek are also reused by
 // analyticsChart.js, so this file loads before it.
 
-const MAX_DATE_BUCKETS = 30;
+const WEEK_LIFETIME_DAILY_BUCKETS = 9;    // ~7 days of lifetime (card_lifetime: 'week'), plus a little buffer
+const MONTH_LIFETIME_WEEKLY_BUCKETS = 6;  // ~30 days of lifetime ('month', or unset — see effectiveCardLifetime), plus a little buffer
 
-let dateGranularity = 'day'; // 'day' | 'week' | 'month'
-let selectedBucketId = null; // a bucket id, or 'older'
-let dateBuckets = [];        // [{ id, label, count }] — non-empty only, 'older' first when present
-let earliestBucketId = null; // boundary used to decide what counts as "older"
+let dateGranularity = 'day'; // 'day' | 'week' — now derived automatically each time generateDateBuckets runs (see deriveDateGranularity below), not picked manually
+let selectedBucketId = null; // a bucket id, 'saved', or 'trash'
+let dateBuckets = [];        // [{ id, label, count }] — non-empty only, 'trash' then 'saved' first when present
+let earliestBucketId = null; // boundary used to decide what counts as too-old-for-its-own-bucket (folded into 'saved' — see generateDateBuckets)
+
+// Which bucket size to use, and how many buckets to show, derived from
+// the active routine's own card_lifetime setting (Setup) — replacing the
+// old manual Daily/Weekly/Monthly switcher entirely. With Trash and Saved
+// now doing the "don't let old stuff clutter the board" job, a resolution
+// switcher on top of that was one knob too many (Rotem's own call). A
+// routine that hasn't set a lifetime yet (still null) behaves exactly like
+// 'month' (see localDb.js's effectiveCardLifetime) — there's no third
+// "unlimited" display mode any more.
+function deriveDateGranularity() {
+    const active = typeof getActiveSpace === 'function' ? getActiveSpace() : null;
+    const lifetime = effectiveCardLifetime(active?.card_lifetime);
+    if (lifetime === 'week') return { granularity: 'day', maxBuckets: WEEK_LIFETIME_DAILY_BUCKETS };
+    return { granularity: 'week', maxBuckets: MONTH_LIFETIME_WEEKLY_BUCKETS };
+}
 
 function startOfDay(d) {
     return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -93,14 +109,19 @@ function matchesActiveFilters(item) {
     return true;
 }
 
-// Builds the last MAX_DATE_BUCKETS buckets up to and including today's, with
-// phrase counts from allPhrases, plus a single "Older" bucket for anything
-// before that range. Empty columns (no phrases at all) are dropped — an
+// Builds the last maxBuckets buckets (deriveDateGranularity) up to and
+// including today's, with phrase counts from allPhrases, folding anything
+// saved — or too old for the visible range — into the single "⭐ Saved"
+// bucket instead. Empty columns (no phrases at all) are dropped — an
 // empty day/week isn't worth scrolling past, and can't be selected.
 function generateDateBuckets() {
+    const { granularity, maxBuckets } = deriveDateGranularity();
+    dateGranularity = granularity;
+    const activeSpace = typeof getActiveSpace === 'function' ? getActiveSpace() : null;
+
     const today = new Date();
     const rawBuckets = [];
-    for (let i = MAX_DATE_BUCKETS - 1; i >= 0; i--) {
+    for (let i = maxBuckets - 1; i >= 0; i--) {
         let d;
         if (dateGranularity === 'month') {
             d = new Date(today.getFullYear(), today.getMonth() - i, 1);
@@ -118,17 +139,38 @@ function generateDateBuckets() {
     }
 
     earliestBucketId = rawBuckets[0].id;
-    let olderCount = 0;
-    let olderFilteredCount = 0;
+    let savedCount = 0, savedFilteredCount = 0;
+    let trashCount = 0, trashFilteredCount = 0;
 
     (typeof getPracticeItems === 'function' ? getPracticeItems() : (typeof allPhrases !== 'undefined' ? allPhrases : [])).forEach(p => {
-        const id = bucketIdFor(new Date(p.created_at), dateGranularity);
-        const matches = matchesActiveFilters(p);
-        if (id < earliestBucketId) {
-            olderCount++;
-            if (matches) olderFilteredCount++;
+        // Past its 24h trash grace entirely — about to be swept by the
+        // next deletePastGraceCards() sweep, so it's left out everywhere,
+        // same as a hard-deleted row already would be.
+        if (isCardPastGrace(p, activeSpace)) return;
+
+        if (isCardInTrash(p, activeSpace)) {
+            trashCount++;
+            if (matchesActiveFilters(p)) trashFilteredCount++;
             return;
         }
+
+        const id = bucketIdFor(new Date(p.created_at), dateGranularity);
+        const matches = matchesActiveFilters(p);
+
+        // Saved is the one escape valve now — no separate "older" status
+        // layered on top of it (Rotem's own call). A saved card lives here
+        // permanently regardless of its own date, so it never disappears
+        // once its own bucket ages out of the visible window. A
+        // not-yet-expired, UNSAVED card that still somehow predates the
+        // window (bucket windows are sized with slack above each
+        // lifetime, so this should be rare) is folded in here too, rather
+        // than inventing a second status just for that edge case.
+        if (isCardSaved(p) || id < earliestBucketId) {
+            savedCount++;
+            if (matches) savedFilteredCount++;
+            return;
+        }
+
         const bucket = rawBuckets.find(b => b.id === id);
         if (bucket) {
             bucket.count++;
@@ -137,9 +179,14 @@ function generateDateBuckets() {
     });
 
     const nonEmptyBuckets = rawBuckets.filter(b => b.count > 0);
-    dateBuckets = olderCount > 0
-        ? [{ id: 'older', label: 'Older', count: olderCount, filteredCount: olderFilteredCount }, ...nonEmptyBuckets]
-        : nonEmptyBuckets;
+    const specialBuckets = [];
+    if (trashCount > 0) {
+        specialBuckets.push({ id: 'trash', label: '🗑️ Trash', count: trashCount, filteredCount: trashFilteredCount });
+    }
+    if (savedCount > 0) {
+        specialBuckets.push({ id: 'saved', label: '⭐ Saved', count: savedCount, filteredCount: savedFilteredCount });
+    }
+    dateBuckets = [...specialBuckets, ...nonEmptyBuckets];
 
     // Keep the current selection if it still exists (e.g. after loadTable
     // just refreshed counts); otherwise land on the most recent bucket that
@@ -158,12 +205,15 @@ function renderDateScroll() {
         return;
     }
 
-    track.innerHTML = dateBuckets.map(b => `
-        <button class="date-bucket-pill ${b.id === selectedBucketId ? 'selected' : ''}" onclick="selectDateBucket('${b.id}')">
+    track.innerHTML = dateBuckets.map(b => {
+        const specialClass = b.id === 'trash' ? 'bucket-trash' : b.id === 'saved' ? 'bucket-saved' : '';
+        return `
+        <button class="date-bucket-pill ${specialClass} ${b.id === selectedBucketId ? 'selected' : ''}" onclick="selectDateBucket('${b.id}')">
             <span class="date-bucket-label">${b.label}</span>
             <span class="date-bucket-count">${b.filteredCount}</span>
         </button>
-    `).join('');
+    `;
+    }).join('');
 
     // Land on the current selection (usually today, at the right edge)
     // instead of making the user scroll there manually.
@@ -179,44 +229,41 @@ function selectDateBucket(id) {
     renderTable();
 }
 
-function setDateGranularity(granularity, btnEl) {
-    dateGranularity = granularity;
-    document.querySelectorAll('#date-granularity-toggle .mode-toggle-btn').forEach(b => b.classList.remove('active'));
-    if (btnEl) btnEl.classList.add('active');
-    selectedBucketId = null; // re-pick today's/this-week's bucket in the new granularity
-    generateDateBuckets();
-    renderDateScroll();
-    renderTable();
-}
-
+// Granularity/window size are no longer picked manually (see
+// deriveDateGranularity above) — this just decides which card belongs in
+// which bucket, now also accounting for a card that's saved or sitting in
+// Trash, both of which bypass the date buckets entirely (see
+// generateDateBuckets).
 function phraseMatchesDateFilter(phrase) {
+    const activeSpace = typeof getActiveSpace === 'function' ? getActiveSpace() : null;
+    if (isCardPastGrace(phrase, activeSpace)) return false; // about to be swept away, never shown
     if (!selectedBucketId) return true;
-    if (selectedBucketId === 'older') {
+    if (selectedBucketId === 'trash') {
+        return isCardInTrash(phrase, activeSpace);
+    }
+    if (isCardInTrash(phrase, activeSpace)) return false;
+    if (selectedBucketId === 'saved') {
+        if (isCardSaved(phrase)) return true;
         if (!earliestBucketId) return false;
         return bucketIdFor(new Date(phrase.created_at), dateGranularity) < earliestBucketId;
     }
+    if (isCardSaved(phrase)) return false;
     return bucketIdFor(new Date(phrase.created_at), dateGranularity) === selectedBucketId;
 }
 
-// Called on space switch — back to daily view, landed on today.
+// Called on space switch — lands back on today/this-bucket; the actual
+// granularity is re-derived from the new routine's own card_lifetime the
+// next time generateDateBuckets runs (loadTable).
 function resetDateScroll() {
-    dateGranularity = 'day';
     selectedBucketId = null;
-    document.querySelectorAll('#date-granularity-toggle .mode-toggle-btn').forEach(b => b.classList.remove('active'));
-    const dayBtn = document.querySelector('#date-granularity-toggle .mode-toggle-btn[data-granularity="day"]');
-    if (dayBtn) dayBtn.classList.add('active');
 }
 
-// Forces the scroll back to daily view, landed on today — used when
-// arriving at Practice straight from the Add tab (see enterPracticeTab
-// below), so a phrase you just added is immediately visible without
-// having to notice you're still parked on some other day/week/month.
+// Jumps back to today's bucket — used when arriving at Practice straight
+// from the Add tab (see enterPracticeTab below), so a phrase you just
+// added is immediately visible without having to notice you're still
+// parked on some other bucket.
 function jumpDateScrollToToday() {
-    dateGranularity = 'day';
     selectedBucketId = null;
-    document.querySelectorAll('#date-granularity-toggle .mode-toggle-btn').forEach(b => b.classList.remove('active'));
-    const dayBtn = document.querySelector('#date-granularity-toggle .mode-toggle-btn[data-granularity="day"]');
-    if (dayBtn) dayBtn.classList.add('active');
     generateDateBuckets();
     renderDateScroll();
     renderTable();
@@ -226,8 +273,13 @@ function jumpDateScrollToToday() {
 // the only way to reach Practice, so checking what was active right before
 // the switch is enough to catch "coming from Add" reliably. Any other
 // origin tab leaves the scroll exactly where you left it, same as today.
+// Also refreshes the Practice-tab-only all-routines slots scroll
+// (slots.js's renderPracticeSlotsScroll) — its current/next highlight
+// depends on the phone's clock, which may well have moved on since the
+// last time Practice was open.
 function enterPracticeTab(btnEl) {
     const cameFromAdd = document.getElementById('view-add')?.classList.contains('active');
     showView('practice', btnEl);
     if (cameFromAdd) jumpDateScrollToToday();
+    if (typeof renderPracticeSlotsScroll === 'function') renderPracticeSlotsScroll();
 }

@@ -1,24 +1,14 @@
 /* slots.css — the Schedule section (lives inside the Setup tab now — see
    #schedule-section in index.html/spaceRules.css, which owns the section's
-   own card wrapper) and its two modals: the add/edit time-slot modal, and
-   the "Full schedule" merged-timeline overlay. Reuses existing patterns
+   own card wrapper) and its own add/edit time-slot modal. The old "Full
+   schedule" merged-timeline overlay is gone — that job is the Practice
+   tab's own slots-scroll now (see renderPracticeSlotsScroll in slots.js),
+   so there's nothing left here duplicating it. Reuses existing patterns
    from the rest of the app (the chip-grid look from modal.css, accordion
    spacing from spaceRules.css) rather than inventing new ones.
    .color-grid/.color-circle below used to live in tags.css — moved here
    since the slot modal's own color picker is now their only user, now
    that tags are gone. */
-
-/* #slots-header-actions uses the shared .mode-toggle / .mode-toggle-btn
-   classes (base.css) for its own look — same two-blue-pill style as
-   Export/Import in the Backup section and Dark/Light in Appearance. Only
-   addition needed here is this padding reset, same reasoning as
-   #backup-section's own override in spaceRules.css: .mode-toggle's default
-   side padding (10px 24px 0) would otherwise stack on top of
-   #schedule-section's own 16px padding, making these two buttons
-   noticeably narrower than everywhere else that reuses this class. */
-#slots-header-actions {
-    padding: 0;
-}
 
 .slots-permission-warning {
     background: rgba(248, 113, 113, 0.12);
@@ -61,9 +51,9 @@
     background: var(--surface);
     border: 1px solid var(--border);
     /* Default transparent — overridden inline per slot with its own color
-       (slots.js), same border-accent language as .full-day-row below. A
-       slot's color IS its visual identity now, so there's no more stacked
-       tag-chip list on the card the way there used to be. */
+       (slots.js), same border-accent language as .practice-slot-pill
+       (table.css). A slot's color IS its visual identity now, so there's
+       no more stacked tag-chip list on the card the way there used to be. */
     border-inline-start: 4px solid transparent;
     border-radius: 10px;
     overflow: hidden;
@@ -341,76 +331,4 @@
 .slot-modal-footer-right {
     display: flex;
     gap: 10px;
-}
-
-/* ===== "Full schedule" overlay ===== */
-
-#full-day-modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: var(--overlay);
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-}
-
-#full-day-modal {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    width: 100%;
-    max-width: 420px;
-    max-height: 85vh;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    padding: 18px;
-    gap: 14px;
-}
-
-#full-day-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.full-day-row {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    padding: 10px 12px;
-    background: var(--surface-2);
-    border-radius: 8px;
-    border-inline-start: 4px solid transparent;
-}
-
-.full-day-row-time {
-    flex-shrink: 0;
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: var(--text-2);
-    min-width: 84px;
-}
-
-.full-day-row-body {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.full-day-row-routine {
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-
-.full-day-row-text {
-    font-size: 0.875rem;
-    color: var(--text);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }

@@ -93,6 +93,62 @@ function renderSpaceRulesForm() {
     }
 
     closeAllSpaceRuleItems();
+    renderCardLifetimeToggle();
+}
+
+// ===== Card lifetime (week | month) =====
+// A plain two-button toggle, not part of the accordion above — there's
+// nothing to type or Save/Cancel here, just an immediate pick, same as the
+// theme toggle. Only ever "week" or "month" on purpose (Rotem's own
+// call) — there's no third "never expire" option in this UI. A routine
+// that hasn't picked yet behaves exactly like "month" (see localDb.js's
+// effectiveCardLifetime) — shown highlighted here too, so the toggle
+// always reflects what's actually in effect, not just what was explicitly
+// clicked.
+function renderCardLifetimeToggle() {
+    const section = document.getElementById('card-lifetime-section');
+    if (!section) return; // not on the Setup tab yet
+    const active = getActiveSpace();
+    const effective = active ? effectiveCardLifetime(active.card_lifetime) : 'month';
+    document.querySelectorAll('#card-lifetime-toggle .mode-toggle-btn').forEach(btn => {
+        btn.classList.toggle('active', effective === btn.dataset.lifetime);
+    });
+}
+
+// A card's lifetime is checked LIVE against its routine's current setting
+// (localDb.js), not frozen at creation — so tightening this (month to
+// week, or week for the first time after never choosing — both count,
+// since unset behaves as month) could otherwise sweep out cards that were
+// sitting there peacefully a moment ago, just because the rule under them
+// got stricter. protectExistingCardsInSpace closes that gap: it marks
+// everything already in this routine as saved the moment that happens, so
+// only cards created AFTER this point are ever judged by the new, tighter
+// rule. Loosening (week to month) never needs this — nothing becomes more
+// overdue by getting more time, so there's nothing to protect against.
+async function setCardLifetime(value, btnEl) {
+    const active = getActiveSpace();
+    if (!active) return;
+    btnEl.disabled = true;
+    try {
+        const wasMs = CARD_LIFETIME_MS[effectiveCardLifetime(active.card_lifetime)];
+        const willMs = CARD_LIFETIME_MS[value];
+        const tightened = willMs < wasMs;
+
+        const updated = await updateSpace({ id: active.id, cardLifetime: value });
+        const idx = spaces.findIndex(s => s.id === active.id);
+        if (idx !== -1) spaces[idx] = updated;
+
+        if (tightened) {
+            await protectExistingCardsInSpace(active.id);
+            if (typeof loadTable === 'function') await loadTable();
+        }
+
+        renderCardLifetimeToggle();
+    } catch (err) {
+        alert('Failed to update card lifetime');
+    } finally {
+        btnEl.disabled = false;
+    }
 }
 
 // Discards unsaved edits in just this one field and closes it.

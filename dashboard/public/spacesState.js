@@ -41,11 +41,9 @@ function renderSpaceHeader() {
     const label = document.getElementById('space-header-name');
     if (!label) return;
     const active = getActiveSpace();
-    if (active && active.space_type === 'dictionary') {
-        label.textContent = `📖 ${active.name}`;
-        return;
-    }
-    label.textContent = active ? active.name : 'Select a routine';
+    label.textContent = active && active.space_type === 'dictionary'
+        ? `📖 ${active.name}`
+        : (active ? active.name : 'Select a routine');
     if (typeof renderSpaceRulesForm === 'function') renderSpaceRulesForm();
 }
 

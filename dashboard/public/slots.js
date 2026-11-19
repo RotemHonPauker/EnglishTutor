@@ -7,23 +7,19 @@
 // time window gets labeled with, with no separate tag entity in between
 // (see translationEngine.js's translatePhrase and localDb.js's getPhrases).
 //
-// Two views live here:
-//   1. The per-routine Schedule list (#slots-list, inside #schedule-section
-//      on the Setup tab) — scoped to activeSpaceId, showing only that
-//      routine's own slots. This is the main, everyday view.
-//   2. The "Full schedule" overlay (#full-day-modal-overlay) — reachable
-//      from a button in the Schedule section — merges every slot from
-//      every Routine into one time-sorted list, each shown in its own
-//      color. This is the ONLY place slots from different routines are
-//      shown together; the per-routine list never leaks another
-//      routine's slots in.
+// The Schedule list here (#slots-list, inside #schedule-section on the
+// Setup tab) is scoped to activeSpaceId — only that routine's own slots.
+// The old "Full schedule" overlay, merging every Routine's slots into one
+// list, is gone — that's now the Practice tab's own job instead (its
+// slots-scroll, renderPracticeSlotsScroll below), so there's no second
+// place that does the same thing any more.
 //
 // Needs localDb.js (getSlots/getAllSlots/createSlot/updateSlot/deleteSlot/
 // findOverlappingSlot) and spacesState.js (spaces/activeSpaceId/
 // getActiveSpace) loaded first. COLORS (colorUtils.js) is the shared pool
 // every slot's color comes from, app-wide (see localDb.js's
 // MAX_SLOTS_TOTAL) — the same list backs both the add/edit modal's color
-// picker and the "Full schedule" overlay's per-slot coloring.
+// picker and the Practice tab's own cross-routine slots scroll (below).
 
 let slots = []; // the ACTIVE routine's own slots only
 
@@ -197,6 +193,64 @@ async function loadSlotsScreen() {
     slots = await getSlots(activeSpaceId);
     renderSlotsList();
     updateSlotsPermissionWarning();
+    // Keeps the Practice tab's own all-routines slots scroll in sync
+    // whenever a slot is added/edited/deleted/toggled anywhere, not just
+    // when Practice itself is re-entered (see enterPracticeTab in
+    // practiceDateScroll.js, which refreshes it on tab switch too).
+    if (typeof renderPracticeSlotsScroll === 'function') renderPracticeSlotsScroll();
+}
+
+// ===== Practice-tab slots scroll (display-only, cross-routine) =====
+// Shows TODAY's reminder schedule across every routine, not just the
+// active one — same horizontal-pill visual language as the date scroll
+// (practiceDateScroll.js), but nothing here is clickable/selectable; it's
+// purely a passive "what's coming up today" strip. Whichever slot is
+// active right now (or, if none is, the next one still ahead today) gets
+// highlighted, worked out fresh against the phone's own clock every time
+// this renders. Practice-tab-only per Rotem's own call — this never
+// appears on any other tab.
+async function renderPracticeSlotsScroll() {
+    const track = document.getElementById('practice-slots-scroll-track');
+    if (!track) return; // not on the Practice tab (or not built into this page)
+
+    const all = await getAllSlots();
+    const enabled = all.filter(s => s.enabled !== false);
+
+    if (!enabled.length) {
+        track.innerHTML = `<div class="date-scroll-empty">No time slots set up yet</div>`;
+        return;
+    }
+
+    const now = new Date();
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const active = enabled.find(s => s.start_minutes <= nowMinutes && nowMinutes < s.end_minutes) || null;
+    // The list is already sorted by start_minutes (getAllSlots), so the
+    // first one starting later than now is the next one — only looked for
+    // when nothing is active right now.
+    const next = !active ? (enabled.find(s => s.start_minutes > nowMinutes) || null) : null;
+
+    track.innerHTML = enabled.map(s => {
+        const isActive = !!active && s.id === active.id;
+        const isNext = !!next && s.id === next.id;
+        const contrast = getContrastColor(s.color);
+        const highlightStyle = (isActive || isNext) ? `background:${s.color || '#333'}; color:${contrast}; border-color:${s.color || '#333'};` : '';
+        return `
+        <div class="practice-slot-pill ${isActive ? 'current' : ''} ${isNext ? 'next' : ''}" style="${highlightStyle}">
+            <span class="practice-slot-pill-time">${formatSlotRange(s.start_minutes, s.end_minutes)}</span>
+            <span class="practice-slot-pill-name">${escapeHtml(s.name || '')}</span>
+            <span class="practice-slot-pill-routine">${escapeHtml(getSpaceNameById(s.space_id))}</span>
+        </div>
+        `;
+    }).join('');
+}
+
+// A slot row doesn't carry its own routine's name (unlike a phrase, slots
+// are never joined against their space in localDb.js) — this is just a
+// lookup against `spaces` (spacesState.js), which already holds every
+// routine for the space picker.
+function getSpaceNameById(spaceId) {
+    const space = (typeof spaces !== 'undefined' ? spaces : []).find(s => s.id === spaceId);
+    return space ? space.name : '';
 }
 
 // Shows the "notifications are blocked" banner (index.html) whenever the
@@ -233,8 +287,9 @@ function renderSlotsList() {
         const color = s.color || '#333';
 
         // The slot's own color is its at-a-glance identity now (same
-        // border-accent language as .full-day-row below) — no more tag
-        // chips stacked on the card. Deleting is modal-only (the edit
+        // border-accent language as .practice-slot-pill in
+        // renderPracticeSlotsScroll below) — no more tag chips stacked on
+        // the card. Deleting is modal-only (the edit
         // modal's own Delete button). See .disabled below for the dimmed
         // look when the toggle is off.
         return `
@@ -452,42 +507,6 @@ async function deleteSlotFromModal() {
     }
 }
 
-// ===== "Full schedule" overlay — every routine's slots together =====
-
-async function openFullDayOverlay() {
-    // Only enabled slots — one someone turned off still exists and can
-    // still be edited, but it won't actually notify, so including it here
-    // would make this merged timeline misrepresent what's really going to
-    // happen today.
-    const all = (await getAllSlots()).filter(s => s.enabled !== false);
-    const container = document.getElementById('full-day-list');
-
-    if (!all.length) {
-        container.innerHTML = '<div class="slots-empty">No active time slots in any routine right now.</div>';
-    } else {
-        const spaceById = new Map((typeof spaces !== 'undefined' ? spaces : []).map(s => [s.id, s]));
-        container.innerHTML = all.map(s => {
-            const routine = spaceById.get(s.space_id);
-            const color = s.color || '#333';
-            const routineName = routine ? routine.name : 'Deleted routine';
-            return `
-            <div class="full-day-row" style="border-inline-start-color:${color}">
-                <div class="full-day-row-time">${formatSlotRange(s.start_minutes, s.end_minutes)}</div>
-                <div class="full-day-row-body">
-                    <div class="full-day-row-routine" style="color:${color}">${escapeHtml(routineName)}</div>
-                    <div class="full-day-row-text">${escapeHtml(s.name || '')}</div>
-                </div>
-            </div>
-            `;
-        }).join('');
-    }
-
-    document.getElementById('full-day-modal-overlay').style.display = 'flex';
-}
-
-function closeFullDayOverlay() {
-    document.getElementById('full-day-modal-overlay').style.display = 'none';
-}
 
 // ===== Notification text (fixed template, not free text) =====
 // A slot only stores a short NAME, not a message to send — the person

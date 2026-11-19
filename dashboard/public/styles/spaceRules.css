@@ -9,9 +9,8 @@
 
 /* #theme-toggle-actions (index.html) — the Dark/Light row used to live
    inside a #theme-section card with its own "Appearance" header; both were
-   removed to cut down on this tab's clutter (same plain, unwrapped look as
-   #slots-header-actions, slots.css). This is the one addition still needed
-   on top of the shared .mode-toggle styling: without it, .mode-toggle's
+   removed to cut down on this tab's clutter. This is the one addition
+   still needed on top of the shared .mode-toggle styling: without it, .mode-toggle's
    own default side padding (10px 24px 0) would stack on top of
    #setup-scroll's own 12px padding, same reasoning as #backup-section's
    override just below. */
@@ -216,12 +215,40 @@
     color: var(--text-muted);
 }
 
+/* ===== Card lifetime section (Setup tab) — same card family as Backup/
+   Invite/Schedule (below and above): its own standalone rubric now, not
+   folded into Routine Setup — right after the theme toggle, per Rotem's
+   own call. #card-lifetime-toggle reuses the shared .mode-toggle /
+   .mode-toggle-btn look (same visual family as Backup's Export/Import
+   buttons), just with real toggle semantics (one active at a time,
+   handled by spaceRules.js's renderCardLifetimeToggle) rather than two
+   always-active independent actions. */
+
+#card-lifetime-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#card-lifetime-section .mode-toggle {
+    padding: 0;
+}
+
+#card-lifetime-intro {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--text-muted);
+}
+
 /* ===== Schedule section (Setup tab) — same card family as the sections
    above. Used to be its own tab (#view-slots); now lives here instead,
    with the Transcripts tab taking its old spot in the bottom nav. Its own
-   contents (#slots-header-actions, #slots-permission-warning, #slots-list,
-   and everything the slot add/edit modal and "Full schedule" overlay
-   render) are unchanged and still styled entirely by slots.css — this
+   contents (#slots-permission-warning, #slots-list, and the slot add/edit
+   modal) are unchanged and still styled entirely by slots.css — this
    file only adds the card wrapper itself, same as it does for Backup and
    Invite above. */
 
@@ -233,8 +260,4 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-}
-
-#schedule-section .mode-toggle {
-    padding: 0;
 }

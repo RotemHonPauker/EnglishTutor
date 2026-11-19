@@ -65,6 +65,83 @@
     padding: 8px 4px;
 }
 
+/* The Saved pill is a plain date-bucket-pill — no special color (same
+   call as the per-card ⭐ button, table.css's .saved-btn: the star in its
+   own label is enough, no amber needed on top). The Trash pill keeps its
+   own accent color below, since that one's meant to stand out as a
+   warning. */
+
+.date-bucket-pill.bucket-trash {
+    border-color: #ef4444;
+    color: #ef4444;
+}
+
+.date-bucket-pill.bucket-trash.selected {
+    background: #ef4444;
+    border-color: #ef4444;
+    color: #fff;
+}
+
+/* ===== Practice-tab-only all-routines slots scroll ===== */
+/* Display-only — the two "+ Add slot" / "🎯 Practice" quick actions that
+   used to sit in a separate row here now live directly in the shared
+   #space-header itself (base.css's #header-practice-btn/
+   #header-add-slot-btn), shown only while on Practice. */
+
+#practice-slots-scroll {
+    flex-shrink: 0;
+    padding: 8px 12px 0;
+}
+
+#practice-slots-scroll-track {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scroll-snap-type: x proximity;
+}
+
+.practice-slot-pill {
+    flex-shrink: 0;
+    scroll-snap-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 92px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+}
+
+.practice-slot-pill-time {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.practice-slot-pill-name {
+    font-size: 0.75rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.practice-slot-pill-routine {
+    font-size: 0.6875rem;
+    opacity: 0.8;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.practice-slot-pill.current,
+.practice-slot-pill.next {
+    border-width: 2px;
+}
+
 #table-area {
     flex: 1;
     display: flex;
@@ -108,7 +185,7 @@
     margin-right: 4px;
 }
 
-#start-practice-btn {
+#select-mode-btn {
     margin-left: auto;
 }
 
@@ -343,12 +420,27 @@
     justify-content: center;
 }
 
-/* ===== Start practice button ===== */
-/* Primary-accent styling so it stands out from the plain toolbar buttons
-   next to it (Slots filter, Select) — this is the main entry point into
-   the whole practice-session feature (practiceSession.js). */
-#start-practice-btn {
-    background: #2563eb;
-    border-color: #2563eb;
-    color: #fff;
+/* Saved (⭐) — no special color (Rotem's own call: the star glyph itself
+   is eye-catching enough, no amber needed on top of it). Disabled, not
+   dimmed — once saved, the star is a plain indicator, not a control (see
+   phrasesTable.js/dictionary.js's handle*TrashClick for the only way out
+   of saved), so it just keeps the icon buttons' normal look instead of
+   looking greyed-out like a normally-disabled button. */
+.saved-btn.is-saved:disabled {
+    opacity: 1;
+    cursor: default;
 }
+
+/* A card sitting in its routine's Trash bucket (localDb.js's
+   isCardInTrash) — one last visible nudge before the 24h grace window
+   runs out and it's hard-deleted for good. */
+.card-trash-notice {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #ef4444;
+    margin-top: 4px;
+}
+
+/* The old toolbar "Start practice" button (and its accent styling) is
+   gone — replaced by #header-practice-btn, inside the shared #space-header
+   itself (base.css), shown only while on Practice. */

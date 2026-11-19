@@ -27,7 +27,24 @@ function showView(view, btnEl) {
     } else {
         document.querySelector(`.tab-btn[data-view="${view}"]`).classList.add('active');
     }
+    // Lets base.css show/hide the shared #space-header's Practice-only
+    // quick actions (#header-practice-btn/#header-add-slot-btn) purely by
+    // CSS, without a separate JS call on every tab switch — every path
+    // into any tab (enterCaptureTab/enterPracticeTab/enterTranscriptsTab,
+    // or this function directly) always runs through here.
+    document.body.dataset.activeView = view;
 }
+
+// index.html already marks Practice as the initially active view
+// (#view-practice.active, no JS involved) — this line is what keeps
+// body[data-active-view] in sync with that from the very first paint,
+// not just from showView's own calls above. Without it, the Practice-only
+// header buttons stayed hidden after a fresh page load/refresh until the
+// first real tab switch, since nothing had called showView yet to set
+// the attribute. Runs synchronously as this script loads (it's the last
+// script tag, so the DOM is already there by then), not inside
+// window.onload, so there's no flash of the buttons being hidden first.
+document.body.dataset.activeView = document.querySelector('.view.active')?.id.replace('view-', '') || 'practice';
 
 // --- REAL VIEWPORT HEIGHT (handles the mobile keyboard properly) ---
 // `100dvh` alone isn't reliably supported/behaved on every mobile browser,

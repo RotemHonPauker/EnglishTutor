@@ -1,6 +1,6 @@
 /* ===== Practice session overlay (practiceSession.js) ===== */
 /* Same "centered card over a dimmed backdrop" chrome as every other
-   overlay in the app (compare #full-day-modal-overlay in slots.css,
+   overlay in the app (compare #slot-modal-overlay in slots.css,
    .confirm-modal in modal.css) — a dedicated id rather than reusing
    .confirm-modal since this one's content varies a lot more across its
    several phases (scope picker, slot picker, drill steps, done screen)

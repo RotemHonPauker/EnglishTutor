@@ -93,6 +93,11 @@ function renderActiveFilterChips() {
 }
 
 async function loadTable() {
+    // Hard-deletes any phrase/dictionary row whose 24h trash grace window
+    // has fully elapsed — run every time this loads (app startup, space
+    // switch, after any edit), same pattern as deleteExpiredTranscripts.
+    if (typeof deletePastGraceCards === 'function') await deletePastGraceCards();
+
     if (typeof isDictionarySpace === 'function' && isDictionarySpace()) {
         if (typeof loadDictionaryEntries === 'function') await loadDictionaryEntries(activeSpaceId);
         return;
@@ -156,6 +161,8 @@ function renderTable() {
         const levelBadgeLabel = isBridge ? (level === 2 ? bridgeCode : targetCode) : `Level ${level}`;
         const levelBadgeTitle = isBridge ? 'Tap to switch language' : 'Tap to switch level';
         const isSelected = selectedPhraseIds.has(p.id);
+        const isSaved = isCardSaved(p);
+        const inTrash = isCardInTrash(p, activeSpace);
         const cardClasses = ['phrase-card', slotColor ? 'has-color' : '', isSelected ? 'selected' : ''].filter(Boolean).join(' ');
         return `
         <div class="${cardClasses}" style="${cardStyle}" ${selectMode ? `onclick="toggleCardSelection('${p.id}')"` : ''}>
@@ -163,7 +170,10 @@ function renderTable() {
                 ${selectMode
                     ? `<input type="checkbox" class="phrase-select-checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleCardSelection('${p.id}')">`
                     : `<div class="phrase-card-icons">
-                    <button style="${iconBg ? `background:${iconBg};` : ''}" title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑️</button>
+                    ${isSaved
+                        ? `<button class="saved-btn is-saved" style="${iconBg ? `background:${iconBg};` : ''}" title="Saved" disabled>⭐</button>`
+                        : `<button class="saved-btn" style="${iconBg ? `background:${iconBg};` : ''}" title="Save (protects from expiry)" onclick="event.stopPropagation(); togglePhraseSaved('${p.id}')">☆</button>`}
+                    <button style="${iconBg ? `background:${iconBg};` : ''}" title="${isSaved ? 'Move to Trash' : 'Delete phrase'}" onclick="handlePhraseTrashClick('${p.id}')">🗑️</button>
                     <button style="${iconBg ? `background:${iconBg};` : ''}" title="Edit phrase" onclick="editPhraseRow('${p.id}')">✏️</button>
                 </div>`}
                 <div class="phrase-card-badges">
@@ -174,6 +184,7 @@ function renderTable() {
             <div class="phrase-card-main">
                 <div class="phrase-source" dir="auto">${escapeHtml(p.source_text || '')}</div>
                 <div class="phrase-variant"><button class="tts-btn" title="Play" onclick="playPhraseAudio('${p.id}', ${level}, this)" ${selectMode ? 'disabled' : ''}>🔊</button> ${escapeHtml(displayedVariant || '')}</div>
+                ${inTrash ? `<div class="card-trash-notice">🗑️ Expires soon — tap ⭐ to keep</div>` : ''}
             </div>
         </div>
     `;
@@ -319,6 +330,54 @@ async function toggleLevel(id) {
         phrase.level = wasLevel;
         renderTable();
         alert('Failed to update level');
+    }
+}
+
+// ===== Saved (⭐) — a one-way protection, not a toggle =====
+// Mirrors a transcript's own pin (transcriptsTab.js), but only in the
+// protecting direction: once a card is saved, the star itself is
+// disabled (see the ⭐/disabled markup above) — there's deliberately no
+// plain "unsave" click on it any more, since that's exactly how a
+// long-saved card could jump straight past its own 24h grace window the
+// instant it's un-starred (its age is checked live against the routine's
+// CURRENT setting, not whatever was true when it was created). The ONLY
+// way out of saved is the card's own 🗑️ button (handlePhraseTrashClick
+// below), which makes that an explicit, deliberate action rather than
+// something the star does as a side effect of being clicked again.
+async function togglePhraseSaved(id) {
+    const phrase = allPhrases.find(p => p.id === id);
+    if (!phrase || isCardSaved(phrase)) return; // the star has nothing left to do once saved — see handlePhraseTrashClick
+    try {
+        await setPhraseSaved(id, true);
+        await loadTable();
+    } catch (err) {
+        alert('Failed to update saved state');
+    }
+}
+
+// The card's 🗑️ button now does one of two different things depending on
+// whether it's saved: for a normal card, the usual permanent delete (with
+// its confirm modal, unchanged — deletePhraseRow); for a saved one, there
+// is no "delete" to confirm, because being saved already means it isn't
+// going anywhere by itself — so instead this is the one deliberate way to
+// take it OUT of saved, by moving it to Trash with a brand new 24h grace
+// window starting now (trashPhrase).
+function handlePhraseTrashClick(id) {
+    const phrase = allPhrases.find(p => p.id === id);
+    if (!phrase) return;
+    if (isCardSaved(phrase)) {
+        trashSavedPhrase(id);
+    } else {
+        deletePhraseRow(id);
+    }
+}
+
+async function trashSavedPhrase(id) {
+    try {
+        await trashPhrase(id);
+        await loadTable();
+    } catch (err) {
+        alert('Failed to move to Trash');
     }
 }
 

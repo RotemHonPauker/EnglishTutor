@@ -259,11 +259,18 @@ function renderDictionaryCards() {
 
     document.getElementById('phrase-count').textContent = sorted.length;
 
-    tableBody.innerHTML = sorted.map(e => `
+    const activeSpace = typeof getActiveSpace === 'function' ? getActiveSpace() : null;
+    tableBody.innerHTML = sorted.map(e => {
+        const isSaved = isCardSaved(e);
+        const inTrash = isCardInTrash(e, activeSpace);
+        return `
         <div class="phrase-card dictionary-card">
             <div class="phrase-card-header">
                 <div class="phrase-card-icons">
-                    <button title="Delete word" onclick="deleteDictionaryRow('${e.id}')">🗑️</button>
+                    ${isSaved
+                        ? `<button class="saved-btn is-saved" title="Saved" disabled>⭐</button>`
+                        : `<button class="saved-btn" title="Save (protects from expiry)" onclick="toggleDictionaryEntrySaved('${e.id}')">☆</button>`}
+                    <button title="${isSaved ? 'Move to Trash' : 'Delete word'}" onclick="handleDictionaryTrashClick('${e.id}')">🗑️</button>
                 </div>
                 <span class="dictionary-pos">${escapeHtml(e.part_of_speech || '')}</span>
             </div>
@@ -272,9 +279,45 @@ function renderDictionaryCards() {
                 ${e.source_synonyms ? `<div class="dictionary-synonyms" dir="auto">${escapeHtml(e.source_synonyms)}</div>` : ''}
                 ${e.example_sentence ? `<div class="dictionary-example">${escapeHtml(e.example_sentence)}</div>` : ''}
                 ${e.target_synonyms ? `<div class="dictionary-synonyms">${escapeHtml(e.target_synonyms)}</div>` : ''}
+                ${inTrash ? `<div class="card-trash-notice">🗑️ Expires soon — tap ⭐ to keep</div>` : ''}
             </div>
         </div>
-        `).join('');
+        `;
+    }).join('');
+}
+
+// Mirrors togglePhraseSaved (phrasesTable.js) — saved is a one-way click
+// on the star; see handleDictionaryTrashClick below for the only way out.
+async function toggleDictionaryEntrySaved(id) {
+    const entry = allDictionaryEntries.find(e => e.id === id);
+    if (!entry || isCardSaved(entry)) return;
+    try {
+        await setDictionaryEntrySaved(id, true);
+        await loadDictionaryEntries(activeSpaceId);
+    } catch (err) {
+        alert('Failed to update saved state');
+    }
+}
+
+// Mirrors handlePhraseTrashClick (phrasesTable.js) — permanent delete for
+// a normal entry, or a move to Trash (fresh 24h window) for a saved one.
+function handleDictionaryTrashClick(id) {
+    const entry = allDictionaryEntries.find(e => e.id === id);
+    if (!entry) return;
+    if (isCardSaved(entry)) {
+        trashSavedDictionaryEntry(id);
+    } else {
+        deleteDictionaryRow(id);
+    }
+}
+
+async function trashSavedDictionaryEntry(id) {
+    try {
+        await trashDictionaryEntry(id);
+        await loadDictionaryEntries(activeSpaceId);
+    } catch (err) {
+        alert('Failed to move to Trash');
+    }
 }
 
 // Reuses the same delete-confirm modal as phrases (see pendingDeleteType

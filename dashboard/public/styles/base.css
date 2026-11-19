@@ -143,9 +143,23 @@ button.danger {
 button.danger:hover { background: #b91c1c; }
 
 /* ===== Space header (shown above every tab) ===== */
+/* #header-row is the outer strip that carries the page gutter margin now
+   (it used to sit directly on #space-header) — #space-header itself keeps
+   its exact look (blue-bordered pill, centered text) and just flexes to
+   fill whatever width is left once the Practice-only buttons either side
+   of it take theirs (or all of it, when they're hidden — see below). */
+
+#header-row {
+    margin: 8px 16px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
 
 #space-header {
-    margin: 8px 16px 0;
+    flex: 1;
+    min-width: 0;
     padding: 10px 16px;
     border: 2px solid #2563eb;
     border-radius: 10px;
@@ -154,7 +168,6 @@ button.danger:hover { background: #b91c1c; }
     justify-content: center;
     gap: 6px;
     cursor: pointer;
-    flex-shrink: 0;
     font-size: 0.875rem;
     font-weight: 600;
     color: var(--text-muted);
@@ -168,6 +181,36 @@ button.danger:hover { background: #b91c1c; }
 .space-header-chevron {
     font-size: 0.7rem;
     opacity: 0.6;
+}
+
+/* Practice-tab-only quick actions — siblings of #space-header inside
+   #header-row, stuck to the two screen edges rather than sitting inside
+   its blue border. "🎯 Practice" on the left, "+ Add slot" on the right.
+   Hidden on every other tab; showView (app.js) keeps
+   body[data-active-view] in sync with whichever tab is actually on
+   screen, so no per-tab JS toggle is needed here. */
+#header-practice-btn,
+#header-add-slot-btn {
+    display: none;
+    flex-shrink: 0;
+    align-items: center;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    white-space: nowrap;
+    /* Same padding + border thickness as #space-header above (10px/2px),
+       just transparent instead of blue — that's what actually matches
+       its height pixel-for-pixel, not just an eyeballed padding number. */
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 2px solid transparent;
+    background: #2563eb;
+    color: #fff;
+    cursor: pointer;
+}
+
+body[data-active-view="practice"] #header-practice-btn,
+body[data-active-view="practice"] #header-add-slot-btn {
+    display: inline-flex;
 }
 
 /* ===== App loading overlay (shown briefly on initial load, any tab) ===== */
@@ -201,8 +244,8 @@ button.danger:hover { background: #b91c1c; }
 
 /* Shared mode toggle (Capture a phrase / Check my English) — used on both
    the Type and Record tabs. Also reused, plain/unwrapped (no card, no
-   header) for a row of standalone action buttons — see #slots-header-actions
-   (slots.css) and #theme-toggle-actions (spaceRules.css). */
+   header) for a row of standalone action buttons — see
+   #theme-toggle-actions (spaceRules.css). */
 .mode-toggle {
     display: flex;
     gap: 6px;
