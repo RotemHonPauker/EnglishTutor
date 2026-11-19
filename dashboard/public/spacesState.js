@@ -72,11 +72,16 @@ async function setActiveSpace(id) {
     // it's the only way to catch that case, since the tab's own enter-tab
     // reset won't fire without an actual tab click.
     if (typeof resetCaptureLog === 'function') resetCaptureLog();
+    // Same reasoning, for the Transcripts tab — closes any open transcript
+    // editor and reloads the list so it's never left showing another
+    // routine's transcripts (see transcriptsTab.js).
+    if (typeof resetTranscriptsTab === 'function') await resetTranscriptsTab();
     await loadTable();
-    // The Schedule tab is scoped to whichever routine is active — reload
-    // it too so it's never left showing another routine's time slots.
-    // Safe to call even when the Schedule tab isn't the one on screen
-    // right now (see loadSlotsScreen's own no-op guard, slots.js).
+    // The Schedule section is scoped to whichever routine is active —
+    // reload it too so it's never left showing another routine's time
+    // slots. Safe to call even when the Setup tab (where it now lives)
+    // isn't the one on screen right now (see loadSlotsScreen's own no-op
+    // guard, slots.js).
     if (typeof loadSlotsScreen === 'function') await loadSlotsScreen();
 }
 
@@ -397,19 +402,15 @@ function renderMigrateSpaceConfirm(source, target) {
         <div id="migrate-space-error" class="form-error" style="display:none"></div>
         <div class="form-buttons">
             <button onclick="showMigrateSpaceForm('${source.id}')">Back</button>
-            <button class="primary" onclick="submitMigrateSpace('${source.id}', '${target.id}', false)">Confirm migration</button>
+            <button class="primary" onclick="submitMigrateSpace('${source.id}', '${target.id}')">Confirm migration</button>
         </div>
     `;
 }
 
-async function submitMigrateSpace(sourceId, targetId, dropSourceTranscripts) {
+async function submitMigrateSpace(sourceId, targetId) {
     try {
-        await migrateSpace({ sourceId, targetId, dropSourceTranscripts });
+        await migrateSpace({ sourceId, targetId });
     } catch (err) {
-        if (err.code === 'TOO_MANY_TRANSCRIPTS') {
-            renderMigrateTranscriptOverflow(sourceId, targetId, err.sourceCount, err.targetCount);
-            return;
-        }
         const errEl = document.getElementById('migrate-space-error');
         if (errEl) {
             errEl.style.display = 'block';
@@ -442,23 +443,4 @@ async function submitMigrateSpace(sourceId, targetId, dropSourceTranscripts) {
         renderSpacePickerList();
         await loadTable();
     }
-}
-
-// Blocked because combined transcripts would exceed the hard cap — offer
-// to drop the source's own transcripts and proceed, or back out and let
-// them be cleaned up manually first.
-function renderMigrateTranscriptOverflow(sourceId, targetId, sourceCount, targetCount) {
-    const source = spaces.find(s => s.id === sourceId);
-    const target = spaces.find(s => s.id === targetId);
-    const form = document.getElementById('space-picker-new-form');
-    form.innerHTML = `
-        <div class="tag-name">
-            Too many transcripts to migrate — "${escapeHtml(target.name)}" already has ${targetCount}, and "${escapeHtml(source.name)}" would add ${sourceCount} more.
-            "${escapeHtml(source.name)}"'s transcripts will be deleted rather than moved if you continue.
-        </div>
-        <div class="form-buttons">
-            <button onclick="document.getElementById('space-picker-new-form').innerHTML = ''">Wait — I'll clean up manually</button>
-            <button class="primary danger" onclick="submitMigrateSpace('${sourceId}', '${targetId}', true)">Delete & migrate</button>
-        </div>
-    `;
 }

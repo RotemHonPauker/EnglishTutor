@@ -30,6 +30,7 @@
     <link rel="stylesheet" href="styles/spaceRules.css">
     <link rel="stylesheet" href="styles/slots.css">
     <link rel="stylesheet" href="styles/practice.css">
+    <link rel="stylesheet" href="styles/transcripts.css">
     <link rel="stylesheet" href="styles/tabs.css">
     <link rel="stylesheet" href="styles/capture.css">
     <link rel="stylesheet" href="styles/dictionary.css">
@@ -135,8 +136,7 @@
         </div>
     </div>
 
-    <!-- ROUTINE SETUP VIEW (Tags now live on the Slots tab instead — see
-         view-slots below) -->
+    <!-- ROUTINE SETUP VIEW -->
     <div id="view-tags" class="view">
         <div id="setup-scroll">
             <!-- Plain, unwrapped row — no card, no "Appearance" header —
@@ -145,6 +145,43 @@
             <div class="mode-toggle" id="theme-toggle-actions">
                 <button type="button" class="mode-toggle-btn active" data-theme-choice="dark" onclick="setTheme('dark')">🌙 Dark</button>
                 <button type="button" class="mode-toggle-btn" data-theme-choice="light" onclick="setTheme('light')">☀️ Light</button>
+            </div>
+            <!-- SCHEDULE (used to be its own tab — #view-slots — now a
+                 section here instead, since the Transcripts tab took its
+                 old spot in the bottom nav). Time-of-day slots for the
+                 currently active Routine. Tags are gone — each slot
+                 carries its own color directly (see the color picker in
+                 the slot modal below), and that's what a phrase captured
+                 during its window gets labeled/colored with, with no
+                 separate tag entity in between. Scoped to that one
+                 routine's own slots — the only place every routine's
+                 slots are shown together is the "Full schedule" overlay
+                 below. Placed first, right after the theme toggle, since
+                 it's the section Rotem actually opens most often. -->
+            <div id="schedule-section">
+                <div id="space-rules-header">Schedule</div>
+                <!-- Reuses the shared .mode-toggle / .mode-toggle-btn
+                     classes (base.css) — same look as Export/Import in the
+                     Backup section and Dark/Light in Appearance, rather
+                     than a one-off button style. -->
+                <div class="mode-toggle" id="slots-header-actions">
+                    <button class="mode-toggle-btn active" onclick="openFullDayOverlay()">🗓️ Full schedule</button>
+                    <button class="mode-toggle-btn active" onclick="openSlotModal(null)">+ Add time slot</button>
+                </div>
+                <!-- There's no separate "Enable notifications" button any
+                     more — each time slot has its own on/off toggle
+                     (slots.js's renderSlotsList), defaulting to on for a
+                     new slot, and turning one on is itself the user
+                     gesture that triggers the browser's push-permission
+                     prompt (see notifySync.js's
+                     requestNotificationPermission). This banner only shows
+                     up if that permission ends up blocked, so a slot
+                     that's "on" here doesn't silently fail to ever notify
+                     without explanation. -->
+                <div id="slots-permission-warning" class="slots-permission-warning" style="display:none">
+                    🔕 Notifications are blocked in this browser — your time slots are set, but won't actually notify you until you allow notifications for this site in your browser settings.
+                </div>
+                <div id="slots-list"></div>
             </div>
             <div id="backup-section">
                 <div id="space-rules-header">Backup</div>
@@ -246,56 +283,39 @@
         </div>
     </div>
 
-    <!-- SCHEDULE VIEW (repurposed former Analytics tab slot): time-of-day
-         slots for the currently active Routine. Tags are gone — each
-         slot carries its own color directly (see the color picker in the
-         slot modal below), and that's what a phrase captured during its
-         window gets labeled/colored with, with no separate tag entity in
-         between. Scoped to that one routine's own slots — the only place
-         every routine's slots are shown together is the "Full schedule"
-         overlay below. -->
-    <div id="view-slots" class="view">
-        <div id="slots-scroll">
-            <!-- Reuses the shared .mode-toggle / .mode-toggle-btn classes
-                 (base.css) — same look as Export/Import in the Backup
-                 section and Dark/Light in Appearance, rather than a
-                 one-off button style. No separate title here any more:
-                 the tab itself is now labeled "Schedule" (see #tab-bar
-                 below), so it would've just repeated that. -->
-            <div class="mode-toggle" id="slots-header-actions">
-                <button class="mode-toggle-btn active" onclick="openFullDayOverlay()">🗓️ Full schedule</button>
-                <button class="mode-toggle-btn active" onclick="openSlotModal(null)">+ Add time slot</button>
+    <!-- TRANSCRIPTS VIEW (transcriptsTab.js): a recording's transcript
+         lands here, not inline in Add — select it from the compact list
+         below, then pick lines sentence-by-sentence in the focused editor
+         and send them straight to translation, with no handoff to Add.
+         Transcripts are kept for 24h and hard-deleted automatically after
+         that (see localDb.js's TRANSCRIPT_RETENTION_MS/
+         deleteExpiredTranscripts) — there's no manual cap/warning to
+         manage any more. -->
+    <div id="view-transcripts" class="view">
+        <div id="transcripts-tab-list-view">
+            <div id="transcripts-tab-explainer">🎙️ Recordings are transcribed here. Transcripts are kept for 24 hours, then deleted automatically — pin ⭐ any you want to keep longer.</div>
+            <div id="transcripts-tab-list"></div>
+        </div>
+        <div id="transcripts-tab-editor-view" style="display:none">
+            <div id="transcripts-tab-editor-header">
+                <button onclick="closeTranscriptEditor()">← Back</button>
+                <span id="transcripts-tab-editor-label"></span>
+                <button class="transcript-pin-btn" id="transcripts-tab-pin-btn" title="Pin — protect from the 24h auto-delete" onclick="toggleOpenTranscriptPinned()">☆</button>
+                <button title="Delete transcript" onclick="deleteOpenTranscript()">🗑️</button>
             </div>
-            <!-- There's no separate "Enable notifications" button any more
-                 — each time slot has its own on/off toggle (slots.js's
-                 renderSlotsList), defaulting to on for a new slot, and
-                 turning one on is itself the user gesture that triggers the
-                 browser's push-permission prompt (see
-                 notifySync.js's requestNotificationPermission). This banner
-                 only shows up if that permission ends up blocked, so a
-                 slot that's "on" here doesn't silently fail to ever notify
-                 without explanation. -->
-            <div id="slots-permission-warning" class="slots-permission-warning" style="display:none">
-                🔕 Notifications are blocked in this browser — your time slots are set, but won't actually notify you until you allow notifications for this site in your browser settings.
+            <div id="transcripts-tab-editor-body" dir="auto"></div>
+            <div id="transcripts-tab-selection-bar" style="display:none">
+                <span id="transcripts-tab-selection-preview" dir="auto"></span>
+                <button class="primary" id="transcripts-tab-send-btn" onclick="submitTranscriptSelection()">➤ Send</button>
             </div>
-            <div id="slots-list"></div>
+            <div id="transcripts-tab-log"></div>
         </div>
     </div>
 
     <!-- ADD VIEW -->
     <div id="view-add" class="view">
         <div id="capture-section">
-            <!-- TRANSCRIPTS PANEL: a separate container from capture-log on
-                 purpose — it's a toggle that can be open at the same time as
-                 Type/Dictionary mode, so it must never share, clear, or
-                 overwrite whatever capture-log is showing (a phrase result,
-                 dictionary lookup options still being chosen, etc). -->
-            <div id="transcripts-panel" style="display:none"></div>
             <div id="capture-log"></div>
-            <div id="transcript-selection-bar" style="display:none">
-                <span id="transcript-selection-preview" dir="auto"></span>
-                <button class="primary" onclick="addTranscriptSelectionToInput()">➤ Add to input</button>
-            </div>
             <div id="capture-input-area">
                 <div id="capture-editing-banner" style="display:none">
                     <span class="capture-editing-text"></span>
@@ -314,7 +334,6 @@
                             <button class="capture-mode-icon-btn active" data-mode="type" title="Type a phrase" onclick="setAddInputMode('type', this)">⌨️</button>
                             <button class="capture-mode-icon-btn" data-mode="dictionary" title="Look up a dictionary word" onclick="setAddInputMode('dictionary', this)">📖</button>
                             <button class="capture-mode-icon-btn" data-mode="record" title="Upload a recording" onclick="setAddInputMode('record', this)">🎙️</button>
-                            <button id="capture-history-btn" title="View past recording transcripts" onclick="toggleTranscriptsView()">Transcriptions</button>
                         </div>
                         <button class="primary" id="capture-send-btn" title="Send" onclick="submitTypedPhrase()">➤</button>
                     </div>
@@ -333,7 +352,7 @@
         <span>Add</span>
     </button>
     <button class="tab-btn active" data-view="practice" onclick="requestTabSwitch('practice', this)">
-        <span class="tab-icon">📋</span>
+        <span class="tab-icon">🎯</span>
         <span>Practice</span>
     </button>
     <!-- GLOBAL RECORD BUTTON (globalRecord.js): not a tab — doesn't switch
@@ -361,9 +380,9 @@
         </button>
         <span id="global-record-label" class="global-record-label">Record</span>
     </div>
-    <button class="tab-btn" data-view="slots" onclick="requestTabSwitch('slots', this)">
-        <span class="tab-icon">🕐</span>
-        <span>Schedule</span>
+    <button class="tab-btn" data-view="transcripts" onclick="requestTabSwitch('transcripts', this)">
+        <span class="tab-icon">📋</span>
+        <span>Transcripts</span>
     </button>
     <button class="tab-btn" data-view="tags" onclick="requestTabSwitch('tags', this)">
         <span class="tab-icon">⚙️</span>
@@ -617,6 +636,7 @@
 <script src="practiceDateScroll.js"></script>
 <script src="slots.js"></script>
 <script src="practiceSession.js"></script>
+<script src="transcriptsTab.js"></script>
 <script src="captureTab.js"></script>
 <script src="globalRecord.js"></script>
 <script src="notifySync.js"></script>

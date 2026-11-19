@@ -119,7 +119,7 @@
 }
 
 /* ===== Selection action bar (Table tab, multi-select "Move to...") ===== */
-/* Same blue-tinted-bar language as #transcript-selection-bar (capture.css). */
+/* Same blue-tinted-bar language as #transcripts-tab-selection-bar (transcripts.css). */
 
 #selection-action-bar {
     display: none;

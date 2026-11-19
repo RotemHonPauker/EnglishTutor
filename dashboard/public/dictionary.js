@@ -7,8 +7,9 @@
 // capture, and a different Practice card shape. It repurposes Practice
 // (own data source + card template, sharing the date-scroll machinery
 // already built for phrases) and Add (Send becomes a word lookup instead
-// of a phrase capture). Slots, Setup, and the practice-session feature
-// don't apply and are disabled while a dictionary space is active.
+// of a phrase capture). Transcripts and Setup (which the Schedule section
+// now lives inside) don't apply and are disabled while a dictionary space
+// is active.
 // Needs remoteDb.js, dictionaryEngine.js and geminiClient.js loaded first.
 
 let allDictionaryEntries = [];
@@ -33,11 +34,13 @@ function getPracticeItems() {
 function applyDictionaryModeUI() {
     const dict = isDictionarySpace();
 
-    // Tab bar — Schedule (phrase-only time slots) and Setup (space-rules
-    // only) don't apply to a dictionary space.
-    const slotsBtn = document.querySelector('.tab-btn[data-view="slots"]');
+    // Tab bar — Transcripts (recordings are never made for a dictionary
+    // space — see globalRecord.js's own routine filter) and Setup
+    // (space-rules + the Schedule section now living inside it, both
+    // phrase-only) don't apply to a dictionary space.
+    const transcriptsBtn = document.querySelector('.tab-btn[data-view="transcripts"]');
     const setupBtn = document.querySelector('.tab-btn[data-view="tags"]');
-    [slotsBtn, setupBtn].forEach(btn => {
+    [transcriptsBtn, setupBtn].forEach(btn => {
         if (btn) btn.disabled = dict;
     });
 
@@ -48,7 +51,7 @@ function applyDictionaryModeUI() {
     // active — leaving it alone on the way out is resetCaptureLog's job,
     // so a manual "Dictionary" pick made in a normal space isn't clobbered
     // by an unrelated re-render here.
-    document.querySelectorAll('#capture-mode-icons .capture-mode-icon-btn, #capture-history-btn').forEach(btn => {
+    document.querySelectorAll('#capture-mode-icons .capture-mode-icon-btn').forEach(btn => {
         btn.disabled = dict;
     });
     if (dict && typeof setAddInputMode === 'function') {

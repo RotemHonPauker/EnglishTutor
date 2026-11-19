@@ -361,37 +361,20 @@ const deleteSpace = async (id) => {
     return existing;
 };
 
-// Single source of truth for "how many saved transcripts is too many for
-// one routine" — used here as the hard cap on merging two routines'
-// transcripts together, and also read by captureTab.js to decide when to
-// show its own "consider deleting old ones" warning. Keep both in sync by
-// always going through this constant rather than a hardcoded number.
-const MAX_TRANSCRIPTS_PER_SPACE = 5;
-
 // Moves a routine's phrases and transcripts into another routine, then
 // deletes the source. Tags used to be merged here too (duplicate/
 // conflicting names and colors resolved, same as mergeTags) — there's
 // nothing left to merge now that tags are gone. Slots aren't touched by a
 // migration (same as before this change): they stay with whichever
 // routine they were created in, and a migrated phrase's own slot_id is
-// cleared, same reasoning as bulkMovePhrases above.
-const migrateSpace = async ({ sourceId, targetId, dropSourceTranscripts = false }) => {
+// cleared, same reasoning as bulkMovePhrases above. Transcripts used to be
+// blocked from migrating past a hard cap (MAX_TRANSCRIPTS_PER_SPACE) — gone
+// now that transcripts expire on their own after 24h (see
+// deleteExpiredTranscripts below), so there's nothing left to overflow and
+// nothing to check here before moving them.
+const migrateSpace = async ({ sourceId, targetId }) => {
     if (sourceId === targetId) {
         throw new Error('Cannot migrate a space into itself');
-    }
-
-    if (!dropSourceTranscripts) {
-        const [sourceCount, targetCount] = await Promise.all([
-            idbCountByIndex('transcripts', 'space_id', sourceId),
-            idbCountByIndex('transcripts', 'space_id', targetId)
-        ]);
-        if (sourceCount + targetCount > MAX_TRANSCRIPTS_PER_SPACE) {
-            const err = new Error('Too many transcripts to migrate');
-            err.code = 'TOO_MANY_TRANSCRIPTS';
-            err.sourceCount = sourceCount;
-            err.targetCount = targetCount;
-            throw err;
-        }
     }
 
     const db = await openDb();
@@ -400,11 +383,7 @@ const migrateSpace = async ({ sourceId, targetId, dropSourceTranscripts = false 
     const transcriptStore = tx.objectStore('transcripts');
     const transcriptIndex = transcriptStore.index('space_id');
     const sourceTranscripts = await reqToPromise(transcriptIndex.getAll(sourceId));
-    if (dropSourceTranscripts) {
-        for (const t of sourceTranscripts) transcriptStore.delete(t.id);
-    } else {
-        for (const t of sourceTranscripts) transcriptStore.put({ ...t, space_id: targetId });
-    }
+    for (const t of sourceTranscripts) transcriptStore.put({ ...t, space_id: targetId });
 
     const phraseStore = tx.objectStore('phrases');
     const phraseIndex = phraseStore.index('space_id');
@@ -432,15 +411,56 @@ const getSpaceRuleFields = async (spaceId) => {
 };
 
 // --- Transcripts --------------------------------------------------------
+// A transcript is short-lived on purpose: it lives for TRANSCRIPT_RETENTION_MS
+// (24h) and is then hard-deleted (see deleteExpiredTranscripts below) —
+// replacing the old MAX_TRANSCRIPTS_PER_SPACE soft-cap/warning entirely.
+// It also carries its own slot_id now, decided once at creation time (the
+// slot active when the recording finished, if any — see
+// transcriptsTab.js's finishRecordingIntoTranscript) and stored permanently,
+// NOT recomputed live against whatever slots exist later. If that slot is
+// later deleted, this is read the same lazy way a phrase's own slot_id is
+// (see getPhrases above): a lookup against the current slots list that
+// simply comes back empty, so the transcript just loses its color — no
+// error, no cascade-clearing needed here.
+//
+// A transcript can also be pinned — protects it from the 24h auto-delete
+// indefinitely, until unpinned. New transcripts are created with
+// pinned: false (see createTranscript below), same as every other
+// explicit default in this file. But every transcript that already
+// existed before this feature shipped has no pinned field at all
+// (undefined) — not false — and isTranscriptPinned treats that missing
+// field as pinned too, same "undefined means legacy, treat it as the
+// safe/protected state" pattern as a slot's own `enabled !== false`
+// elsewhere in this file. That's deliberate, not just a safe default: it's
+// exactly how every transcript sitting in the app right now, recorded
+// before pinning existed, ends up protected automatically the first time
+// this runs, with no separate one-time migration needed. Once any of
+// those is explicitly unpinned (or any new transcript is created), normal
+// 24h expiry applies to it from then on.
+const isTranscriptPinned = (t) => t.pinned !== false;
 
 const getTranscripts = async (spaceId) => {
     const rows = await idbGetAllByIndex('transcripts', 'space_id', spaceId);
     return sortByCreatedAt(rows, false);
 };
 
-const createTranscript = async ({ spaceId, content }) => {
-    const row = { id: newId(), space_id: spaceId, content, created_at: new Date().toISOString() };
+const createTranscript = async ({ spaceId, content, slotId }) => {
+    const row = {
+        id: newId(),
+        space_id: spaceId,
+        content,
+        slot_id: slotId || null,
+        pinned: false,
+        created_at: new Date().toISOString()
+    };
     return idbPut('transcripts', row);
+};
+
+const setTranscriptPinned = async (id, pinned) => {
+    const existing = await idbGet('transcripts', id);
+    if (!existing) throw notFoundError('transcripts', id);
+    const updated = { ...existing, pinned: !!pinned };
+    return idbPut('transcripts', updated);
 };
 
 const deleteTranscript = async (id) => {
@@ -448,6 +468,30 @@ const deleteTranscript = async (id) => {
     if (!existing) return null;
     await idbDelete('transcripts', id);
     return existing;
+};
+
+// 24 hours, in milliseconds — a transcript older than this is hard-deleted
+// the next time this runs (app.js's window.onload, and again whenever the
+// Transcripts tab's list is loaded — see transcriptsTab.js's
+// loadTranscriptsTabList — so the list is always accurate without needing
+// a running timer), UNLESS it's pinned (isTranscriptPinned above) — a
+// pinned transcript never expires on its own, no matter how old. Scans
+// every space at once rather than just the active one, since a routine
+// switch shouldn't be what decides whether a stale transcript elsewhere
+// finally gets cleaned up.
+const TRANSCRIPT_RETENTION_MS = 24 * 60 * 60 * 1000;
+
+const deleteExpiredTranscripts = async () => {
+    const cutoff = Date.now() - TRANSCRIPT_RETENTION_MS;
+    const all = await idbGetAll('transcripts');
+    const expired = all.filter(t => !isTranscriptPinned(t) && new Date(t.created_at).getTime() < cutoff);
+    if (!expired.length) return;
+
+    const db = await openDb();
+    const tx = db.transaction('transcripts', 'readwrite');
+    const store = tx.objectStore('transcripts');
+    for (const t of expired) store.delete(t.id);
+    await txDone(tx);
 };
 
 // --- Dictionary ---------------------------------------------------------

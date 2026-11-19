@@ -1,18 +1,18 @@
-// slots.js — the Schedule screen (repurposed former-Analytics tab slot in
-// the bottom nav), used to manage time-of-day slots for the currently
-// active Routine (see localDb.js's Slots section for the underlying
-// data: start/end minutes, name, space_id, color). Tags are gone — each
-// slot carries its own color directly now, and that color/name is what a
-// phrase captured during its time window gets labeled with, with no
-// separate tag entity in between (see translationEngine.js's
-// translatePhrase and localDb.js's getPhrases).
+// slots.js — the Schedule section (lives inside the Setup tab now, not a
+// tab of its own — see #schedule-section in index.html), used to manage
+// time-of-day slots for the currently active Routine (see localDb.js's
+// Slots section for the underlying data: start/end minutes, name,
+// space_id, color). Tags are gone — each slot carries its own color
+// directly now, and that color/name is what a phrase captured during its
+// time window gets labeled with, with no separate tag entity in between
+// (see translationEngine.js's translatePhrase and localDb.js's getPhrases).
 //
 // Two views live here:
-//   1. The per-routine Schedule list (#view-slots) — scoped to
-//      activeSpaceId, showing only that routine's own slots. This is the
-//      main, everyday view.
+//   1. The per-routine Schedule list (#slots-list, inside #schedule-section
+//      on the Setup tab) — scoped to activeSpaceId, showing only that
+//      routine's own slots. This is the main, everyday view.
 //   2. The "Full schedule" overlay (#full-day-modal-overlay) — reachable
-//      from a button on the Schedule screen — merges every slot from
+//      from a button in the Schedule section — merges every slot from
 //      every Routine into one time-sorted list, each shown in its own
 //      color. This is the ONLY place slots from different routines are
 //      shown together; the per-routine list never leaks another
@@ -175,21 +175,17 @@ async function findActiveSlotNow() {
     return all.find(s => s.start_minutes <= nowMinutes && nowMinutes < s.end_minutes) || null;
 }
 
-// ===== Entering / leaving the tab =====
-
-function enterSlotsTab(btnEl) {
-    showView('slots', btnEl);
-    loadSlotsScreen();
-}
+// ===== Loading the Schedule section =====
 
 // Called on initial load and on every routine switch (spacesState.js) —
 // same pattern as renderSpaceRulesForm/renderAnalyticsChart: safe to call
-// even when the Schedule view isn't the one currently on screen, since it
-// just no-ops if the view's elements aren't there, and otherwise leaves
-// it already up to date for the next time the tab is opened.
+// even when the Setup tab (where the Schedule section now lives) isn't the
+// one currently on screen, since it just no-ops if the section's elements
+// aren't there, and otherwise leaves it already up to date for the next
+// time the tab is opened.
 async function loadSlotsScreen() {
     const list = document.getElementById('slots-list');
-    if (!list) return; // not on the Schedule tab yet
+    if (!list) return; // not on the Setup tab yet
 
     const active = typeof getActiveSpace === 'function' ? getActiveSpace() : null;
     if (!active) {

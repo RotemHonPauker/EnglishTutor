@@ -249,15 +249,18 @@ function requestSpaceSwitch(id) {
 }
 
 // The actual switch, once nothing is blocking it — routes to each tab's
-// own entry function where one exists (Add/Practice/Slots have their own
-// reset/load logic), or the generic showView otherwise.
+// own entry function where one exists (Add/Practice/Transcripts have their
+// own reset/load logic), or the generic showView otherwise. Schedule no
+// longer has an entry of its own here — it's a section inside Setup now
+// (see #schedule-section in index.html), not a tab, so switching to Setup
+// just falls through to the generic showView branch below.
 function navigateToTab(view, btnEl) {
     if (view === 'add') {
         enterCaptureTab(btnEl);
     } else if (view === 'practice') {
         enterPracticeTab(btnEl);
-    } else if (view === 'slots') {
-        enterSlotsTab(btnEl);
+    } else if (view === 'transcripts') {
+        enterTranscriptsTab(btnEl);
     } else {
         showView(view, btnEl);
     }

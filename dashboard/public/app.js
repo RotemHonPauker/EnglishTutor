@@ -56,6 +56,15 @@ window.onload = async () => {
     // no connection or login step to wait on anymore.
     await waitForGeminiKey();
 
+    // Transcripts only ever live for 24h (see localDb.js's
+    // TRANSCRIPT_RETENTION_MS) — sweeping expired ones now, once per app
+    // load, is enough to keep the Transcripts tab honest without running a
+    // timer in the background. Scans every routine's transcripts at once,
+    // so this doesn't need to wait on activeSpaceId/loadSpaces below.
+    if (typeof deleteExpiredTranscripts === 'function') {
+        await deleteExpiredTranscripts();
+    }
+
     // LANGUAGES and COLORS are now plain inlined constants
     // (languagesUtils.js / colorUtils.js) rather than fetched from the
     // old GET /languages and GET /colors routes, so there's nothing to

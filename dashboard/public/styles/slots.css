@@ -1,29 +1,12 @@
-/* slots.css — the Schedule screen (repurposed former-Analytics tab) and
-   its two modals: the add/edit time-slot modal, and the "Full schedule"
-   merged-timeline overlay. Reuses existing patterns from the rest of the
-   app (the chip-grid look from modal.css, accordion spacing from
-   spaceRules.css) rather than inventing new ones. .color-grid/.color-circle
-   below used to live in tags.css — moved here since the slot modal's own
-   color picker is now their only user, now that tags are gone. */
-
-/* #view-slots itself gets NO layout rules here — display/flex-direction
-   are owned by the shared .view/.view.active toggle in tabs.css
-   (showView() adds/removes "active" to switch tabs). An
-   #view-slots { display: flex } rule here would beat .view's
-   { display: none } by CSS specificity (ID > class) and leave this view
-   permanently visible underneath whichever tab is actually active — that
-   was the bug the first time this file shipped. All the actual layout
-   (scrolling, padding, gap) lives on #slots-scroll instead, the one and
-   only child of #view-slots — same pattern as #setup-scroll on the Setup
-   tab (spaceRules.css). */
-#slots-scroll {
-    flex: 1;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    padding: 12px;
-}
+/* slots.css — the Schedule section (lives inside the Setup tab now — see
+   #schedule-section in index.html/spaceRules.css, which owns the section's
+   own card wrapper) and its two modals: the add/edit time-slot modal, and
+   the "Full schedule" merged-timeline overlay. Reuses existing patterns
+   from the rest of the app (the chip-grid look from modal.css, accordion
+   spacing from spaceRules.css) rather than inventing new ones.
+   .color-grid/.color-circle below used to live in tags.css — moved here
+   since the slot modal's own color picker is now their only user, now
+   that tags are gone. */
 
 /* #slots-header-actions uses the shared .mode-toggle / .mode-toggle-btn
    classes (base.css) for its own look — same two-blue-pill style as
@@ -31,8 +14,8 @@
    addition needed here is this padding reset, same reasoning as
    #backup-section's own override in spaceRules.css: .mode-toggle's default
    side padding (10px 24px 0) would otherwise stack on top of
-   #slots-scroll's own 12px padding, making these two buttons noticeably
-   narrower than everywhere else that reuses this class. */
+   #schedule-section's own 16px padding, making these two buttons
+   noticeably narrower than everywhere else that reuses this class. */
 #slots-header-actions {
     padding: 0;
 }

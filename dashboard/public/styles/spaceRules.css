@@ -215,3 +215,26 @@
     line-height: 1.5;
     color: var(--text-muted);
 }
+
+/* ===== Schedule section (Setup tab) — same card family as the sections
+   above. Used to be its own tab (#view-slots); now lives here instead,
+   with the Transcripts tab taking its old spot in the bottom nav. Its own
+   contents (#slots-header-actions, #slots-permission-warning, #slots-list,
+   and everything the slot add/edit modal and "Full schedule" overlay
+   render) are unchanged and still styled entirely by slots.css — this
+   file only adds the card wrapper itself, same as it does for Backup and
+   Invite above. */
+
+#schedule-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#schedule-section .mode-toggle {
+    padding: 0;
+}

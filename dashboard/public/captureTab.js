@@ -2,7 +2,6 @@
 // and ttsStorage.js loaded first.
 
 const captureLog = document.getElementById('capture-log');
-const transcriptsPanel = document.getElementById('transcripts-panel');
 const captureTextInput = document.getElementById('capture-text-input');
 let captureMode = 'capture';
 
@@ -20,12 +19,6 @@ captureTextInput.addEventListener('keydown', (e) => {
     }
 });
 
-// Drives the transcript-selection bar (see the Transcripts section below):
-// whenever the person selects text inside an expanded transcript body,
-// show a bar offering to send that exact selection to the input instead of
-// auto-generating a card for it.
-document.addEventListener('selectionchange', handleTranscriptSelectionChange);
-
 // ===== Add-tab input mode: Type / Dictionary / Record =====
 // Three small icon buttons live in the input box's own footer, next to
 // Send — always visible regardless of which mode is picked, so there's
@@ -37,23 +30,13 @@ document.addEventListener('selectionchange', handleTranscriptSelectionChange);
 
 let addInputMode = 'type'; // 'type' | 'dictionary' | 'record'
 
-// Transcripts (below) is a TOGGLE that layers on top of this mode, not a
-// separate mode of its own — it can be open at the same time as either
-// Type or Dictionary, and switching between those two never touches it.
-// The one exception is Record: a recording and the transcript list can't
-// be on screen together (see transcriptsOpen), so picking Record closes
-// the toggle if it was open.
 function setAddInputMode(mode, btnEl) {
-    if (mode === 'record' && transcriptsOpen) {
-        closeTranscriptsView();
-    }
     applyAddInputModeUI(mode, btnEl);
 }
 
 // Just the visual side of switching input mode (icon state, textarea vs.
 // record buttons, placeholder text) — split out of setAddInputMode so
-// openTranscriptsView can also force a switch out of Record (into Type)
-// without going through the "close transcripts" branch above.
+// other code (applyDictionaryModeUI) can force a mode change directly too.
 function applyAddInputModeUI(mode, btnEl) {
     const previousMode = addInputMode;
     addInputMode = mode;
@@ -86,9 +69,7 @@ function applyAddInputModeUI(mode, btnEl) {
 // room to actually read it). previousMode lets this be a no-op when
 // switching between Type and Dictionary, so it never clobbers real
 // capture results sitting in the log — it only touches the log when
-// Record is actually being entered or left. Independent of the
-// transcripts toggle entirely — that renders into its own panel now (see
-// below), never into capture-log, so there's nothing here to guard against.
+// Record is actually being entered or left.
 function refreshCaptureLog(previousMode) {
     if (addInputMode === 'record') {
         captureLog.innerHTML = `<div class="recording-info-note">🎙️<br>Recordings are limited to about 30 minutes.<br>Once it's processed, you'll land straight on its transcript. Just select whichever lines you want to translate.</div>`;
@@ -126,71 +107,13 @@ function enterCaptureTab(btnEl) {
     resetCaptureLog();
 }
 
-// ===== Transcripts toggle =====
-// A toggle layered on top of addInputMode, not a view that replaces it:
-// it can be open together with Type or Dictionary, and only Record forces
-// it shut (see setAddInputMode above). The "Transcriptions" button itself
-// is the toggle — tap to open, tap again to close. Renders into its own
-// #transcripts-panel, a separate element from #capture-log — never into
-// capture-log itself, so opening or closing it can never clear or
-// overwrite a phrase result, a dictionary lookup's option chips still
-// being chosen, or anything else capture-log happens to be showing.
-
-let transcriptsOpen = false;
-
-function toggleTranscriptsView() {
-    if (transcriptsOpen) {
-        closeTranscriptsView();
-    } else {
-        openTranscriptsView();
-    }
-}
-
-function openTranscriptsView() {
-    if (transcriptsOpen) return;
-    // Record has no text field to add a selection into, and can't be
-    // shown alongside the transcript list anyway — switch to Type first
-    // so there's something underneath to work with.
-    if (addInputMode === 'record') {
-        applyAddInputModeUI('type');
-    }
-    transcriptsOpen = true;
-    if (transcriptsPanel) transcriptsPanel.style.display = 'flex';
-    applyTranscriptsButtonUI();
-    loadTranscripts(); // renders into #transcripts-panel, see the Transcripts section below
-}
-
-function closeTranscriptsView() {
-    if (!transcriptsOpen) return;
-    transcriptsOpen = false;
-    if (transcriptsPanel) {
-        transcriptsPanel.style.display = 'none';
-        transcriptsPanel.innerHTML = ''; // reloaded fresh next time it opens; capture-log is untouched
-    }
-    applyTranscriptsButtonUI();
-    hideTranscriptSelectionBar();
-}
-
-function applyTranscriptsButtonUI() {
-    const btn = document.getElementById('capture-history-btn');
-    if (btn) btn.classList.toggle('active', transcriptsOpen);
-}
-
 // Shared by enterCaptureTab and space switching (spacesState.js calls this
 // directly, since enterCaptureTab won't fire if the user is already
-// sitting on this tab when they switch spaces from the header). Always
-// closes the transcripts toggle and lands back on the normal capture log
-// — and cancels any in-progress phrase edit, since re-entering the tab
-// fresh means starting over.
+// sitting on this tab when they switch spaces from the header). Lands back
+// on the normal capture log and cancels any in-progress phrase edit, since
+// re-entering the tab fresh means starting over.
 function resetCaptureLog() {
-    transcriptsOpen = false;
-    if (transcriptsPanel) {
-        transcriptsPanel.style.display = 'none';
-        transcriptsPanel.innerHTML = '';
-    }
-    applyTranscriptsButtonUI();
     captureLog.innerHTML = '';
-    hideTranscriptSelectionBar();
     editingPhraseId = null;
     hideEditingBanner();
 
@@ -394,9 +317,10 @@ function modeMismatchStayAction() {
 
 // ===== Recorded input =====
 // A recording only ever gets transcribed — no phrases are created
-// automatically from it. As soon as the transcript is back, the view
-// flips straight to the transcript list (see the selection-to-input flow
-// below) so the person can start picking lines right away.
+// automatically from it. As soon as the transcript is back, the app flips
+// straight to the Transcripts tab, opened right onto it (see
+// finishRecordingIntoTranscript in transcriptsTab.js) so the person can
+// start picking lines right away.
 //
 // Used to be one POST to /recordings; now it's two steps done here
 // directly: transcribe via Gemini (audioEngine.js — the recording itself
@@ -435,44 +359,12 @@ async function handleRecordingFileSelected(inputEl) {
     }
 }
 
-// Shared by both ways a recording turns into a transcript: picking a file
-// via the Add tab's own Record mode (handleRecordingFileSelected, above)
-// and the global record button (globalRecord.js) — which can be tapped
-// from any tab, for any routine, not necessarily the one currently open.
-// Saves the transcript, switches to whichever routine it belongs to if
-// that's not already the active one, lands on the Add tab, and opens it
-// straight onto the fresh transcript, ready to pick lines from.
-async function finishRecordingIntoTranscript(spaceId, transcriptText) {
-    await createTranscript({ spaceId, content: transcriptText });
-
-    if (spaceId !== activeSpaceId) {
-        // Also reloads phrases/slots for the new routine, and (via
-        // resetCaptureLog, called inside setActiveSpace) clears whatever
-        // the Add tab happened to be showing — expected here, since the
-        // fresh transcript is opened right below anyway.
-        await setActiveSpace(spaceId);
-    }
-
-    // Plain showView (not navigateToTab/enterCaptureTab) deliberately
-    // skips both the unsaved-space-rules-field guard and
-    // enterCaptureTab's own resetCaptureLog() — the global record button
-    // can be tapped from any tab, and landing here is an automatic
-    // consequence of finishing a recording, not an explicit tab switch to
-    // confirm or guard.
-    showView('add', document.querySelector('.tab-btn[data-view="add"]'));
-
-    // Recording and the transcript toggle can't coexist, so switch out of
-    // Record into Type first, then open the toggle straight onto the
-    // fresh transcript, ready to select from.
-    if (addInputMode === 'record') {
-        applyAddInputModeUI('type');
-    }
-    transcriptsOpen = true;
-    if (transcriptsPanel) transcriptsPanel.style.display = 'flex';
-    applyTranscriptsButtonUI();
-    await loadTranscripts();
-    if (transcripts.length) toggleTranscript(transcripts[0].id);
-}
+// finishRecordingIntoTranscript (shared by this file's own file-upload
+// Record mode, called just above, and globalRecord.js's in-browser
+// recording) now lives in transcriptsTab.js — the recording always
+// finishes onto the Transcripts tab these days, not here, so that's a
+// better home for it. Still called by the same name, just defined in a
+// different file.
 
 function fileToBase64(file) {
     return new Promise((resolve, reject) => {
@@ -502,130 +394,6 @@ function addCaptureMessage(text) {
     div.textContent = text;
     captureLog.appendChild(div);
     captureLog.scrollTop = captureLog.scrollHeight;
-}
-
-// ===== Transcripts (rendered into #transcripts-panel while the toggle is open) =====
-
-let transcripts = [];
-
-async function loadTranscripts() {
-    transcripts = await getTranscripts(activeSpaceId);
-    renderTranscripts();
-}
-
-function renderTranscripts() {
-    // MAX_TRANSCRIPTS_PER_SPACE (localDb.js) is the same number used as the
-    // hard cap when merging two routines' transcripts together — keep this
-    // warning threshold in sync with that constant rather than a separate number.
-    const warningHtml = transcripts.length > MAX_TRANSCRIPTS_PER_SPACE
-        ? `<div id="transcripts-warning">You have ${transcripts.length} saved transcripts — consider deleting old ones you've already reviewed.</div>`
-        : '';
-
-    const listHtml = transcripts.map(t => {
-        const label = new Date(t.created_at).toLocaleString([], {
-            dateStyle: 'medium',
-            timeStyle: 'short'
-        });
-        return `
-        <div class="transcript-card">
-            <div class="transcript-card-header" onclick="toggleTranscript('${t.id}')">
-                <span>${label}</span>
-                <div class="transcript-card-actions">
-                    <button title="Delete" onclick="event.stopPropagation(); deleteTranscriptRow('${t.id}')">🗑️</button>
-                </div>
-            </div>
-            <div class="transcript-card-body" id="transcript-body-${t.id}" style="display:none">${escapeHtml(t.content)}</div>
-        </div>
-    `;
-    }).join('');
-
-    if (transcriptsPanel) {
-        transcriptsPanel.innerHTML = warningHtml + (listHtml || '<div class="capture-log-item error">No recordings processed yet.</div>');
-    }
-}
-
-// Accordion: one click expands that entry and collapses any other that was
-// open, same as a single-open-field Setup accordion — never more than one
-// transcript's body showing at a time.
-function toggleTranscript(id) {
-    const body = document.getElementById(`transcript-body-${id}`);
-    if (!body) return;
-    const isOpen = body.style.display !== 'none';
-
-    document.querySelectorAll('.transcript-card-body').forEach(b => b.style.display = 'none');
-
-    body.style.display = isOpen ? 'none' : 'block';
-}
-
-async function deleteTranscriptRow(id) {
-    try {
-        await deleteTranscript(id);
-        await loadTranscripts();
-    } catch (err) {
-        alert('Failed to delete transcript');
-    }
-}
-
-// ===== Transcript selection → input =====
-// The person picks whatever's actually worth translating with the phone's
-// normal long-press text selection, taps "Add to input", edits it if
-// needed, then Send — same one-phrase-at-a-time path as typing it fresh.
-// Repeat per phrase; nothing in the transcript is translated automatically.
-
-let pendingTranscriptSelection = '';
-
-function handleTranscriptSelectionChange() {
-    if (!transcriptsOpen) {
-        hideTranscriptSelectionBar();
-        return;
-    }
-
-    const selection = window.getSelection();
-    const text = selection && !selection.isCollapsed ? selection.toString().trim() : '';
-    if (!text) {
-        hideTranscriptSelectionBar();
-        return;
-    }
-
-    // Only react to selections actually inside a transcript's (expanded)
-    // body — not, say, the date header or the delete button next to it.
-    let node = selection.anchorNode;
-    const anchorEl = node && node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
-    if (!anchorEl || !anchorEl.closest('.transcript-card-body')) {
-        hideTranscriptSelectionBar();
-        return;
-    }
-
-    pendingTranscriptSelection = text;
-    const bar = document.getElementById('transcript-selection-bar');
-    const preview = document.getElementById('transcript-selection-preview');
-    if (preview) preview.textContent = text;
-    if (bar) bar.style.display = 'flex';
-}
-
-function hideTranscriptSelectionBar() {
-    pendingTranscriptSelection = '';
-    const bar = document.getElementById('transcript-selection-bar');
-    if (bar) bar.style.display = 'none';
-}
-
-// Drops the selected text into the input, ready to edit and Send — the
-// transcript list stays open underneath the whole time (the toggle is
-// untouched here), so this can be repeated for as many lines as wanted
-// without losing the transcript. The input is already usable in Type or
-// Dictionary mode regardless of the toggle, so there's nothing to unlock;
-// this just fills it and focuses it.
-function addTranscriptSelectionToInput() {
-    if (!pendingTranscriptSelection) return;
-    const text = pendingTranscriptSelection;
-
-    window.getSelection().removeAllRanges();
-    hideTranscriptSelectionBar();
-
-    captureTextInput.value = text;
-    captureTextInput.style.height = 'auto';
-    captureTextInput.style.height = captureTextInput.scrollHeight + 'px';
-    captureTextInput.focus();
 }
 
 // ===== Editing an existing phrase (✎ on a Practice card) =====
