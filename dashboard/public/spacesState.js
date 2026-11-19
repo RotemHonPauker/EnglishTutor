@@ -59,9 +59,14 @@ async function setActiveSpace(id) {
     renderSpaceHeader();
     closeSpacePicker();
     if (typeof resetSlotFilter === 'function') resetSlotFilter();
-    if (typeof resetLearnedFilter === 'function') resetLearnedFilter();
     if (typeof resetSelectMode === 'function') resetSelectMode();
     if (typeof resetDateScroll === 'function') resetDateScroll();
+    // A practice session in progress is scoped to the routine it started
+    // in (its queue holds actual phrase objects, not just ids) — closing it
+    // outright on a routine switch is simplest and safest, rather than
+    // trying to keep a half-finished session valid against a now-different
+    // activeSpaceId.
+    if (typeof closePracticeSession === 'function') closePracticeSession();
     // Only matters if the user is currently sitting on the Add tab — but
     // it's safe to call regardless (it just clears an off-screen log), and
     // it's the only way to catch that case, since the tab's own enter-tab

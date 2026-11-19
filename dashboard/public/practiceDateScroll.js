@@ -70,18 +70,26 @@ function bucketLabelFor(id, granularity) {
     const sameMonth = date.getMonth() === weekEnd.getMonth();
     const startLabel = sameMonth ? `${date.getDate()}` : `${date.getDate()}/${date.getMonth() + 1}`;
     const endLabel = `${weekEnd.getDate()}/${weekEnd.getMonth() + 1}`;
-    return `${startLabel}\u2013${endLabel}`;
+    return `${startLabel}–${endLabel}`;
 }
 
-// Whether an item matches whatever filters are currently active — tag +
-// learned in phrase mode, learned only in dictionary mode (there are no
-// tags there). Used only for the *number* shown on each date pill; a
+// Whether an item matches whatever filters are currently active — slot
+// filter in phrase mode (there's no slot concept in dictionary mode).
+// "Learned" used to be checked here too; that concept is gone everywhere
+// now (see phrasesTable.js/dictionary.js), so the only thing left to check
+// is the slot filter. Used only for the *number* shown on each date pill; a
 // bucket's existence is still based on the unfiltered count below, so the
 // strip's shape stays stable as filters change.
+//
+// NOTE: this used to call a function named phraseMatchesTagFilter, which
+// hasn't existed since tags were replaced by slots (see phrasesTable.js) —
+// the typeof guard below meant that call silently no-op'd instead of
+// throwing, so every date pill's filtered count quietly ignored the slot
+// filter instead of respecting it. Fixed here to call the real function,
+// phraseMatchesSlotFilter.
 function matchesActiveFilters(item) {
-    if (typeof phraseMatchesLearnedFilter === 'function' && !phraseMatchesLearnedFilter(item)) return false;
     if (!(typeof isDictionarySpace === 'function' && isDictionarySpace())
-        && typeof phraseMatchesTagFilter === 'function' && !phraseMatchesTagFilter(item)) return false;
+        && typeof phraseMatchesSlotFilter === 'function' && !phraseMatchesSlotFilter(item)) return false;
     return true;
 }
 

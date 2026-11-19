@@ -70,11 +70,21 @@ window.onload = async () => {
     if (typeof applyDictionaryModeUI === 'function') {
         applyDictionaryModeUI();
     }
-    // Tags are gone — there's no separate loadTags() step any more. The
-    // Schedule tab's own time slots load lazily, the first time that tab
-    // is actually opened (see slots.js's enterSlotsTab/loadSlotsScreen),
-    // same as before this change.
     await loadTable();
+    // Tags used to load eagerly here too (the old loadTags()) — slots
+    // need the same treatment, not lazy-loading on first visit to the
+    // Schedule tab, because slots.js's own `slots` global is read by other
+    // screens that can be reached before that tab ever is: the Practice
+    // tab's own Slots filter (phrasesTable.js) and the practice-session
+    // scope picker (practiceSession.js) both assume it's already
+    // populated. loadSlotsScreen() safely no-ops if the Schedule tab's own
+    // #slots-list element isn't in the DOM for some reason, but otherwise
+    // runs fine even while a different tab is the one actually visible —
+    // same as loadTable() itself running before Practice is necessarily
+    // on screen.
+    if (typeof loadSlotsScreen === 'function') {
+        await loadSlotsScreen();
+    }
 };
 
 // --- PWA: register service worker so the app is installable ---

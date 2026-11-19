@@ -184,7 +184,13 @@ const saveSentence = async ({ sourceText, variant1, variant2, spaceId, slotId })
         space_id: spaceId,
         slot_id: slotId || null,
         level: 1,
-        learned_at: null,
+        // "learned" is gone — a phrase that's solid enough to stop
+        // practicing just gets deleted outright now (see
+        // practiceSession.js). last_practiced_at instead tracks when this
+        // phrase was last stepped through in a practice session (null =
+        // never), which is what decides which phrases a session picks
+        // first (see pickSessionItems in practiceSession.js).
+        last_practiced_at: null,
         tts_url_variant1: null,
         tts_url_variant2: null,
         created_at: new Date().toISOString()
@@ -223,10 +229,16 @@ const updatePhraseLevel = async ({ id, level }) => {
     return idbPut('phrases', { ...existing, level });
 };
 
-const updatePhraseLearned = async ({ id, learned }) => {
+// Called once per phrase at the end of a practice-session card (not per
+// sentence — see practiceSession.js's advancePracticeAfterDecision), when
+// the person taps "Continue" rather than "Delete phrase". This is the only
+// thing a successful practice pass writes anywhere — no record of the
+// attempt itself is kept (see the file-level comment in practiceSession.js
+// for why).
+const markPhrasePracticed = async (id) => {
     const existing = await idbGet('phrases', id);
     if (!existing) throw notFoundError('phrases', id);
-    return idbPut('phrases', { ...existing, learned_at: learned ? new Date().toISOString() : null });
+    return idbPut('phrases', { ...existing, last_practiced_at: new Date().toISOString() });
 };
 
 const bulkMovePhrases = async ({ ids, targetSpaceId }) => {
@@ -455,16 +467,22 @@ const saveDictionaryEntry = async ({ spaceId, sourceQuery, word, partOfSpeech, s
         source_synonyms: sourceSynonyms,
         example_sentence: exampleSentence,
         target_synonyms: targetSynonyms,
-        learned_at: null,
+        // Same purpose as a phrase's own last_practiced_at (see
+        // saveSentence above) — null until the first time this word is
+        // stepped through in a practice session (practiceSession.js),
+        // which is what decides which words a session picks first.
+        last_practiced_at: null,
         created_at: new Date().toISOString()
     };
     return idbPut('dictionary', row);
 };
 
-const updateDictionaryEntryLearned = async ({ id, learned }) => {
+// Mirrors markPhrasePracticed above — called once a dictionary word's
+// practice-session unit ends in "Continue" rather than "Delete word".
+const markDictionaryEntryPracticed = async (id) => {
     const existing = await idbGet('dictionary', id);
     if (!existing) throw notFoundError('dictionary', id);
-    return idbPut('dictionary', { ...existing, learned_at: learned ? new Date().toISOString() : null });
+    return idbPut('dictionary', { ...existing, last_practiced_at: new Date().toISOString() });
 };
 
 const deleteDictionaryEntry = async (id) => {

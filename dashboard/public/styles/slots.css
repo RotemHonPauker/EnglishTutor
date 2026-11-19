@@ -66,8 +66,7 @@
 /* Dimmed, at-a-glance "this one won't fire" look for a slot whose toggle
    is off — the whole card, not just the toggle, so it reads as inactive
    from a glance at the list rather than only when looking closely at the
-   switch. Same brightness-dip technique as .phrase-card.learned
-   (table.css). */
+   switch. */
 .slot-card.disabled {
     opacity: 0.55;
 }

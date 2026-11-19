@@ -92,39 +92,6 @@ function renderActiveFilterChips() {
     row.style.display = filterSlotIds.size ? 'flex' : 'none';
 }
 
-// ===== Learned filter =====
-
-// Cycles through: all -> not-learned -> learned -> all.
-let learnedFilter = 'all';
-
-function phraseMatchesLearnedFilter(phrase) {
-    if (learnedFilter === 'learned') return !!phrase.learned_at;
-    if (learnedFilter === 'unlearned') return !phrase.learned_at;
-    return true;
-}
-
-function toggleLearnedFilter() {
-    learnedFilter = learnedFilter === 'all' ? 'unlearned' : learnedFilter === 'unlearned' ? 'learned' : 'all';
-    const btn = document.getElementById('learned-filter-btn');
-    if (btn) {
-        btn.textContent = learnedFilter === 'all' ? 'All' : learnedFilter === 'unlearned' ? 'Not learned' : '👑 Learned';
-        btn.classList.toggle('active', learnedFilter !== 'all');
-    }
-    if (typeof generateDateBuckets === 'function') generateDateBuckets();
-    if (typeof renderDateScroll === 'function') renderDateScroll();
-    renderTable();
-}
-
-// Called on space switch, alongside resetSlotFilter.
-function resetLearnedFilter() {
-    learnedFilter = 'all';
-    const btn = document.getElementById('learned-filter-btn');
-    if (btn) {
-        btn.textContent = 'All';
-        btn.classList.remove('active');
-    }
-}
-
 async function loadTable() {
     if (typeof isDictionarySpace === 'function' && isDictionarySpace()) {
         if (typeof loadDictionaryEntries === 'function') await loadDictionaryEntries(activeSpaceId);
@@ -148,7 +115,6 @@ function renderTable() {
 
     const sorted = allPhrases
         .filter(phraseMatchesSlotFilter)
-        .filter(phraseMatchesLearnedFilter)
         .filter(phraseMatchesDateFilter)
         // Newest first within whatever's shown — with the date scroll
         // already narrowing to a specific day/week, there's no separate
@@ -185,13 +151,12 @@ function renderTable() {
             ? `background:${iconBg}; color:${cardTextColor};`
             : '';
         const badgeLabel = p.slot_name ? escapeHtml(p.slot_name) : '—';
-        const isLearned = !!p.learned_at;
         const level = p.level === 2 ? 2 : 1;
         const displayedVariant = level === 2 ? p.variant_2 : p.variant_1;
         const levelBadgeLabel = isBridge ? (level === 2 ? bridgeCode : targetCode) : `Level ${level}`;
         const levelBadgeTitle = isBridge ? 'Tap to switch language' : 'Tap to switch level';
         const isSelected = selectedPhraseIds.has(p.id);
-        const cardClasses = ['phrase-card', slotColor ? 'has-color' : '', isLearned ? 'learned' : '', isSelected ? 'selected' : ''].filter(Boolean).join(' ');
+        const cardClasses = ['phrase-card', slotColor ? 'has-color' : '', isSelected ? 'selected' : ''].filter(Boolean).join(' ');
         return `
         <div class="${cardClasses}" style="${cardStyle}" ${selectMode ? `onclick="toggleCardSelection('${p.id}')"` : ''}>
             <div class="phrase-card-header">
@@ -200,7 +165,6 @@ function renderTable() {
                     : `<div class="phrase-card-icons">
                     <button style="${iconBg ? `background:${iconBg};` : ''}" title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑️</button>
                     <button style="${iconBg ? `background:${iconBg};` : ''}" title="Edit phrase" onclick="editPhraseRow('${p.id}')">✏️</button>
-                    <button class="learned-btn ${isLearned ? 'active' : ''}" style="${iconBg ? `background:${iconBg};` : ''}" title="${isLearned ? 'Learned — tap to unmark' : 'Mark as learned'}" onclick="toggleLearned('${p.id}')">👑</button>
                 </div>`}
                 <div class="phrase-card-badges">
                     <button class="level-badge level-${level}" style="${badgeStyle}" title="${levelBadgeTitle}" onclick="toggleLevel('${p.id}')" ${selectMode ? 'disabled' : ''}>${levelBadgeLabel}</button>
@@ -339,7 +303,7 @@ async function updatePhraseSlotAssignment(id, slotId) {
     }
 }
 
-// Simple binary toggle, independent of learned state.
+// Simple binary toggle.
 async function toggleLevel(id) {
     const phrase = allPhrases.find(p => p.id === id);
     if (!phrase) return;
@@ -355,26 +319,6 @@ async function toggleLevel(id) {
         phrase.level = wasLevel;
         renderTable();
         alert('Failed to update level');
-    }
-}
-
-// Optimistic-ish toggle: flips the local flag immediately so the crown and
-// card shading respond right away, re-rendering from the saved result only
-// to correct it if the request actually failed. Independent of level.
-async function toggleLearned(id) {
-    const phrase = allPhrases.find(p => p.id === id);
-    if (!phrase) return;
-    const nextLearned = !phrase.learned_at;
-    phrase.learned_at = nextLearned ? new Date().toISOString() : null;
-    renderTable();
-    try {
-        const updated = await updatePhraseLearned({ id, learned: nextLearned });
-        phrase.learned_at = updated.learned_at;
-        renderTable();
-    } catch (err) {
-        phrase.learned_at = nextLearned ? null : new Date().toISOString();
-        renderTable();
-        alert('Failed to update learned status');
     }
 }
 
@@ -447,9 +391,9 @@ function exitSelectMode() {
     renderTable();
 }
 
-// Called on space switch (spacesState.js), same as resetSlotFilter/
-// resetLearnedFilter — a selection of specific phrase ids from the space
-// you're leaving has nothing to do with the one you're entering.
+// Called on space switch (spacesState.js), same as resetSlotFilter — a
+// selection of specific phrase ids from the space you're leaving has
+// nothing to do with the one you're entering.
 function resetSelectMode() {
     exitSelectMode();
 }
@@ -476,9 +420,9 @@ function updateSelectModeUI() {
 
 // ===== Move selected phrases to another space (bulk, from the selection bar) =====
 // A direct space_id update (bulkMovePhrases) — no retranslation, no Add-tab
-// round trip. Level and learned status carry over unchanged; a slot
-// doesn't, since it belongs to one specific routine's own schedule (see
-// localDb.js's bulkMovePhrases).
+// round trip. Level carries over unchanged; a slot doesn't, since it
+// belongs to one specific routine's own schedule (see localDb.js's
+// bulkMovePhrases).
 
 function openMovePhraseModal() {
     if (!selectedPhraseIds.size) return;
@@ -515,4 +459,14 @@ async function confirmBulkMove(targetSpaceId) {
     } catch (err) {
         alert('Failed to move phrases — try again.');
     }
+}
+
+// ===== Start a practice session from a manual selection =====
+// The selection bar's other action besides "Move to...". Unlike the other
+// two practice scopes (random from the routine / specific time slots —
+// see practiceSession.js), a manual pick is practiced in full, exactly as
+// selected, with no 7-unit cap — the deliberate choice of phrases IS the
+// scope here, not a sample to be trimmed.
+function startPracticeFromSelection() {
+    if (typeof startManualPracticeFromSelection === 'function') startManualPracticeFromSelection();
 }

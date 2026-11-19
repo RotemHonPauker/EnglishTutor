@@ -29,6 +29,7 @@
     <link rel="stylesheet" href="styles/modal.css">
     <link rel="stylesheet" href="styles/spaceRules.css">
     <link rel="stylesheet" href="styles/slots.css">
+    <link rel="stylesheet" href="styles/practice.css">
     <link rel="stylesheet" href="styles/tabs.css">
     <link rel="stylesheet" href="styles/capture.css">
     <link rel="stylesheet" href="styles/dictionary.css">
@@ -117,13 +118,14 @@
                 <div id="table-toolbar">
                     <span id="phrase-count"></span>
                     <button id="practice-slots-btn" onclick="openSlotFilterModal()">Slots</button>
-                    <button id="learned-filter-btn" onclick="toggleLearnedFilter()">All</button>
+                    <button id="start-practice-btn" onclick="startPracticeFlow()">🎯 Start practice</button>
                     <button id="select-mode-btn" onclick="toggleSelectMode()">Select</button>
                 </div>
                 <div id="active-slot-filters" class="active-filters-row" style="display:none"></div>
                 <div id="selection-action-bar" style="display:none">
                     <span id="selection-count"></span>
                     <button onclick="toggleSelectMode()">Cancel</button>
+                    <button class="primary" onclick="startPracticeFromSelection()">🎯 Start practice</button>
                     <button class="primary" onclick="openMovePhraseModal()">Move to...</button>
                 </div>
                 <div id="table-wrapper">
@@ -571,6 +573,23 @@
     </div>
 </div>
 
+<!-- PRACTICE SESSION OVERLAY (practiceSession.js): a short self-graded
+     drill — Hebrew sentence shown, your own attempt typed below it (never
+     saved), then the real wording revealed, then Continue or Delete
+     phrase. Same #practice-modal-body container is reused and re-rendered
+     across every phase (scope picker -> slot picker -> drill steps ->
+     done), rather than separate overlays per phase, since only one is ever
+     shown at a time and they share the same "centered card" chrome. -->
+<div id="practice-modal-overlay" style="display:none">
+    <div id="practice-modal">
+        <div class="modal-header">
+            <span id="practice-modal-title">Practice</span>
+            <button onclick="closePracticeSession()">✕</button>
+        </div>
+        <div id="practice-modal-body"></div>
+    </div>
+</div>
+
 <script src="theme.js"></script>
 <script src="loadingOverlay.js"></script>
 
@@ -597,6 +616,7 @@
 <script src="phrasesTable.js"></script>
 <script src="practiceDateScroll.js"></script>
 <script src="slots.js"></script>
+<script src="practiceSession.js"></script>
 <script src="captureTab.js"></script>
 <script src="globalRecord.js"></script>
 <script src="notifySync.js"></script>

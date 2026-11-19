@@ -5,10 +5,10 @@
 // the same activeSpaceId as everything else. This file just supplies the
 // behavior that's specific to that type: word lookup instead of phrase
 // capture, and a different Practice card shape. It repurposes Practice
-// (own data source + card template, sharing the date-scroll/learned-filter
-// machinery already built for phrases) and Add (Send becomes a word lookup
-// instead of a phrase capture). Slots and Setup don't apply and are
-// disabled while a dictionary space is active.
+// (own data source + card template, sharing the date-scroll machinery
+// already built for phrases) and Add (Send becomes a word lookup instead
+// of a phrase capture). Slots, Setup, and the practice-session feature
+// don't apply and are disabled while a dictionary space is active.
 // Needs remoteDb.js, dictionaryEngine.js and geminiClient.js loaded first.
 
 let allDictionaryEntries = [];
@@ -18,8 +18,8 @@ function isDictionarySpace() {
     return !!space && space.space_type === 'dictionary';
 }
 
-// The single source of truth Practice/date-scroll/learned-filter read
-// from — swaps between the active space's phrases and its dictionary
+// The single source of truth Practice/date-scroll read from — swaps
+// between the active space's phrases and its dictionary
 // entries depending on type, so that shared machinery (built around
 // allPhrases) works unchanged on either one.
 function getPracticeItems() {
@@ -55,7 +55,12 @@ function applyDictionaryModeUI() {
         setAddInputMode('dictionary');
     }
 
-    // Practice — time slots don't apply to dictionary entries.
+    // Practice — time slots don't apply to dictionary entries (there's no
+    // notion of a "slot" for a looked-up word), but practice sessions do
+    // (see practiceSession.js's startDictionaryPractice) — "Start
+    // practice" stays visible either way, just with a simpler flow behind
+    // it for a dictionary routine (no scope to pick, straight to a random
+    // session over the whole routine).
     const slotsFilterBtn = document.getElementById('practice-slots-btn');
     if (slotsFilterBtn) slotsFilterBtn.style.display = dict ? 'none' : '';
 }
@@ -242,25 +247,20 @@ async function loadDictionaryEntries(spaceId) {
 // Called from renderTable() (phrasesTable.js) when the active space is a
 // dictionary — a different card shape (word / part of speech / synonyms /
 // example), no slot badge, no 🔊. Reuses .phrase-card/.phrase-card-header/
-// .phrase-card-icons/.phrase-card-main and the learned-state styling
-// as-is, so only the dictionary-specific inner pieces need their own CSS.
+// .phrase-card-icons/.phrase-card-main as-is, so only the
+// dictionary-specific inner pieces need their own CSS.
 function renderDictionaryCards() {
     const sorted = allDictionaryEntries
-        .filter(phraseMatchesLearnedFilter)
         .filter(phraseMatchesDateFilter)
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     document.getElementById('phrase-count').textContent = sorted.length;
 
-    tableBody.innerHTML = sorted.map(e => {
-        const isLearned = !!e.learned_at;
-        const cardClasses = ['phrase-card', 'dictionary-card', isLearned ? 'learned' : ''].filter(Boolean).join(' ');
-        return `
-        <div class="${cardClasses}">
+    tableBody.innerHTML = sorted.map(e => `
+        <div class="phrase-card dictionary-card">
             <div class="phrase-card-header">
                 <div class="phrase-card-icons">
                     <button title="Delete word" onclick="deleteDictionaryRow('${e.id}')">🗑️</button>
-                    <button class="learned-btn ${isLearned ? 'active' : ''}" title="${isLearned ? 'Learned — tap to unmark' : 'Mark as learned'}" onclick="toggleDictionaryLearned('${e.id}')">👑</button>
                 </div>
                 <span class="dictionary-pos">${escapeHtml(e.part_of_speech || '')}</span>
             </div>
@@ -271,27 +271,7 @@ function renderDictionaryCards() {
                 ${e.target_synonyms ? `<div class="dictionary-synonyms">${escapeHtml(e.target_synonyms)}</div>` : ''}
             </div>
         </div>
-        `;
-    }).join('');
-}
-
-// Same optimistic-update pattern as toggleLearned (phrasesTable.js), just
-// against updateDictionaryEntryLearned instead of updatePhraseLearned.
-async function toggleDictionaryLearned(id) {
-    const entry = allDictionaryEntries.find(e => e.id === id);
-    if (!entry) return;
-    const nextLearned = !entry.learned_at;
-    entry.learned_at = nextLearned ? new Date().toISOString() : null;
-    renderTable();
-    try {
-        const updated = await updateDictionaryEntryLearned({ id, learned: nextLearned });
-        entry.learned_at = updated.learned_at;
-        renderTable();
-    } catch (err) {
-        entry.learned_at = nextLearned ? null : new Date().toISOString();
-        renderTable();
-        alert('Failed to update learned status');
-    }
+        `).join('');
 }
 
 // Reuses the same delete-confirm modal as phrases (see pendingDeleteType

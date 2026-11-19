@@ -1,0 +1,108 @@
+/* ===== Practice session overlay (practiceSession.js) ===== */
+/* Same "centered card over a dimmed backdrop" chrome as every other
+   overlay in the app (compare #full-day-modal-overlay in slots.css,
+   .confirm-modal in modal.css) — a dedicated id rather than reusing
+   .confirm-modal since this one's content varies a lot more across its
+   several phases (scope picker, slot picker, drill steps, done screen)
+   and needs its own max-width/height tuning for the drill's textarea. */
+
+#practice-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--overlay);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+#practice-modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: 100%;
+    max-width: 400px;
+    max-height: 85vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    padding: 18px;
+    gap: 16px;
+}
+
+/* ===== Scope picker (first screen) ===== */
+
+.practice-scope-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.practice-scope-btn {
+    width: 100%;
+    text-align: center;
+    padding: 14px;
+    font-size: 0.9375rem;
+}
+
+/* ===== Drill step ===== */
+
+.practice-source {
+    font-size: 1.125rem;
+    line-height: 1.5;
+    color: var(--text);
+    padding: 12px 14px;
+    background: var(--surface-2);
+    border-radius: 10px;
+}
+
+.practice-attempt-input {
+    width: 100%;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-size: 0.9375rem;
+    resize: vertical;
+    outline: none;
+}
+
+.practice-attempt-input:focus {
+    border-color: #2563eb;
+}
+
+/* Frozen in place once revealed — stays visible exactly where it was
+   typed, right above the real answer, rather than being echoed a second
+   time elsewhere. */
+.practice-attempt-input:disabled {
+    opacity: 0.75;
+    cursor: default;
+}
+
+.practice-reveal-area {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.practice-answer {
+    font-size: 1.0625rem;
+    font-weight: 600;
+    color: #33b679;
+    line-height: 1.5;
+    padding: 12px 14px;
+    background: rgba(51, 182, 121, 0.12);
+    border-radius: 10px;
+}
+
+.practice-answer-label {
+    display: block;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6fcf9b;
+    margin-bottom: 2px;
+}
