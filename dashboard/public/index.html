@@ -97,47 +97,38 @@
 <!-- SPACE HEADER: shown above every tab, always. Tapping it opens the
      space picker/create modal. (Internal id/name kept as "space" — only
      the displayed text says "Routine", per the UI-only rename.) -->
-<!-- #space-header keeps its own full blue-bordered pill look exactly as
-     before. The Practice-tab-only quick actions sit OUTSIDE it, stuck to
-     the two screen edges, not inside the bordered box — hidden on every
-     other tab via body[data-active-view] (see showView in app.js). Being
-     siblings of #space-header rather than children of it, a tap on
-     either one no longer bubbles into its own onclick (the space
-     picker), so no stopPropagation is needed. -->
-<div id="header-row">
-    <button id="header-practice-btn" onclick="startPracticeFlow()">🎯 Practice</button>
-    <header id="space-header" onclick="requestOpenSpacePicker()">
-        <span id="space-header-name">Select a routine</span>
-        <span class="space-header-chevron">▾</span>
-    </header>
-    <button id="header-add-slot-btn" onclick="openSlotModal(null)">+ Add slot</button>
-</div>
+<header id="space-header" onclick="requestOpenSpacePicker()">
+    <span id="space-header-name">Select a routine</span>
+    <span class="space-header-chevron">▾</span>
+</header>
 
 <main id="view-container">
 
     <!-- PRACTICE VIEW -->
     <div id="view-practice" class="view active">
-        <!-- The Practice-tab-only "+ Add slot" / "🎯 Practice" quick
-             actions now live in the shared #space-header itself (above,
-             body), not as a separate row here — see
-             #header-practice-btn/#header-add-slot-btn there. -->
-        <!-- Display-only — today's reminder schedule across EVERY routine,
-             not just the active one (slots.js's renderPracticeSlotsScroll).
-             Practice-tab-only, per Rotem's own call. -->
+        <!-- Today's reminder schedule across EVERY routine, not just the
+             active one (slots.js's renderPracticeSlotsScroll) — AND, for
+             whichever slot belongs to the active routine, the actual
+             filter for the card list below: tap one of this routine's own
+             slots (or "Unlabeled") to narrow down to it. A slot from
+             another routine just stays informational, same as before.
+             One strip doing both jobs, instead of two separate scrolls. -->
         <div id="practice-slots-scroll">
             <div id="practice-slots-scroll-track"></div>
         </div>
         <div id="table-area">
-            <div id="date-scroll-bar">
-                <div id="date-scroll-track"></div>
-            </div>
             <div id="table-section">
+                <!-- "🎯 Practice" / "Select" / "+ Add slot" all together
+                     here now, instead of the "🎯 Practice"/"+ Add slot" pair
+                     sitting beside the routine-switcher pill above — per
+                     Rotem's own call, now that the old per-card Save/Trash
+                     machinery (and the "Slots" filter modal it used to sit
+                     next to) is gone and this toolbar has room again. -->
                 <div id="table-toolbar">
-                    <span id="phrase-count"></span>
-                    <button id="practice-slots-btn" onclick="openSlotFilterModal()">Slots</button>
+                    <button class="primary" onclick="startPracticeFlow()">🎯 Practice</button>
                     <button id="select-mode-btn" onclick="toggleSelectMode()">Select</button>
+                    <button class="primary" onclick="openSlotModal(null)">+ Add slot</button>
                 </div>
-                <div id="active-slot-filters" class="active-filters-row" style="display:none"></div>
                 <div id="selection-action-bar" style="display:none">
                     <span id="selection-count"></span>
                     <button onclick="toggleSelectMode()">Cancel</button>
@@ -160,24 +151,6 @@
                 <button type="button" class="mode-toggle-btn active" data-theme-choice="dark" onclick="setTheme('dark')">🌙 Dark</button>
                 <button type="button" class="mode-toggle-btn" data-theme-choice="light" onclick="setTheme('light')">☀️ Light</button>
             </div>
-            <!-- CARD LIFETIME: its own section now, same card family as
-                 Schedule/Backup/Invite below (not folded into Routine
-                 Setup any more) — placed right after the theme toggle,
-                 per Rotem's own call. Only ever "week" or "month", no
-                 third "never expire" choice, on purpose. Not yet chosen
-                 (null) behaves like "month" (see localDb.js's
-                 effectiveCardLifetime). Checked LIVE against every card's
-                 age, not frozen at creation — see spaceRules.js's
-                 setCardLifetime for how tightening this is kept safe for
-                 cards that already exist. -->
-            <div id="card-lifetime-section">
-                <div id="space-rules-header">Card lifetime</div>
-                <div id="card-lifetime-intro">Switching to a shorter lifetime auto-saves ⭐ every card already here, so none of them get caught out by the stricter rule.</div>
-                <div class="mode-toggle" id="card-lifetime-toggle">
-                    <button type="button" class="mode-toggle-btn" data-lifetime="week" onclick="setCardLifetime('week', this)">1 week</button>
-                    <button type="button" class="mode-toggle-btn" data-lifetime="month" onclick="setCardLifetime('month', this)">1 month</button>
-                </div>
-            </div>
             <!-- SCHEDULE (used to be its own tab — #view-slots — now a
                  section here instead, since the Transcripts tab took its
                  old spot in the bottom nav). Time-of-day slots for the
@@ -186,12 +159,9 @@
                  the slot modal below), and that's what a phrase captured
                  during its window gets labeled/colored with, with no
                  separate tag entity in between. Scoped to that one
-                 routine's own slots — "+ Add time slot" and the old
-                 "Full schedule" overlay (every routine's slots merged)
-                 both moved to the Practice tab's own header/slots-scroll
-                 instead (see #header-add-slot-btn in base.css and
-                 #practice-slots-scroll in table.css/slots.js) — nothing
-                 here duplicates them any more. Placed first, right after
+                 routine's own slots — "+ Add time slot" moved to the
+                 Practice tab's own toolbar instead (see #table-toolbar) —
+                 nothing here duplicates it any more. Placed right after
                  the theme toggle, since it's the section Rotem actually
                  opens most often. -->
             <div id="schedule-section">
@@ -239,7 +209,7 @@
                 <span id="invite-status" class="backup-status"></span>
             </div>
             <div id="space-rules-section">
-                <div id="space-rules-header">Routine Setup</div>
+                <div id="space-rules-header">Translation &amp; Transcription Guidelines</div>
                 <div id="space-rules-intro">This is where you help sharpen the translations.<br>These fields become part of the AI prompt.</div>
                 <div class="space-rules-accordion">
                     <div class="space-rules-item" data-field="about">
@@ -419,20 +389,6 @@
 </nav>
 
 
-<!-- SLOT FILTER MODAL -->
-<div id="slot-filter-modal-overlay" style="display:none">
-    <div id="slot-filter-modal" class="confirm-modal">
-        <div class="modal-header">
-            <span>Filter by time slot</span>
-            <button onclick="closeSlotFilterModal()">✕</button>
-        </div>
-        <div id="slot-filter-groups"></div>
-        <div class="modal-footer">
-            <button onclick="clearSlotFilter()">Clear</button>
-            <button class="primary" onclick="applySlotFilter()">Apply</button>
-        </div>
-    </div>
-</div>
 
 <!-- SLOT PICKER MODAL (reassigning a phrase's time slot from Practice) -->
 <div id="slot-picker-modal-overlay" style="display:none">
@@ -650,7 +606,6 @@
 <script src="spaceRules.js"></script>
 <script src="dictionary.js"></script>
 <script src="phrasesTable.js"></script>
-<script src="practiceDateScroll.js"></script>
 <script src="slots.js"></script>
 <script src="practiceSession.js"></script>
 <script src="transcriptsTab.js"></script>

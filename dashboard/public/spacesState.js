@@ -56,9 +56,8 @@ async function setActiveSpace(id) {
     if (typeof applyDictionaryModeUI === 'function') applyDictionaryModeUI();
     renderSpaceHeader();
     closeSpacePicker();
-    if (typeof resetSlotFilter === 'function') resetSlotFilter();
+    if (typeof resetSlotScroll === 'function') resetSlotScroll();
     if (typeof resetSelectMode === 'function') resetSelectMode();
-    if (typeof resetDateScroll === 'function') resetDateScroll();
     // A practice session in progress is scoped to the routine it started
     // in (its queue holds actual phrase objects, not just ids) — closing it
     // outright on a routine switch is simplest and safest, rather than

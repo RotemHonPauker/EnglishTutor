@@ -215,35 +215,6 @@
     color: var(--text-muted);
 }
 
-/* ===== Card lifetime section (Setup tab) — same card family as Backup/
-   Invite/Schedule (below and above): its own standalone rubric now, not
-   folded into Routine Setup — right after the theme toggle, per Rotem's
-   own call. #card-lifetime-toggle reuses the shared .mode-toggle /
-   .mode-toggle-btn look (same visual family as Backup's Export/Import
-   buttons), just with real toggle semantics (one active at a time,
-   handled by spaceRules.js's renderCardLifetimeToggle) rather than two
-   always-active independent actions. */
-
-#card-lifetime-section {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-#card-lifetime-section .mode-toggle {
-    padding: 0;
-}
-
-#card-lifetime-intro {
-    font-size: 0.8125rem;
-    line-height: 1.5;
-    color: var(--text-muted);
-}
-
 /* ===== Schedule section (Setup tab) — same card family as the sections
    above. Used to be its own tab (#view-slots); now lives here instead,
    with the Transcripts tab taking its old spot in the bottom nav. Its own

@@ -173,164 +173,20 @@ function notFoundError(storeName, id) {
     return new Error(`No row with id ${id} in ${storeName}`);
 }
 
-// --- Card lifetime / saved / trash (phrases + dictionary entries) -------
-// A routine can set its own card_lifetime ('week' | 'month' | null) from
-// its Setup — see updateSpace below. Unset (null) behaves exactly like
-// 'month' (see effectiveCardLifetime) — there's no "cards never expire"
-// state any more; every card is subject to *some* lifetime, 'month' by
-// default until a routine's Setup says otherwise.
-//
-// A card's age is checked against its routine's CURRENT lifetime setting
-// live, every time it's asked about (isCardInTrash/isCardPastGrace below)
-// — there's no expires_at stored on the card itself. A frozen, per-card
-// expiry was the original design here, but Rotem flagged the real problem
-// with it: it quietly keeps judging a card by whatever rule was in effect
-// the day it was made, forever, with no visible "expiry date" to point
-// to. Computing live instead means changing a routine's setting can
-// change which of its EXISTING cards are about to be trashed too, not
-// just future ones — made safe by setCardLifetime (spaceRules.js), which
-// auto-saves every card already in a routine the moment its setting
-// tightens, so nothing sitting there peacefully gets swept out by a
-// stricter rule it was never created under.
-//
-// Saved (⭐) is the ONE escape valve from all of this now — not a second
-// status layered on top of some other "older" concept, just one flag.
-// Same undefined-means-legacy-protected convention as a transcript's own
-// pinned flag: a card that already existed before this feature shipped
-// has no `saved` field at all, and isCardSaved treats that the same as
-// explicitly saved — so every card sitting in the app right now is
-// automatically protected, with no migration needed. A card created from
-// here on gets saved: false explicitly (see saveSentence/
-// saveDictionaryEntry) and has to be starred manually to become exempt.
-const CARD_LIFETIME_MS = { week: 7 * 24 * 60 * 60 * 1000, month: 30 * 24 * 60 * 60 * 1000 };
+// --- Card age (phrases + dictionary entries) ----------------------------
+// There used to be a whole lifetime/saved/trash mechanism here — a
+// per-routine expiry policy, a one-way "saved" flag, and a 24h grace
+// window before a hard delete. Rotem's own call to drop all of it: too
+// much machinery for what the app actually needed, once cards are browsed
+// by which time slot they belong to (see slots.js's
+// renderPracticeSlotsScroll) rather than by when they were captured. All
+// that's left of the idea is this
+// one soft nudge: a card older than CARD_OLD_MS just gets a visible "old"
+// note on its own card (phrasesTable.js/dictionary.js) to encourage
+// deleting it by hand — nothing here ever deletes anything automatically.
+const CARD_OLD_MS = 30 * 24 * 60 * 60 * 1000; // 1 month
 
-// How long a lifetime-expired, unsaved card sits in its routine's own
-// Trash bucket before being hard-deleted for good — one last chance to
-// notice and save it. Same 24h length as a transcript's own retention
-// window, just the opposite role here: a transcript is deleted once
-// pinning fails to protect it past this long; a card is deleted once
-// *trashed* past this long.
-const CARD_TRASH_GRACE_MS = 24 * 60 * 60 * 1000;
-
-// null (not yet explicitly chosen in Setup) defaults to 'month' — see the
-// file comment above.
-function effectiveCardLifetime(cardLifetime) {
-    return cardLifetime === 'week' ? 'week' : 'month';
-}
-
-const isCardSaved = (card) => card.saved !== false;
-
-// The moment this card would cross from alive into Trash, worked out
-// fresh against its OWN routine's CURRENT lifetime setting — not a value
-// stored on the card. `space` is that routine's own row (getActiveSpace(),
-// or a lookup by the card's space_id when scanning across routines — see
-// deletePastGraceCards below). Only used for a card that's never been
-// explicitly taken out of Trash before (trashed_at is null) — see
-// isCardInTrash/isCardPastGrace below for why that distinction exists.
-function cardExpiresAtMs(card, space) {
-    const lifetime = effectiveCardLifetime(space?.card_lifetime);
-    return new Date(card.created_at).getTime() + CARD_LIFETIME_MS[lifetime];
-}
-
-// A card's trash status is normally computed live from its age (above) —
-// but a card that was ONCE saved and then explicitly un-starred is a
-// special case: un-starring it is a deliberate "move to Trash" action
-// (see moveCardToTrash/trashPhrase/trashDictionaryEntry below), not a
-// request to re-expose it to a live age check that might already be long
-// past its grace window. That's the exact problem Rotem flagged — saving
-// a card and later un-saving it shouldn't let its original age come back
-// to bite it. So un-starring stamps trashed_at with the moment it
-// happened, and from then on THAT (not created_at) is what starts its own
-// fresh 24h countdown — the star "erases" the card's age the same way
-// saving it did, just toward the opposite outcome.
-function isCardInTrash(card, space) {
-    if (isCardSaved(card)) return false;
-    const now = Date.now();
-    if (card.trashed_at) {
-        const trashedAtMs = new Date(card.trashed_at).getTime();
-        return now >= trashedAtMs && now < trashedAtMs + CARD_TRASH_GRACE_MS;
-    }
-    const expiresAtMs = cardExpiresAtMs(card, space);
-    return now >= expiresAtMs && now < expiresAtMs + CARD_TRASH_GRACE_MS;
-}
-
-// Past the grace window entirely — eligible for the hard-delete sweep
-// below, and never shown anywhere (not even in Trash) from this point on.
-function isCardPastGrace(card, space) {
-    if (isCardSaved(card)) return false;
-    if (card.trashed_at) {
-        return Date.now() >= new Date(card.trashed_at).getTime() + CARD_TRASH_GRACE_MS;
-    }
-    return Date.now() >= cardExpiresAtMs(card, space) + CARD_TRASH_GRACE_MS;
-}
-
-// Hard-deletes any phrase/dictionary row whose trash grace window has
-// fully elapsed. Scans every routine's cards at once (same pattern as
-// deleteExpiredTranscripts) — run at app startup and every time the
-// Practice tab's table loads (phrasesTable.js's loadTable), so a stale
-// row never lingers past one load. Looks up each row's OWN routine (not
-// just the active one) since the live lifetime check needs that routine's
-// current card_lifetime setting.
-const deletePastGraceCards = async () => {
-    const allSpaces = await idbGetAll('spaces');
-    const spaceById = new Map(allSpaces.map(s => [s.id, s]));
-
-    const db = await openDb();
-    const tx = db.transaction(['phrases', 'dictionary'], 'readwrite');
-    for (const storeName of ['phrases', 'dictionary']) {
-        const store = tx.objectStore(storeName);
-        const all = await reqToPromise(store.getAll());
-        for (const row of all) {
-            if (isCardPastGrace(row, spaceById.get(row.space_id))) store.delete(row.id);
-        }
-    }
-    await txDone(tx);
-};
-
-// Only ever called to turn saved ON now — see trashPhrase below for the
-// other direction. Clears trashed_at too, so a card that's rescued out of
-// Trash this way starts with a clean slate if it's ever un-starred again
-// later (moveCardToTrash stamps a brand new trashed_at at that point
-// anyway, but there's no reason to leave a stale one sitting around).
-const setPhraseSaved = async (id, saved) => {
-    const existing = await idbGet('phrases', id);
-    if (!existing) throw notFoundError('phrases', id);
-    return idbPut('phrases', { ...existing, saved: !!saved, trashed_at: saved ? null : existing.trashed_at });
-};
-
-// The ONLY way a saved card leaves saved: there's no plain "unsave" that
-// drops it back into a live age check — doing that is exactly how a
-// long-saved card could jump straight past its own grace window the
-// moment it's un-starred. Moving it to Trash instead always gives it a
-// fresh, full 24h window starting now, regardless of how old it actually
-// is — same idea as createTranscript always starting unpinned transcripts
-// at age zero for their own 24h window, just applied on the way OUT of
-// being protected rather than on the way in.
-const moveCardToTrash = async (storeName, id) => {
-    const existing = await idbGet(storeName, id);
-    if (!existing) throw notFoundError(storeName, id);
-    return idbPut(storeName, { ...existing, saved: false, trashed_at: new Date().toISOString() });
-};
-
-const trashPhrase = (id) => moveCardToTrash('phrases', id);
-
-// Called when a routine's card_lifetime setting tightens (see
-// spaceRules.js's setCardLifetime) — marks every phrase/dictionary entry
-// that ALREADY exists in that one routine as saved, so a stricter rule
-// never sweeps out something that was sitting there peacefully a moment
-// before. Doesn't touch anything created after this point, and doesn't
-// touch any other routine.
-const protectExistingCardsInSpace = async (spaceId) => {
-    const db = await openDb();
-    const tx = db.transaction(['phrases', 'dictionary'], 'readwrite');
-    for (const storeName of ['phrases', 'dictionary']) {
-        const store = tx.objectStore(storeName);
-        const index = store.index('space_id');
-        const rows = await reqToPromise(index.getAll(spaceId));
-        for (const row of rows) store.put({ ...row, saved: true, trashed_at: null });
-    }
-    await txDone(tx);
-};
+const isCardOld = (card) => Date.now() - new Date(card.created_at).getTime() > CARD_OLD_MS;
 
 // --- Phrases ------------------------------------------------------------
 
@@ -352,12 +208,6 @@ const saveSentence = async ({ sourceText, variant1, variant2, spaceId, slotId })
         last_practiced_at: null,
         tts_url_variant1: null,
         tts_url_variant2: null,
-        // Explicit false, not left unset — see the card-lifetime/saved
-        // file comment above for why that distinction matters (isCardSaved
-        // treats only an EXISTING, pre-feature card's missing field as
-        // protected; a brand new one is never ambiguous about it).
-        saved: false,
-        trashed_at: null,
         created_at: new Date().toISOString()
     };
     return idbPut('phrases', row);
@@ -480,18 +330,12 @@ const createSpace = async ({ name, spaceType, sourceLanguage, targetLanguage, br
         variant_1_notes: null,
         variant_2_notes: null,
         audio_recording_notes: null,
-        // null = no lifetime policy yet, same as every routine before this
-        // feature existed — its cards simply never expire until this is
-        // explicitly set to 'week' or 'month' in Setup (there's no third
-        // "never" choice in that UI; null is just what every routine starts
-        // at). See CARD_LIFETIME_MS above.
-        card_lifetime: null,
         created_at: new Date().toISOString()
     };
     return idbPut('spaces', row);
 };
 
-const updateSpace = async ({ id, name, aboutThisSpace, variant1Notes, variant2Notes, audioRecordingNotes, cardLifetime }) => {
+const updateSpace = async ({ id, name, aboutThisSpace, variant1Notes, variant2Notes, audioRecordingNotes }) => {
     const existing = await idbGet('spaces', id);
     if (!existing) throw notFoundError('spaces', id);
     const updated = { ...existing };
@@ -500,10 +344,6 @@ const updateSpace = async ({ id, name, aboutThisSpace, variant1Notes, variant2No
     if (variant1Notes !== undefined) updated.variant_1_notes = variant1Notes || null;
     if (variant2Notes !== undefined) updated.variant_2_notes = variant2Notes || null;
     if (audioRecordingNotes !== undefined) updated.audio_recording_notes = audioRecordingNotes || null;
-    // Only ever 'week' or 'month' in practice (see spaceRules.js's
-    // setCardLifetime) — deliberately not validated further here, same as
-    // every other field in this function.
-    if (cardLifetime !== undefined) updated.card_lifetime = cardLifetime;
     return idbPut('spaces', updated);
 };
 
@@ -581,8 +421,7 @@ const getSpaceRuleFields = async (spaceId) => {
         spaceType: row.space_type ?? 'progression',
         sourceLanguage: row.source_language ?? 'Hebrew',
         targetLanguage: row.target_language ?? 'English',
-        bridgeLanguage: row.bridge_language ?? null,
-        cardLifetime: row.card_lifetime ?? null
+        bridgeLanguage: row.bridge_language ?? null
     };
 };
 
@@ -692,23 +531,10 @@ const saveDictionaryEntry = async ({ spaceId, sourceQuery, word, partOfSpeech, s
         // stepped through in a practice session (practiceSession.js),
         // which is what decides which words a session picks first.
         last_practiced_at: null,
-        // Same card-lifetime/saved treatment as a phrase — see
-        // saveSentence above and the file comment near isCardSaved.
-        saved: false,
-        trashed_at: null,
         created_at: new Date().toISOString()
     };
     return idbPut('dictionary', row);
 };
-
-// Mirrors setPhraseSaved/trashPhrase above.
-const setDictionaryEntrySaved = async (id, saved) => {
-    const existing = await idbGet('dictionary', id);
-    if (!existing) throw notFoundError('dictionary', id);
-    return idbPut('dictionary', { ...existing, saved: !!saved, trashed_at: saved ? null : existing.trashed_at });
-};
-
-const trashDictionaryEntry = (id) => moveCardToTrash('dictionary', id);
 
 // Mirrors markPhrasePracticed above — called once a dictionary word's
 // practice-session unit ends in "Continue" rather than "Delete word".

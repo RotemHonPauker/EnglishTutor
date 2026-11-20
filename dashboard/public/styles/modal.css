@@ -58,7 +58,6 @@
 
 #delete-modal-overlay,
 #slot-picker-modal-overlay,
-#slot-filter-modal-overlay,
 #space-picker-modal-overlay,
 #space-create-modal-overlay,
 #unsaved-rules-modal-overlay,
@@ -87,14 +86,13 @@
 }
 
 #slot-picker-modal,
-#slot-filter-modal,
 #move-phrase-modal {
     max-height: 80vh;
     overflow-y: auto;
 }
 
 /* Generic modal body text — used by Space migrate/delete confirmations
-   (spacesState.js) as well as the slot filter/picker "empty" states. Used
+   (spacesState.js) as well as the slot picker's own "empty" state. Used
    to live in tags.css, which no longer exists now that tags are gone. */
 .tag-name {
     font-size: 1rem;

@@ -526,13 +526,12 @@ function renderPracticeDone() {
 }
 
 // Closes the overlay and refreshes everything behind it that a session
-// could have changed (a deleted phrase/word disappearing, the date-scroll
-// pill counts, the phrase-count badge) — without a full loadTable()
+// could have changed (a deleted phrase/word disappearing, the slots
+// scroll's own per-slot phrase counts) — without a full loadTable()
 // round-trip, since allPhrases/allDictionaryEntries are already up to
 // date (see advancePracticeAfterDecision above).
 function finishPracticeSession() {
     closePracticeSession();
     renderTable();
-    if (typeof generateDateBuckets === 'function') generateDateBuckets();
-    if (typeof renderDateScroll === 'function') renderDateScroll();
+    if (typeof renderPracticeSlotsScroll === 'function') renderPracticeSlotsScroll();
 }

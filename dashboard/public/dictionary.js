@@ -58,14 +58,16 @@ function applyDictionaryModeUI() {
         setAddInputMode('dictionary');
     }
 
-    // Practice — time slots don't apply to dictionary entries (there's no
-    // notion of a "slot" for a looked-up word), but practice sessions do
-    // (see practiceSession.js's startDictionaryPractice) — "Start
-    // practice" stays visible either way, just with a simpler flow behind
-    // it for a dictionary routine (no scope to pick, straight to a random
-    // session over the whole routine).
-    const slotsFilterBtn = document.getElementById('practice-slots-btn');
-    if (slotsFilterBtn) slotsFilterBtn.style.display = dict ? 'none' : '';
+    // Practice — time slots don't apply to dictionary entries at all
+    // (there's no notion of a "slot" for a looked-up word), so the slots
+    // scroll's own filtering (slots.js's renderPracticeSlotsScroll) just
+    // falls back to its plain display-only self in a dictionary space —
+    // handled there, not here, since it also needs re-checking on every
+    // render, not just on this one-time mode switch. Practice sessions
+    // still apply either way (see practiceSession.js's
+    // startDictionaryPractice) — "Start practice" stays visible, just
+    // with a simpler flow behind it for a dictionary routine (no scope to
+    // pick, straight to a random session over the whole routine).
 }
 
 // ===== Quick lookup from a non-dictionary space =====
@@ -242,8 +244,10 @@ function addDictionarySavedMessage(entry) {
 
 async function loadDictionaryEntries(spaceId) {
     allDictionaryEntries = await getDictionaryEntries(spaceId);
-    if (typeof generateDateBuckets === 'function') generateDateBuckets();
-    if (typeof renderDateScroll === 'function') renderDateScroll();
+    // No slot concept at all for dictionary entries — the slots scroll
+    // just falls back to its plain display-only self (slots.js's
+    // renderPracticeSlotsScroll), so there's nothing to filter the list
+    // by here.
     renderTable();
 }
 
@@ -251,26 +255,16 @@ async function loadDictionaryEntries(spaceId) {
 // dictionary — a different card shape (word / part of speech / synonyms /
 // example), no slot badge, no 🔊. Reuses .phrase-card/.phrase-card-header/
 // .phrase-card-icons/.phrase-card-main as-is, so only the
-// dictionary-specific inner pieces need their own CSS.
+// dictionary-specific inner pieces need their own CSS. Every entry is
+// shown, newest first — there's no filter to narrow it down to any more.
 function renderDictionaryCards() {
-    const sorted = allDictionaryEntries
-        .filter(phraseMatchesDateFilter)
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const sorted = [...allDictionaryEntries].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-    document.getElementById('phrase-count').textContent = sorted.length;
-
-    const activeSpace = typeof getActiveSpace === 'function' ? getActiveSpace() : null;
-    tableBody.innerHTML = sorted.map(e => {
-        const isSaved = isCardSaved(e);
-        const inTrash = isCardInTrash(e, activeSpace);
-        return `
+    tableBody.innerHTML = sorted.map(e => `
         <div class="phrase-card dictionary-card">
             <div class="phrase-card-header">
                 <div class="phrase-card-icons">
-                    ${isSaved
-                        ? `<button class="saved-btn is-saved" title="Saved" disabled>⭐</button>`
-                        : `<button class="saved-btn" title="Save (protects from expiry)" onclick="toggleDictionaryEntrySaved('${e.id}')">☆</button>`}
-                    <button title="${isSaved ? 'Move to Trash' : 'Delete word'}" onclick="handleDictionaryTrashClick('${e.id}')">🗑️</button>
+                    <button title="Delete word" onclick="deleteDictionaryRow('${e.id}')">🗑️</button>
                 </div>
                 <span class="dictionary-pos">${escapeHtml(e.part_of_speech || '')}</span>
             </div>
@@ -279,45 +273,10 @@ function renderDictionaryCards() {
                 ${e.source_synonyms ? `<div class="dictionary-synonyms" dir="auto">${escapeHtml(e.source_synonyms)}</div>` : ''}
                 ${e.example_sentence ? `<div class="dictionary-example">${escapeHtml(e.example_sentence)}</div>` : ''}
                 ${e.target_synonyms ? `<div class="dictionary-synonyms">${escapeHtml(e.target_synonyms)}</div>` : ''}
-                ${inTrash ? `<div class="card-trash-notice">🗑️ Expires soon — tap ⭐ to keep</div>` : ''}
+                ${isCardOld(e) ? `<div class="card-old-notice">🕓 Created over a month ago</div>` : ''}
             </div>
         </div>
-        `;
-    }).join('');
-}
-
-// Mirrors togglePhraseSaved (phrasesTable.js) — saved is a one-way click
-// on the star; see handleDictionaryTrashClick below for the only way out.
-async function toggleDictionaryEntrySaved(id) {
-    const entry = allDictionaryEntries.find(e => e.id === id);
-    if (!entry || isCardSaved(entry)) return;
-    try {
-        await setDictionaryEntrySaved(id, true);
-        await loadDictionaryEntries(activeSpaceId);
-    } catch (err) {
-        alert('Failed to update saved state');
-    }
-}
-
-// Mirrors handlePhraseTrashClick (phrasesTable.js) — permanent delete for
-// a normal entry, or a move to Trash (fresh 24h window) for a saved one.
-function handleDictionaryTrashClick(id) {
-    const entry = allDictionaryEntries.find(e => e.id === id);
-    if (!entry) return;
-    if (isCardSaved(entry)) {
-        trashSavedDictionaryEntry(id);
-    } else {
-        deleteDictionaryRow(id);
-    }
-}
-
-async function trashSavedDictionaryEntry(id) {
-    try {
-        await trashDictionaryEntry(id);
-        await loadDictionaryEntries(activeSpaceId);
-    } catch (err) {
-        alert('Failed to move to Trash');
-    }
+    `).join('');
 }
 
 // Reuses the same delete-confirm modal as phrases (see pendingDeleteType

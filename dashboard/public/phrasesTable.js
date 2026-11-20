@@ -9,106 +9,25 @@ let allPhrases = [];
 let selectMode = false;
 let selectedPhraseIds = new Set();
 
-// ===== Slot filter =====
-
-let filterSlotIds = new Set();
-
-function phraseMatchesSlotFilter(phrase) {
-    if (filterSlotIds.size === 0) return true;
-    return filterSlotIds.has(phrase.slot_id);
-}
-
-function openSlotFilterModal() {
-    renderSlotFilterModal();
-    document.getElementById('slot-filter-modal-overlay').style.display = 'flex';
-}
-
-function closeSlotFilterModal() {
-    document.getElementById('slot-filter-modal-overlay').style.display = 'none';
-}
-
-// `slots` (slots.js) always holds the active routine's own slots — the
-// same list the Schedule tab shows, reused here so the filter options are
-// never out of sync with what actually exists for this routine.
-function renderSlotFilterModal() {
-    const noSlotChip = `<div class="tag-chip none ${filterSlotIds.has(null) ? 'selected' : ''}" onclick="toggleFilterSlot(null)">No slot</div>`;
-    const chips = (typeof slots !== 'undefined' ? slots : []).map(s => {
-        const contrast = getContrastColor(s.color);
-        const selected = filterSlotIds.has(s.id);
-        return `<div class="tag-chip ${selected ? 'selected' : ''}" style="background:${s.color || '#333'}; color:${contrast}" onclick="toggleFilterSlot('${s.id}')">${escapeHtml(s.name)}</div>`;
-    }).join('');
-    document.getElementById('slot-filter-groups').innerHTML = `<div class="tag-picker-chip-list">${noSlotChip}${chips}</div>`;
-}
-
-function toggleFilterSlot(id) {
-    if (filterSlotIds.has(id)) {
-        filterSlotIds.delete(id);
-    } else {
-        filterSlotIds.add(id);
-    }
-    renderSlotFilterModal();
-}
-
-function clearSlotFilter() {
-    filterSlotIds.clear();
-    renderSlotFilterModal();
-}
-
-// Full reset for contexts outside the filter modal itself (e.g. switching
-// spaces) — clears the filter AND updates what's actually visible in the
-// table toolbar, not just the modal's own internal state.
-function resetSlotFilter() {
-    filterSlotIds.clear();
-    renderActiveFilterChips();
-}
-
-function applySlotFilter() {
-    closeSlotFilterModal();
-    renderActiveFilterChips();
-    if (typeof generateDateBuckets === 'function') generateDateBuckets();
-    if (typeof renderDateScroll === 'function') renderDateScroll();
-    renderTable();
-}
-
-function removeSlotFilter(id) {
-    filterSlotIds.delete(id);
-    renderActiveFilterChips();
-    if (typeof generateDateBuckets === 'function') generateDateBuckets();
-    if (typeof renderDateScroll === 'function') renderDateScroll();
-    renderTable();
-}
-
-function renderActiveFilterChips() {
-    const row = document.getElementById('active-slot-filters');
-    row.innerHTML = [...filterSlotIds].map(id => {
-        if (id === null) {
-            return `<span class="active-filter-chip" style="background:#333; color:#ccc">No slot<button onclick="removeSlotFilter(null)">✕</button></span>`;
-        }
-        const slot = (typeof slots !== 'undefined' ? slots : []).find(s => s.id === id);
-        if (!slot) return '';
-        const contrast = getContrastColor(slot.color);
-        return `<span class="active-filter-chip" style="background:${slot.color || '#333'}; color:${contrast}">${escapeHtml(slot.name)}<button onclick="removeSlotFilter('${id}')">✕</button></span>`;
-    }).join('');
-    row.style.display = filterSlotIds.size ? 'flex' : 'none';
-}
+// Slot filtering itself — picking exactly one of this routine's own slots
+// (or "Unlabeled") to narrow the list down to — now lives in slots.js, as
+// part of the same Practice-tab slots scroll that shows today's
+// cross-routine schedule (renderPracticeSlotsScroll/selectSlotBucket).
+// phraseMatchesSlotFilter is defined there; renderTable below just calls
+// it.
 
 async function loadTable() {
-    // Hard-deletes any phrase/dictionary row whose 24h trash grace window
-    // has fully elapsed — run every time this loads (app startup, space
-    // switch, after any edit), same pattern as deleteExpiredTranscripts.
-    if (typeof deletePastGraceCards === 'function') await deletePastGraceCards();
-
     if (typeof isDictionarySpace === 'function' && isDictionarySpace()) {
         if (typeof loadDictionaryEntries === 'function') await loadDictionaryEntries(activeSpaceId);
         return;
     }
     allPhrases = await getPhrases(activeSpaceId);
-    if (typeof generateDateBuckets === 'function') generateDateBuckets();
-    if (typeof renderDateScroll === 'function') renderDateScroll();
+    // Recomputes that scroll's per-slot phrase counts too, not just its
+    // today's-schedule display — they depend on allPhrases, which just
+    // changed.
+    if (typeof renderPracticeSlotsScroll === 'function') await renderPracticeSlotsScroll();
     renderTable();
 }
-
-const DAY_MS = 24 * 60 * 60 * 1000; // also used by practiceDateScroll.js
 
 function renderTable() {
     stopCurrentAudio();
@@ -120,13 +39,10 @@ function renderTable() {
 
     const sorted = allPhrases
         .filter(phraseMatchesSlotFilter)
-        .filter(phraseMatchesDateFilter)
-        // Newest first within whatever's shown — with the date scroll
-        // already narrowing to a specific day/week, there's no separate
-        // sort control anymore; this is just the fixed within-bucket order.
+        // Newest first within whichever slot is selected — with the
+        // slots scroll already narrowing to one slot (or Unlabeled),
+        // there's no separate sort control needed.
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-    document.getElementById('phrase-count').textContent = sorted.length;
 
     // Bridge spaces show the actual language codes on the badge (there's
     // no "advanced version" concept there — variant_2 is a different
@@ -140,29 +56,24 @@ function renderTable() {
     tableBody.innerHTML = sorted.map(p => {
         // getPhrases (localDb.js) already joins each phrase onto its own
         // slot's name/color — no separate lookup against a global list
-        // needed here.
+        // needed here. The slot's color is just a border accent on the
+        // card now, not a full background fill (Rotem's own call — with
+        // the card list already narrowed to one slot at a time via the
+        // slot scroll, every card on screen shares the same color anyway,
+        // so filling the whole card in it added nothing but noise).
         const slotColor = p.slot_color || null;
-        const cardTextColor = slotColor ? getContrastColor(slotColor) : null;
-        const cardStyle = slotColor ? `background:${slotColor}; border-color:${slotColor}; color:${cardTextColor};` : '';
-        // Same lighter-overlay technique as the slot badge below — a
-        // semi-transparent white/black wash relative to this card's own
-        // background, so it reads as "lighter than the card" whatever that
-        // card's color is, instead of one fixed gray regardless of slot
-        // color.
-        const iconBg = slotColor
-            ? (cardTextColor === '#ffffff' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)')
-            : '';
-        const badgeStyle = slotColor
-            ? `background:${iconBg}; color:${cardTextColor};`
-            : '';
-        const badgeLabel = p.slot_name ? escapeHtml(p.slot_name) : '—';
+        const cardStyle = slotColor ? `border-color:${slotColor};` : '';
+        const contrastColor = slotColor ? getContrastColor(slotColor) : null;
+        const badgeStyle = slotColor ? `background:${slotColor}; color:${contrastColor};` : '';
+        // A card with no slot at all needs an obvious call to action, not
+        // just a blank dash — tapping this badge opens the same slot
+        // picker either way (openSlotPicker below).
+        const badgeLabel = p.slot_name ? escapeHtml(p.slot_name) : 'Assign to slot';
         const level = p.level === 2 ? 2 : 1;
         const displayedVariant = level === 2 ? p.variant_2 : p.variant_1;
         const levelBadgeLabel = isBridge ? (level === 2 ? bridgeCode : targetCode) : `Level ${level}`;
         const levelBadgeTitle = isBridge ? 'Tap to switch language' : 'Tap to switch level';
         const isSelected = selectedPhraseIds.has(p.id);
-        const isSaved = isCardSaved(p);
-        const inTrash = isCardInTrash(p, activeSpace);
         const cardClasses = ['phrase-card', slotColor ? 'has-color' : '', isSelected ? 'selected' : ''].filter(Boolean).join(' ');
         return `
         <div class="${cardClasses}" style="${cardStyle}" ${selectMode ? `onclick="toggleCardSelection('${p.id}')"` : ''}>
@@ -170,11 +81,8 @@ function renderTable() {
                 ${selectMode
                     ? `<input type="checkbox" class="phrase-select-checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleCardSelection('${p.id}')">`
                     : `<div class="phrase-card-icons">
-                    ${isSaved
-                        ? `<button class="saved-btn is-saved" style="${iconBg ? `background:${iconBg};` : ''}" title="Saved" disabled>⭐</button>`
-                        : `<button class="saved-btn" style="${iconBg ? `background:${iconBg};` : ''}" title="Save (protects from expiry)" onclick="event.stopPropagation(); togglePhraseSaved('${p.id}')">☆</button>`}
-                    <button style="${iconBg ? `background:${iconBg};` : ''}" title="${isSaved ? 'Move to Trash' : 'Delete phrase'}" onclick="handlePhraseTrashClick('${p.id}')">🗑️</button>
-                    <button style="${iconBg ? `background:${iconBg};` : ''}" title="Edit phrase" onclick="editPhraseRow('${p.id}')">✏️</button>
+                    <button title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑️</button>
+                    <button title="Edit phrase" onclick="editPhraseRow('${p.id}')">✏️</button>
                 </div>`}
                 <div class="phrase-card-badges">
                     <button class="level-badge level-${level}" style="${badgeStyle}" title="${levelBadgeTitle}" onclick="toggleLevel('${p.id}')" ${selectMode ? 'disabled' : ''}>${levelBadgeLabel}</button>
@@ -184,7 +92,7 @@ function renderTable() {
             <div class="phrase-card-main">
                 <div class="phrase-source" dir="auto">${escapeHtml(p.source_text || '')}</div>
                 <div class="phrase-variant"><button class="tts-btn" title="Play" onclick="playPhraseAudio('${p.id}', ${level}, this)" ${selectMode ? 'disabled' : ''}>🔊</button> ${escapeHtml(displayedVariant || '')}</div>
-                ${inTrash ? `<div class="card-trash-notice">🗑️ Expires soon — tap ⭐ to keep</div>` : ''}
+                ${isCardOld(p) ? `<div class="card-old-notice">🕓 Created over a month ago</div>` : ''}
             </div>
         </div>
     `;
@@ -333,54 +241,6 @@ async function toggleLevel(id) {
     }
 }
 
-// ===== Saved (⭐) — a one-way protection, not a toggle =====
-// Mirrors a transcript's own pin (transcriptsTab.js), but only in the
-// protecting direction: once a card is saved, the star itself is
-// disabled (see the ⭐/disabled markup above) — there's deliberately no
-// plain "unsave" click on it any more, since that's exactly how a
-// long-saved card could jump straight past its own 24h grace window the
-// instant it's un-starred (its age is checked live against the routine's
-// CURRENT setting, not whatever was true when it was created). The ONLY
-// way out of saved is the card's own 🗑️ button (handlePhraseTrashClick
-// below), which makes that an explicit, deliberate action rather than
-// something the star does as a side effect of being clicked again.
-async function togglePhraseSaved(id) {
-    const phrase = allPhrases.find(p => p.id === id);
-    if (!phrase || isCardSaved(phrase)) return; // the star has nothing left to do once saved — see handlePhraseTrashClick
-    try {
-        await setPhraseSaved(id, true);
-        await loadTable();
-    } catch (err) {
-        alert('Failed to update saved state');
-    }
-}
-
-// The card's 🗑️ button now does one of two different things depending on
-// whether it's saved: for a normal card, the usual permanent delete (with
-// its confirm modal, unchanged — deletePhraseRow); for a saved one, there
-// is no "delete" to confirm, because being saved already means it isn't
-// going anywhere by itself — so instead this is the one deliberate way to
-// take it OUT of saved, by moving it to Trash with a brand new 24h grace
-// window starting now (trashPhrase).
-function handlePhraseTrashClick(id) {
-    const phrase = allPhrases.find(p => p.id === id);
-    if (!phrase) return;
-    if (isCardSaved(phrase)) {
-        trashSavedPhrase(id);
-    } else {
-        deletePhraseRow(id);
-    }
-}
-
-async function trashSavedPhrase(id) {
-    try {
-        await trashPhrase(id);
-        await loadTable();
-    } catch (err) {
-        alert('Failed to move to Trash');
-    }
-}
-
 // ===== Slot picker (opened by tapping a card's slot badge) =====
 
 let slotPickerPhraseId = null;
@@ -450,7 +310,7 @@ function exitSelectMode() {
     renderTable();
 }
 
-// Called on space switch (spacesState.js), same as resetSlotFilter — a
+// Called on space switch (spacesState.js), same as resetSlotScroll — a
 // selection of specific phrase ids from the space you're leaving has
 // nothing to do with the one you're entering.
 function resetSelectMode() {

@@ -193,55 +193,161 @@ async function loadSlotsScreen() {
     slots = await getSlots(activeSpaceId);
     renderSlotsList();
     updateSlotsPermissionWarning();
-    // Keeps the Practice tab's own all-routines slots scroll in sync
-    // whenever a slot is added/edited/deleted/toggled anywhere, not just
-    // when Practice itself is re-entered (see enterPracticeTab in
-    // practiceDateScroll.js, which refreshes it on tab switch too).
+    // Keeps the Practice tab's own slots scroll in sync whenever a slot is
+    // added/edited/deleted/toggled anywhere, not just when Practice itself
+    // is re-entered (see enterPracticeTab below, which refreshes it on tab
+    // switch too) — a slot added/renamed/recolored/deleted here changes
+    // that strip's own pills AND, for the active routine's own slots,
+    // what the card-list filter actually offers.
     if (typeof renderPracticeSlotsScroll === 'function') renderPracticeSlotsScroll();
 }
 
-// ===== Practice-tab slots scroll (display-only, cross-routine) =====
-// Shows TODAY's reminder schedule across every routine, not just the
-// active one — same horizontal-pill visual language as the date scroll
-// (practiceDateScroll.js), but nothing here is clickable/selectable; it's
-// purely a passive "what's coming up today" strip. Whichever slot is
-// active right now (or, if none is, the next one still ahead today) gets
-// highlighted, worked out fresh against the phone's own clock every time
-// this renders. Practice-tab-only per Rotem's own call — this never
-// appears on any other tab.
+// ===== Practice-tab slots scroll — today's schedule AND the card filter =====
+// Shows TODAY's reminder schedule across every routine, same as always —
+// but a slot belonging to the ACTIVE routine is now also a real filter
+// control for the card list below it (tap it to narrow down to just that
+// slot's cards), with its own phrase count shown right on the pill. A
+// slot belonging to any OTHER routine stays exactly what it always was:
+// plain, non-interactive "what's coming up today" context — its cards
+// aren't even loaded right now, so there's nothing to count or filter by.
+// One strip doing both jobs, replacing the separate single-routine
+// slot-filter strip that used to sit below it (Rotem's own call — two
+// horizontal scrolls for related things was one too many).
+//
+// Every slot is shown in its own color always now, not just while it's
+// the current/next one (also Rotem's own call) — current/next still gets
+// a slightly thicker border on top of that (see .current/.next in
+// table.css); the selected (filtering) slot gets its own outline instead,
+// so the two visual cues never collide.
+//
+// selectedSlotBucketId is a real slot id (belonging to the active
+// routine), 'unlabeled', or null — read by phraseMatchesSlotFilter below,
+// which phrasesTable.js's renderTable filters the card list through.
+let selectedSlotBucketId = null;
+
 async function renderPracticeSlotsScroll() {
+    const bar = document.getElementById('practice-slots-scroll');
     const track = document.getElementById('practice-slots-scroll-track');
-    if (!track) return; // not on the Practice tab (or not built into this page)
+    if (!bar || !track) return; // not on the Practice tab (or not built into this page)
+
+    // Dictionary entries have no slot concept at all (dictionary.js) —
+    // this strip reverts to exactly its old display-only self there: no
+    // counts, nothing clickable, no Unlabeled pill.
+    const filteringApplies = !(typeof isDictionarySpace === 'function' && isDictionarySpace());
 
     const all = await getAllSlots();
     const enabled = all.filter(s => s.enabled !== false);
+    const ownSlots = filteringApplies ? enabled.filter(s => s.space_id === activeSpaceId) : [];
 
-    if (!enabled.length) {
-        track.innerHTML = `<div class="date-scroll-empty">No time slots set up yet</div>`;
-        return;
+    const countBySlotId = new Map();
+    let unlabeledCount = 0;
+    if (filteringApplies) {
+        const items = typeof allPhrases !== 'undefined' ? allPhrases : [];
+        items.forEach(p => {
+            if (p.slot_id) countBySlotId.set(p.slot_id, (countBySlotId.get(p.slot_id) || 0) + 1);
+            else unlabeledCount++;
+        });
     }
 
     const now = new Date();
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    if (filteringApplies) {
+        const stillValid = selectedSlotBucketId === 'unlabeled'
+            ? unlabeledCount > 0
+            : ownSlots.some(s => s.id === selectedSlotBucketId);
+        if (!stillValid) {
+            const activeOwnNow = ownSlots.find(s => s.start_minutes <= nowMinutes && nowMinutes < s.end_minutes);
+            selectedSlotBucketId = activeOwnNow ? activeOwnNow.id : (ownSlots[0]?.id ?? (unlabeledCount > 0 ? 'unlabeled' : null));
+        }
+    }
+
+    if (!enabled.length && !unlabeledCount) {
+        track.innerHTML = `<div class="scroll-empty-note">No time slots set up yet</div>`;
+        return;
+    }
+
     const active = enabled.find(s => s.start_minutes <= nowMinutes && nowMinutes < s.end_minutes) || null;
     // The list is already sorted by start_minutes (getAllSlots), so the
     // first one starting later than now is the next one — only looked for
     // when nothing is active right now.
     const next = !active ? (enabled.find(s => s.start_minutes > nowMinutes) || null) : null;
 
-    track.innerHTML = enabled.map(s => {
+    const slotPillsHtml = enabled.map(s => {
+        const isOwn = filteringApplies && s.space_id === activeSpaceId;
+        const isSelected = isOwn && s.id === selectedSlotBucketId;
         const isActive = !!active && s.id === active.id;
         const isNext = !!next && s.id === next.id;
         const contrast = getContrastColor(s.color);
-        const highlightStyle = (isActive || isNext) ? `background:${s.color || '#333'}; color:${contrast}; border-color:${s.color || '#333'};` : '';
+        const style = `background:${s.color || '#333'}; color:${contrast}; border-color:${s.color || '#333'};`;
+        const classes = ['practice-slot-pill', isActive ? 'current' : '', isNext ? 'next' : '', isOwn ? 'selectable' : '', isSelected ? 'selected' : ''].filter(Boolean).join(' ');
         return `
-        <div class="practice-slot-pill ${isActive ? 'current' : ''} ${isNext ? 'next' : ''}" style="${highlightStyle}">
+        <div class="${classes}" style="${style}" ${isOwn ? `onclick="selectSlotBucket('${s.id}')"` : ''}>
             <span class="practice-slot-pill-time">${formatSlotRange(s.start_minutes, s.end_minutes)}</span>
             <span class="practice-slot-pill-name">${escapeHtml(s.name || '')}</span>
             <span class="practice-slot-pill-routine">${escapeHtml(getSpaceNameById(s.space_id))}</span>
+            ${isOwn ? `<span class="practice-slot-pill-count">${countBySlotId.get(s.id) || 0} phrase${countBySlotId.get(s.id) === 1 ? '' : 's'}</span>` : ''}
         </div>
         `;
     }).join('');
+
+    // The active routine's own untagged phrases — kept clearly apart from
+    // a real slot (no time range, no slot color) but just as clickable;
+    // its own routine name underneath is what makes it obvious which
+    // routine this particular "Unlabeled" belongs to.
+    const activeSpace = typeof getActiveSpace === 'function' ? getActiveSpace() : null;
+    const unlabeledPillHtml = (filteringApplies && unlabeledCount > 0 && activeSpace) ? `
+        <div class="practice-slot-pill selectable ${selectedSlotBucketId === 'unlabeled' ? 'selected' : ''}" onclick="selectSlotBucket('unlabeled')">
+            <span class="practice-slot-pill-name">Unlabeled</span>
+            <span class="practice-slot-pill-routine">${escapeHtml(activeSpace.name)}</span>
+            <span class="practice-slot-pill-count">${unlabeledCount} phrase${unlabeledCount === 1 ? '' : 's'}</span>
+        </div>
+    ` : '';
+
+    track.innerHTML = slotPillsHtml + unlabeledPillHtml;
+}
+
+// Wired to each selectable pill's own onclick above.
+function selectSlotBucket(id) {
+    selectedSlotBucketId = id;
+    renderPracticeSlotsScroll();
+    if (typeof renderTable === 'function') renderTable();
+}
+
+// Read by phrasesTable.js's renderTable to narrow the card list down to
+// whichever slot (or 'unlabeled') is currently selected above. Dictionary
+// entries never reach a "not everything" state here — isDictionarySpace
+// makes this a no-op filter there, same as renderPracticeSlotsScroll's
+// own filteringApplies guard.
+function phraseMatchesSlotFilter(phrase) {
+    if (typeof isDictionarySpace === 'function' && isDictionarySpace()) return true;
+    if (!selectedSlotBucketId) return true;
+    if (selectedSlotBucketId === 'unlabeled') return !phrase.slot_id;
+    return phrase.slot_id === selectedSlotBucketId;
+}
+
+// Called on routine switch (spacesState.js) — the new routine's own slots
+// (and so its own bucket ids) are completely different, so there's
+// nothing to carry over; renderPracticeSlotsScroll picks a fresh default
+// the next time it runs.
+function resetSlotScroll() {
+    selectedSlotBucketId = null;
+}
+
+// The Practice tab button calls this instead of showView directly. Lands
+// on whichever slot a phrase just captured on the Add tab actually got
+// (if any), so it's immediately visible without having to go hunting for
+// it.
+function enterPracticeTab(btnEl) {
+    const cameFromAdd = document.getElementById('view-add')?.classList.contains('active');
+    showView('practice', btnEl);
+    if (cameFromAdd) {
+        const items = typeof allPhrases !== 'undefined' ? allPhrases : [];
+        const last = [...items].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+        if (last) selectedSlotBucketId = last.slot_id || 'unlabeled';
+        if (typeof renderTable === 'function') renderTable();
+    }
+    if (typeof renderPracticeSlotsScroll === 'function') renderPracticeSlotsScroll();
 }
 
 // A slot row doesn't carry its own routine's name (unlike a phrase, slots
