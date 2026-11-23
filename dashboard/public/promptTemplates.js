@@ -107,3 +107,30 @@ Transcribe it as spoken — grammar and phrasing correction happen in a later st
 ## Output
 Respond ONLY with valid JSON in this exact format, no other text:
 {"transcript": "the cleaned transcript as continuous text"}`;
+
+// Not one of the original server's four prompt files — added for
+// transcriptsTab.js's getTranscriptSuggestions, which asks Gemini to
+// point out which sentences of an already-transcribed recording look
+// worth turning into a practice phrase card. Deliberately works off a
+// pre-split, numbered list of sentences (built in code, not by the
+// model) rather than asking the model to return the sentence text
+// itself — returning plain indices is far more robust than hoping a
+// quoted excerpt matches the original text exactly.
+const TRANSCRIPT_SUGGESTIONS_PROMPT_TEMPLATE = `## Input
+You will receive a numbered list of sentences, taken from a transcript of someone speaking \${sourceLanguage} (possibly mixed with \${targetLanguage}) during their day. They're learning \${targetLanguage} and use recordings like this one to capture things worth practicing.
+
+## Task
+Decide which of these sentences would be worth turning into a \${targetLanguage} practice phrase card — something specific, concrete and reusable (a real thing that was said, or worth being able to say again), not filler, small talk with no real content, or a fragment too vague to translate meaningfully on its own.
+
+For every sentence worth suggesting, give it a confidence level:
+- 1: a strong candidate — clearly worth a card.
+- 2: a maybe — could be worth it, but less certain.
+
+Leave out any sentence you wouldn't suggest at either level — don't list it at all.
+
+## Sentences
+\${numberedSentences}
+
+## Output
+Respond ONLY with valid JSON in this exact format, no other text:
+{"suggestions": [{"index": 0, "level": 1}, {"index": 3, "level": 2}]}`;

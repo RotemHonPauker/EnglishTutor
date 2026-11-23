@@ -298,6 +298,8 @@
             <div id="transcripts-tab-editor-header">
                 <button onclick="closeTranscriptEditor()">← Back</button>
                 <span id="transcripts-tab-editor-label"></span>
+                <button id="transcripts-tab-select-all-btn" title="Select or clear every sentence" onclick="toggleSelectAllSentences()">Select all</button>
+                <button id="transcripts-tab-range-btn" title="Select a range: tap this, then tap the first and last sentence" onclick="startRangeSelect()">🔗</button>
                 <button class="transcript-pin-btn" id="transcripts-tab-pin-btn" title="Pin — protect from the 24h auto-delete" onclick="toggleOpenTranscriptPinned()">☆</button>
                 <button title="Delete transcript" onclick="deleteOpenTranscript()">🗑️</button>
             </div>

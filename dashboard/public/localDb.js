@@ -459,12 +459,19 @@ const getTranscripts = async (spaceId) => {
     return sortByCreatedAt(rows, false);
 };
 
-const createTranscript = async ({ spaceId, content, slotId }) => {
+const createTranscript = async ({ spaceId, content, slotId, suggestions }) => {
     const row = {
         id: newId(),
         space_id: spaceId,
         content,
         slot_id: slotId || null,
+        // The AI's candidate-sentence highlights (transcriptsTab.js's
+        // getTranscriptSuggestions), computed once right here at creation
+        // time — [{index, level}], indices into
+        // splitIntoSentences(content) rather than the sentence text
+        // itself. Empty for a transcript this feature found nothing worth
+        // suggesting in, or that was recorded before this feature existed.
+        suggestions: suggestions || [],
         pinned: false,
         created_at: new Date().toISOString()
     };

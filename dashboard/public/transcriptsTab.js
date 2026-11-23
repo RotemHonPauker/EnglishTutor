@@ -19,16 +19,31 @@
 // machinery:
 //   1. #transcripts-tab-list-view — the default: a compact, collapsed list.
 //   2. #transcripts-tab-editor-view — one transcript at a time, full tab
-//      height, for selecting lines and sending them straight to
+//      height, for picking sentences and sending them straight to
 //      translation.
 //
+// Picking which sentences matter used to be free-form text selection
+// (long-press/drag). That's gone — a transcript's body is now rendered as
+// one tappable <span> per sentence (see splitIntoSentences/
+// renderTranscriptSentences below), which is what actually makes picking a
+// LONG stretch (a whole story read aloud, a whole interview-practice
+// recording) workable on a phone: tap-to-toggle one at a time, "Select
+// all" then deselect the few exceptions, or arm "Range" and tap just the
+// first and last sentence you want. The AI's own suggested sentences (see
+// getTranscriptSuggestions) are highlighted, a visual hint only — never
+// something that creates a card on its own. Whatever ends up selected, by
+// hand or by tapping a suggestion, goes through the exact same
+// translate-then-save step as before once "Send" is tapped — nothing is
+// ever cleaned up or saved as a card without that explicit tap.
+//
 // Needs localDb.js, spacesState.js (activeSpaceId/getActiveSpace/
-// setActiveSpace), slots.js (findActiveSlotNow/getAllSlots) and
-// translationEngine.js (translatePhrase) loaded first.
+// setActiveSpace), slots.js (findActiveSlotNow/getAllSlots),
+// promptTemplates.js, geminiClient.js (geminiGenerateContent/
+// geminiExtractText) and translationEngine.js (translatePhrase) loaded
+// first.
 
 let transcriptsTabList = []; // the active routine's own transcripts only
 let openTranscriptId = null; // which one (if any) the focused editor is showing
-let pendingTranscriptTabSelection = '';
 
 // ===== Entering the tab =====
 
@@ -58,7 +73,7 @@ async function loadTranscriptsTabList() {
 // right now, same pattern as loadSlotsScreen/resetCaptureLog.
 async function resetTranscriptsTab() {
     openTranscriptId = null;
-    hideTranscriptTabSelectionBar();
+    resetTranscriptSelectionState();
     await loadTranscriptsTabList();
 }
 
@@ -93,7 +108,7 @@ async function openTranscriptEditor(id) {
 
 async function closeTranscriptEditor() {
     openTranscriptId = null;
-    hideTranscriptTabSelectionBar();
+    resetTranscriptSelectionState();
     await renderTranscriptsTab();
 }
 
@@ -179,9 +194,9 @@ function renderTranscriptEditor(transcript) {
         pinBtn.title = pinned ? 'Pinned — protected from the 24h auto-delete' : 'Pin — protect from the 24h auto-delete';
     }
     const body = document.getElementById('transcripts-tab-editor-body');
-    if (body) body.innerHTML = escapeHtml(transcript.content || '');
+    if (body) body.innerHTML = renderTranscriptSentences(transcript);
 
-    hideTranscriptTabSelectionBar();
+    resetTranscriptSelectionState();
     const log = document.getElementById('transcripts-tab-log');
     if (log) log.innerHTML = '';
 }
@@ -205,84 +220,266 @@ async function deleteOpenTranscript() {
     }
 }
 
-// ===== Selection -> send =====
-// Same long-press text-selection mechanic the old Add-tab panel used, just
-// scoped to #transcripts-tab-editor-body instead of a transcript card's
-// own expanded body — the person picks whatever's worth translating, taps
-// Send, and it's translated and saved as a new phrase card right from
-// here. No handoff to Add; repeat for as many lines as wanted, the
-// transcript stays open underneath the whole time.
+// ===== Splitting a transcript into sentence-level tap targets =====
+// Joining the returned array back together reproduces the original
+// content exactly — each entry keeps its own trailing punctuation and
+// whitespace/line breaks, so nothing about spacing is lost when it's
+// rendered back as one <span> per sentence instead of one plain text
+// block. Not meant to be a linguistically perfect sentence splitter (an
+// abbreviation with a period, say, still ends a "sentence" here) — just
+// good enough to give reasonably sized, independently tappable chunks of
+// a transcript.
+function splitIntoSentences(content) {
+    const text = content || '';
+    if (!text) return [];
+    const parts = text.split(/([.!?]+\s*|\n+)/);
+    const sentences = [];
+    let current = '';
+    for (const part of parts) {
+        current += part;
+        if (/[.!?]\s*$/.test(part) || /\n+$/.test(part)) {
+            if (current.trim()) sentences.push(current);
+            current = '';
+        }
+    }
+    if (current.trim()) sentences.push(current);
+    return sentences.length ? sentences : [text];
+}
 
-document.addEventListener('selectionchange', handleTranscriptTabSelectionChange);
+// ===== AI candidate-sentence suggestions =====
+// Runs exactly once, right when a transcript is created (see
+// finishRecordingIntoTranscript below) — not lazily when the editor is
+// opened — so by the time the person actually lands on it, the
+// highlights are already there. The result is stored as plain {index,
+// level} pairs via localDb.js's createTranscript, read back later against
+// a fresh splitIntoSentences(transcript.content) call (see
+// renderTranscriptSentences) rather than storing the sentence text itself
+// — the two stay in sync because a transcript's content is never edited
+// after it's created, only deleted outright.
+//
+// Best-effort and silent on failure: this is a nice-to-have layered on
+// top of manual picking, which always works regardless — a transcript
+// recorded before this feature existed, or one where this call simply
+// failed, just shows no highlights at all, same as a plain unlabeled
+// sentence.
+async function getTranscriptSuggestions(sentences, spaceId) {
+    if (!sentences.length) return [];
+    try {
+        const spaceFields = await getSpaceRuleFields(spaceId);
+        const numberedSentences = sentences.map((s, i) => `${i}: ${s.trim()}`).join('\n');
+        const content = TRANSCRIPT_SUGGESTIONS_PROMPT_TEMPLATE
+            .replace(/\$\{sourceLanguage\}/g, spaceFields.sourceLanguage)
+            .replace(/\$\{targetLanguage\}/g, spaceFields.targetLanguage)
+            .replace('${numberedSentences}', numberedSentences);
 
-function handleTranscriptTabSelectionChange() {
-    if (!openTranscriptId) {
-        hideTranscriptTabSelectionBar();
-        return;
+        const response = await geminiGenerateContent({
+            model: 'gemini-3.6-flash',
+            contents: [{ parts: [{ text: content }] }],
+            generationConfig: { responseMimeType: 'application/json' }
+        });
+
+        const rawText = geminiExtractText(response);
+        const parsed = JSON.parse(rawText.trim().replace(/```json|```/g, '').trim());
+        const suggestions = Array.isArray(parsed.suggestions) ? parsed.suggestions : [];
+
+        // Defensive filtering — an out-of-range index or an unrecognized
+        // level is dropped rather than trusted, since this is rendered
+        // straight into which sentences get highlighted.
+        return suggestions.filter(s =>
+            Number.isInteger(s.index) && s.index >= 0 && s.index < sentences.length &&
+            (s.level === 1 || s.level === 2)
+        );
+    } catch (err) {
+        return [];
+    }
+}
+
+// ===== Rendering the editor body as tappable sentences =====
+
+let currentTranscriptSentences = []; // the open transcript's own sentences, in order
+let selectedSentenceIndices = new Set();
+let sentSentenceIndices = new Set(); // already turned into cards this time the editor is open
+let rangeModeArmed = false;
+let rangeAnchorIdx = null; // set once the first tap of a range has landed
+
+function renderTranscriptSentences(transcript) {
+    const sentences = splitIntoSentences(transcript.content || '');
+    currentTranscriptSentences = sentences;
+    const levelByIndex = new Map((transcript.suggestions || []).map(s => [s.index, s.level]));
+    return sentences.map((text, i) => {
+        const level = levelByIndex.get(i);
+        const levelClass = level ? ` suggested-level-${level}` : '';
+        return `<span class="transcript-sentence${levelClass}" data-idx="${i}" onclick="toggleSentenceSelection(${i})">${escapeHtml(text)}</span>`;
+    }).join('');
+}
+
+function resetTranscriptSelectionState() {
+    selectedSentenceIndices.clear();
+    sentSentenceIndices.clear();
+    rangeModeArmed = false;
+    rangeAnchorIdx = null;
+    updateTranscriptSentenceClasses();
+    updateTranscriptSelectionBar();
+}
+
+// ===== Selecting sentences: tap-to-toggle, Select all, and a 2-tap range =====
+
+function toggleSentenceSelection(idx) {
+    if (sentSentenceIndices.has(idx)) return; // already sent — nothing left to toggle
+
+    if (rangeModeArmed) {
+        if (rangeAnchorIdx === null) {
+            rangeAnchorIdx = idx;
+        } else {
+            const start = Math.min(rangeAnchorIdx, idx);
+            const end = Math.max(rangeAnchorIdx, idx);
+            for (let i = start; i <= end; i++) {
+                if (!sentSentenceIndices.has(i)) selectedSentenceIndices.add(i);
+            }
+            rangeModeArmed = false;
+            rangeAnchorIdx = null;
+        }
+    } else if (selectedSentenceIndices.has(idx)) {
+        selectedSentenceIndices.delete(idx);
+    } else {
+        selectedSentenceIndices.add(idx);
     }
 
-    const selection = window.getSelection();
-    const text = selection && !selection.isCollapsed ? selection.toString().trim() : '';
-    if (!text) {
-        hideTranscriptTabSelectionBar();
-        return;
-    }
+    updateTranscriptSentenceClasses();
+    updateTranscriptSelectionBar();
+}
 
-    // Only react to selections actually inside the open transcript's body
-    // — not, say, the header's Back/Delete buttons.
-    const node = selection.anchorNode;
-    const anchorEl = node && node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
-    if (!anchorEl || !anchorEl.closest('#transcripts-tab-editor-body')) {
-        hideTranscriptTabSelectionBar();
-        return;
+// "Range" button — tap once to arm it (the next tap places the start, the
+// one after that places the end and selects everything between), tap it
+// again before placing the start to cancel. Good for a long stretch where
+// most of the transcript matters (an interview-practice recording, a
+// story read aloud) — a lot less fiddly on a phone than dragging a text
+// selection across several lines of scrolled content ever was.
+function startRangeSelect() {
+    if (!currentTranscriptSentences.length) return;
+    if (rangeModeArmed && rangeAnchorIdx === null) {
+        rangeModeArmed = false; // tapped again before placing the start — cancel
+    } else {
+        rangeModeArmed = true;
+        rangeAnchorIdx = null;
     }
+    updateTranscriptSelectionBar();
+}
 
-    pendingTranscriptTabSelection = text;
+// Toggles between selecting everything not already sent and clearing the
+// selection entirely — the other half of the "most of this transcript is
+// useful" case (select all, then deselect the few exceptions by hand).
+function toggleSelectAllSentences() {
+    const selectable = currentTranscriptSentences.map((_, i) => i).filter(i => !sentSentenceIndices.has(i));
+    const allSelected = selectable.length > 0 && selectable.every(i => selectedSentenceIndices.has(i));
+
+    if (allSelected) {
+        selectedSentenceIndices.clear();
+    } else {
+        selectable.forEach(i => selectedSentenceIndices.add(i));
+    }
+    rangeModeArmed = false;
+    rangeAnchorIdx = null;
+
+    updateTranscriptSentenceClasses();
+    updateTranscriptSelectionBar();
+}
+
+function updateTranscriptSentenceClasses() {
+    const body = document.getElementById('transcripts-tab-editor-body');
+    if (!body) return;
+    body.querySelectorAll('.transcript-sentence').forEach(el => {
+        const idx = Number(el.dataset.idx);
+        el.classList.toggle('selected', selectedSentenceIndices.has(idx));
+        el.classList.toggle('sent', sentSentenceIndices.has(idx));
+        el.classList.toggle('range-anchor', rangeAnchorIdx === idx);
+    });
+}
+
+function updateTranscriptSelectionBar() {
     const bar = document.getElementById('transcripts-tab-selection-bar');
     const preview = document.getElementById('transcripts-tab-selection-preview');
-    if (preview) preview.textContent = text;
+    const sendBtn = document.getElementById('transcripts-tab-send-btn');
+    const rangeBtn = document.getElementById('transcripts-tab-range-btn');
+    const selectAllBtn = document.getElementById('transcripts-tab-select-all-btn');
+    const count = selectedSentenceIndices.size;
+
+    if (rangeBtn) rangeBtn.classList.toggle('active', rangeModeArmed);
+
+    if (selectAllBtn) {
+        const selectable = currentTranscriptSentences.map((_, i) => i).filter(i => !sentSentenceIndices.has(i));
+        const allSelected = selectable.length > 0 && selectable.every(i => selectedSentenceIndices.has(i));
+        selectAllBtn.textContent = allSelected ? 'Clear all' : 'Select all';
+    }
+
+    // Mid-range-pick (the start is already placed, waiting for the end) —
+    // the bar takes over as a plain instruction, nothing to send yet.
+    if (rangeAnchorIdx !== null) {
+        if (preview) preview.textContent = 'Tap the last sentence of the range…';
+        if (sendBtn) sendBtn.style.display = 'none';
+        if (bar) bar.style.display = 'flex';
+        return;
+    }
+    if (sendBtn) sendBtn.style.display = '';
+
+    if (!count) {
+        if (bar) bar.style.display = 'none';
+        return;
+    }
+    if (preview) {
+        preview.textContent = count === 1
+            ? (currentTranscriptSentences[[...selectedSentenceIndices][0]] || '').trim()
+            : `${count} sentences selected`;
+    }
     if (bar) bar.style.display = 'flex';
 }
 
-function hideTranscriptTabSelectionBar() {
-    pendingTranscriptTabSelection = '';
-    const bar = document.getElementById('transcripts-tab-selection-bar');
-    if (bar) bar.style.display = 'none';
-}
-
-// Translates and saves the current selection directly — the transcript-tab
-// equivalent of captureTab.js's submitPhraseDirect, just logging into this
-// tab's own #transcripts-tab-log instead of #capture-log, and with no
-// mode-mismatch check (a transcript is never attached to a dictionary
-// routine in the first place — see globalRecord.js's own routine filter —
-// so there's nothing to mismatch against).
+// Translates and saves every currently-selected sentence, in order — the
+// transcript-tab equivalent of captureTab.js's submitPhraseDirect, just
+// looping over however many sentences are selected and logging each into
+// this tab's own #transcripts-tab-log, with no mode-mismatch check (a
+// transcript is never attached to a dictionary routine in the first place
+// — see globalRecord.js's own routine filter — so there's nothing to
+// mismatch against). A sentence that fails to translate is logged and
+// skipped, not retried; a missing API key stops the whole batch instead
+// of failing through every remaining sentence one by one.
 async function submitTranscriptSelection() {
-    const text = pendingTranscriptTabSelection;
-    if (!text) return;
+    const indices = [...selectedSentenceIndices].sort((a, b) => a - b);
+    if (!indices.length) return;
     if (typeof getActiveSpace === 'function' && !getActiveSpace()) return;
-
-    window.getSelection().removeAllRanges();
-    hideTranscriptTabSelectionBar();
 
     const sendBtn = document.getElementById('transcripts-tab-send-btn');
     if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = '...'; }
 
-    try {
-        const result = await translatePhrase(text, activeSpaceId);
-        const phrase = await saveSentence({
-            sourceText: result.correctedSource,
-            variant1: result.variant1,
-            variant2: result.variant2,
-            spaceId: activeSpaceId,
-            slotId: result.slotId
-        });
-        addTranscriptTabLogResult(phrase);
-        if (typeof loadTable === 'function') loadTable(); // so it's already there if the user switches to Practice
-    } catch (err) {
-        addTranscriptTabLogMessage(err.code === 'NO_API_KEY' ? 'No Gemini API key set yet.' : "Couldn't translate that — try again.");
-    } finally {
-        if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = '➤ Send'; }
+    for (const idx of indices) {
+        const text = (currentTranscriptSentences[idx] || '').trim();
+        if (!text) continue;
+        try {
+            const result = await translatePhrase(text, activeSpaceId);
+            const phrase = await saveSentence({
+                sourceText: result.correctedSource,
+                variant1: result.variant1,
+                variant2: result.variant2,
+                spaceId: activeSpaceId,
+                slotId: result.slotId
+            });
+            addTranscriptTabLogResult(phrase);
+            sentSentenceIndices.add(idx);
+            selectedSentenceIndices.delete(idx);
+        } catch (err) {
+            if (err.code === 'NO_API_KEY') {
+                addTranscriptTabLogMessage('No Gemini API key set yet.');
+                break;
+            }
+            addTranscriptTabLogMessage("Couldn't translate that — try again.");
+        }
     }
+
+    if (typeof loadTable === 'function') loadTable(); // so it's already there if the user switches to Practice
+    updateTranscriptSentenceClasses();
+    updateTranscriptSelectionBar();
+
+    if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = '➤ Send'; }
 }
 
 function addTranscriptTabLogResult(phrase) {
@@ -322,7 +519,14 @@ async function finishRecordingIntoTranscript(spaceId, transcriptText) {
     // decides its color, regardless of which routine it's being saved
     // into. Decided once, right here, and stored — never recomputed later.
     const activeSlot = typeof findActiveSlotNow === 'function' ? await findActiveSlotNow() : null;
-    const transcript = await createTranscript({ spaceId, content: transcriptText, slotId: activeSlot?.id || null });
+
+    // The AI's candidate-sentence pass also runs exactly once, right here
+    // — see getTranscriptSuggestions's own comment for why this is eager,
+    // not lazy, and why a failure here never blocks saving the transcript.
+    const sentences = splitIntoSentences(transcriptText);
+    const suggestions = await getTranscriptSuggestions(sentences, spaceId);
+
+    const transcript = await createTranscript({ spaceId, content: transcriptText, slotId: activeSlot?.id || null, suggestions });
 
     if (spaceId !== activeSpaceId) {
         // Also reloads phrases/slots/transcripts for the new routine (via

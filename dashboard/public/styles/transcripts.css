@@ -10,9 +10,11 @@
         transcript was recorded (decided once, at creation time — see
         localDb.js's createTranscript/TRANSCRIPT_RETENTION_MS).
      2. #transcripts-tab-editor-view — one transcript at a time, full tab
-        height, for picking lines sentence-by-sentence (same long-press
-        text-selection mechanic the old Add-tab panel used) and sending
-        them straight to translation from right here, no Add-tab handoff.
+        height, for picking sentences (tap-to-toggle, "Select all", or a
+        2-tap range — see .transcript-sentence below and
+        transcriptsTab.js's toggleSentenceSelection/startRangeSelect) and
+        sending them straight to translation from right here, no Add-tab
+        handoff.
 */
 
 #view-transcripts {
@@ -108,6 +110,13 @@
     flex-direction: column;
     overflow: hidden;
     min-height: 0;
+    /* The global record button (tabs.css's .global-record-btn) is raised
+       25px above the tab bar's own top edge via a negative margin, which
+       visually pokes it up into whatever sits at the very bottom of the
+       view above — exactly where the selection bar/log used to end flush
+       against the screen edge, so the Send button was partly covered by
+       it. This clears that zone. */
+    padding-bottom: 28px;
 }
 
 #transcripts-tab-editor-header {
@@ -126,6 +135,13 @@
     font-size: 0.875rem;
     color: var(--text-2);
     padding: 4px 6px;
+}
+
+/* "Range" armed (waiting for the start tap, or waiting for the end tap
+   after the start has landed — see startRangeSelect/toggleSentenceSelection
+   in transcriptsTab.js). */
+#transcripts-tab-range-btn.active {
+    color: #2563eb;
 }
 
 #transcripts-tab-editor-label {
@@ -150,6 +166,51 @@
     white-space: pre-wrap;
 }
 
+/* ===== Per-sentence tap targets ===== */
+/* One of these per sentence (transcriptsTab.js's splitIntoSentences/
+   renderTranscriptSentences) — the only way to pick what gets translated
+   now, replacing free-form text selection. Levels 1/2 are the AI's own
+   suggestions (getTranscriptSuggestions), a visual hint only; .selected
+   is whatever's currently picked (by hand or by tapping a suggestion);
+   .sent is a sentence already turned into a card this time the editor's
+   been open, left dim and inert so it's obvious at a glance what's left;
+   .range-anchor is the start of an in-progress 2-tap range pick. */
+
+.transcript-sentence {
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background 0.1s;
+}
+
+.transcript-sentence.suggested-level-1 {
+    background: rgba(37, 99, 235, 0.16);
+}
+
+.transcript-sentence.suggested-level-2 {
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-decoration-color: var(--text-faint);
+    text-underline-offset: 3px;
+}
+
+.transcript-sentence.selected {
+    background: rgba(37, 99, 235, 0.35);
+}
+
+/* An inset shadow, not an outline — same reasoning as the Practice-tab
+   slot pill's own .selected state (table.css): this body scrolls
+   (overflow-y: auto), and an outline drawn outside the span's box would
+   risk getting clipped the same way that one was. */
+.transcript-sentence.range-anchor {
+    box-shadow: inset 0 0 0 1px var(--accent-text);
+}
+
+.transcript-sentence.sent {
+    cursor: default;
+    opacity: 0.4;
+    text-decoration: none;
+}
+
 /* ===== Selection -> send bar ===== */
 /* Same look as the old Add-tab #transcript-selection-bar, just renamed —
    appears the moment a selection lands inside #transcripts-tab-editor-body,
@@ -159,12 +220,12 @@
     flex-shrink: 0;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    margin: 0 12px;
-    background: rgba(37, 99, 235, 0.12);
-    border: 1px solid rgba(37, 99, 235, 0.3);
-    border-radius: 10px;
+    gap: 12px;
+    padding: 12px 14px;
+    margin: 0 12px 10px;
+    background: rgba(37, 99, 235, 0.14);
+    border: 1px solid rgba(37, 99, 235, 0.35);
+    border-radius: 12px;
 }
 
 #transcripts-tab-selection-preview {
@@ -173,13 +234,16 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 0.8125rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
     color: var(--accent-text);
 }
 
 #transcripts-tab-selection-bar button {
     flex-shrink: 0;
-    font-size: 0.8125rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    padding: 9px 18px;
     white-space: nowrap;
 }
 
