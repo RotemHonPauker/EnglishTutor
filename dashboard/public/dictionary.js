@@ -10,7 +10,8 @@
 // of a phrase capture). Transcripts and Setup (which the Schedule section
 // now lives inside) don't apply and are disabled while a dictionary space
 // is active.
-// Needs remoteDb.js, dictionaryEngine.js and geminiClient.js loaded first.
+// Needs remoteDb.js, dictionaryEngine.js, geminiClient.js and ttsStorage.js
+// loaded first.
 
 let allDictionaryEntries = [];
 
@@ -251,12 +252,49 @@ async function loadDictionaryEntries(spaceId) {
     renderTable();
 }
 
+// ===== Lazy TTS playback for a dictionary entry's own word =====
+// Same generate-once-then-cache pattern as a phrase's own 🔊
+// (phrasesTable.js's playPhraseAudio), and deliberately reuses that same
+// file's shared playback state (currentlyPlayingAudio/currentlyPlayingBtn,
+// stopCurrentAudio, startPlayback) rather than keeping a second, separate
+// "what's playing right now" — so starting a word's audio stops whatever
+// a phrase card might have had playing, and vice versa. Safe to call
+// regardless of script load order: by the time a click can actually reach
+// this function, every script on the page has already run and defined its
+// own top-level functions/consts.
+async function playDictionaryAudio(entryId, btnEl) {
+    if (currentlyPlayingBtn === btnEl && currentlyPlayingAudio) {
+        stopCurrentAudio();
+        return;
+    }
+    stopCurrentAudio();
+
+    const entry = allDictionaryEntries.find(e => e.id === entryId);
+    if (!entry) return;
+
+    const originalContent = btnEl.textContent;
+    btnEl.disabled = true;
+    btnEl.textContent = '⏳';
+    try {
+        const url = await getOrCreateDictionaryAudioUrl(entry);
+        btnEl.disabled = false;
+        btnEl.textContent = originalContent;
+        startPlayback(url, btnEl);
+    } catch (err) {
+        alert(err.code === 'NO_API_KEY' ? 'No Gemini API key set yet.' : 'Failed to play audio');
+        btnEl.disabled = false;
+        btnEl.textContent = originalContent;
+    }
+}
+
 // Called from renderTable() (phrasesTable.js) when the active space is a
 // dictionary — a different card shape (word / part of speech / synonyms /
-// example), no slot badge, no 🔊. Reuses .phrase-card/.phrase-card-header/
+// example), no slot badge. Reuses .phrase-card/.phrase-card-header/
 // .phrase-card-icons/.phrase-card-main as-is, so only the
 // dictionary-specific inner pieces need their own CSS. Every entry is
 // shown, newest first — there's no filter to narrow it down to any more.
+// The word itself now carries a 🔊 play button, same inline placement as a
+// phrase card's own .phrase-variant (table.css's .tts-btn).
 function renderDictionaryCards() {
     const sorted = [...allDictionaryEntries].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
@@ -269,7 +307,7 @@ function renderDictionaryCards() {
                 <span class="dictionary-pos">${escapeHtml(e.part_of_speech || '')}</span>
             </div>
             <div class="phrase-card-main">
-                <div class="dictionary-word" dir="auto">${escapeHtml(e.word || '')}</div>
+                <div class="dictionary-word" dir="auto"><button class="tts-btn" title="Play" onclick="playDictionaryAudio('${e.id}', this)">🔊</button> ${escapeHtml(e.word || '')}</div>
                 ${e.source_synonyms ? `<div class="dictionary-synonyms" dir="auto">${escapeHtml(e.source_synonyms)}</div>` : ''}
                 ${e.example_sentence ? `<div class="dictionary-example">${escapeHtml(e.example_sentence)}</div>` : ''}
                 ${e.target_synonyms ? `<div class="dictionary-synonyms">${escapeHtml(e.target_synonyms)}</div>` : ''}

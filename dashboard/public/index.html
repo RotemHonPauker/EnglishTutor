@@ -118,22 +118,32 @@
         </div>
         <div id="table-area">
             <div id="table-section">
-                <!-- "🎯 Practice" / "Select" / "+ Add slot" all together
-                     here now, instead of the "🎯 Practice"/"+ Add slot" pair
-                     sitting beside the context-switcher pill above — per
-                     Rotem's own call, now that the old per-card Save/Trash
-                     machinery (and the "Slots" filter modal it used to sit
-                     next to) is gone and this toolbar has room again. -->
+                <!-- "+ Add slot" moved out of here into the Setup tab's own
+                     Schedule section (#schedule-section below) — Rotem's
+                     own call, since adding a time slot is schedule
+                     management, not a Practice-tab action, and the
+                     Schedule section is where every other slot action
+                     (edit/delete/toggle) already lives. The standalone
+                     "Select" button is gone too — manual multi-select is
+                     now the practice scope picker's own third option
+                     (practiceSession.js's selectPhrasesFromScopePicker),
+                     reached through "🎯 Practice" instead of sitting here
+                     as its own separate button. Just "🎯 Practice" here
+                     now. -->
                 <div id="table-toolbar">
-                    <button class="primary" onclick="startPracticeFlow()">🎯 Practice</button>
-                    <button id="select-mode-btn" onclick="toggleSelectMode()">Select</button>
-                    <button class="primary" onclick="openSlotModal(null)">+ Add slot</button>
+                    <div class="mode-toggle">
+                        <button type="button" class="mode-toggle-btn active" onclick="startPracticeFlow()">🎯 Practice</button>
+                    </div>
                 </div>
+                <!-- Select mode is now purely for picking phrases to practice —
+                     bulk "Move to..." is gone (Rotem's own call: moving to
+                     another context only ever happens one card at a time
+                     now, via each card's own ⇄ icon — see
+                     openMovePhraseModalForPhrase in phrasesTable.js). -->
                 <div id="selection-action-bar" style="display:none">
                     <span id="selection-count"></span>
                     <button onclick="toggleSelectMode()">Cancel</button>
-                    <button class="primary" onclick="startPracticeFromSelection()">🎯 Start practice</button>
-                    <button class="primary" onclick="openMovePhraseModal()">Move to...</button>
+                    <button class="primary" id="start-practice-from-selection-btn" onclick="startPracticeFromSelection()">🎯 Start practice</button>
                 </div>
                 <div id="table-wrapper">
                     <div id="table-body" class="phrase-cards"></div>
@@ -159,13 +169,17 @@
                  the slot modal below), and that's what a phrase captured
                  during its window gets labeled/colored with, with no
                  separate tag entity in between. Scoped to that one
-                 context's own slots — "+ Add time slot" moved to the
-                 Practice tab's own toolbar instead (see #table-toolbar) —
-                 nothing here duplicates it any more. Placed right after
-                 the theme toggle, since it's the section Rotem actually
-                 opens most often. -->
+                 context's own slots. "+ Add slot" now lives right here
+                 (moved from the Practice tab's own toolbar — see
+                 #table-toolbar) — this section is where every other slot
+                 action already is, so adding one belongs here too. Placed
+                 right after the theme toggle, since it's the section
+                 Rotem actually opens most often. -->
             <div id="schedule-section">
                 <div id="space-rules-header">Schedule</div>
+                <div class="mode-toggle">
+                    <button type="button" class="mode-toggle-btn active" onclick="openSlotModal(null)">Add slot</button>
+                </div>
                 <!-- There's no separate "Enable notifications" button any
                      more — each time slot has its own on/off toggle
                      (slots.js's renderSlotsList), defaulting to on for a

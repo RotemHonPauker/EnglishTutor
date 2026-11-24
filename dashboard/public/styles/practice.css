@@ -46,7 +46,47 @@
     font-size: 0.9375rem;
 }
 
+/* Shown above the three scope options on the overlay's very first screen
+   (practiceSession.js's renderPracticeScopePicker) — explains up front that
+   sessions are short/capped, and that phrases are picked automatically
+   (least-recently-practiced first), before she even picks a scope. Same
+   plain muted-text look as the create-context modal's own explanatory line
+   (.space-create-description, modal.css) rather than a boxed callout — just
+   with enough bottom margin to keep clear space before the three scope
+   buttons below it.
+   Prefixed with #practice-modal-body (not !important): DevTools showed a
+   base.css rule beating a bare ".practice-scope-notice div" because it
+   pairs an id with the element (e.g. "#practice-modal-body div"), which
+   outranks a plain class selector. Adding the same id to our own selector
+   makes the comparison id-for-id, and our extra class then wins it
+   properly through specificity instead of forcing it with !important. */
+#practice-modal-body .practice-scope-notice {
+    line-height: 1.5;
+    color: var(--text-muted);
+    margin: 0 0 16px;
+}
+
+#practice-modal-body .practice-scope-notice div {
+    font-size: 0.8125rem;
+}
+
+.practice-scope-notice div + div {
+    margin-top: 6px;
+}
+
 /* ===== Drill step ===== */
+
+/* Shown once, only on a session's first step, when it was started from a
+   manual selection (practiceSession.js's practiceShowCapNotice) — same
+   one-line explainer look as .slot-time-explainer (slots.css), reused here
+   for the one thing the scope-picker notice above can't cover: a manual
+   selection bigger than the ~7-unit cap getting trimmed down. */
+.practice-cap-notice {
+    font-size: 0.78rem;
+    color: var(--text-2);
+    line-height: 1.4;
+    margin: -4px 0 4px;
+}
 
 .practice-source {
     font-size: 1.125rem;

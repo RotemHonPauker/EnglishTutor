@@ -4,7 +4,12 @@ const tableBody = document.getElementById('table-body');
 
 let allPhrases = [];
 
-// ===== Multi-select (for the bulk "Move to..." action) =====
+// ===== Multi-select (picking phrases to practice, manually) =====
+// Reached through the Practice-tab's own "🎯 Practice" scope picker
+// (practiceSession.js's selectPhrasesFromScopePicker) — there's no
+// separate standalone "Select" entry point any more. Used to also feed a
+// bulk "Move to..." action; that's gone now, so this exists purely to
+// hand a chosen set of phrases to startManualPracticeFromSelection.
 
 let selectMode = false;
 let selectedPhraseIds = new Set();
@@ -73,6 +78,10 @@ function renderTable() {
         const displayedVariant = level === 2 ? p.variant_2 : p.variant_1;
         const levelBadgeLabel = isBridge ? (level === 2 ? bridgeCode : targetCode) : `Level ${level}`;
         const levelBadgeTitle = isBridge ? 'Tap to switch language' : 'Tap to switch level';
+        // The "old" badge is first in the row — it's the most actionable of
+        // the three — and reuses deletePhraseRow itself (same confirm modal
+        // as the 🗑️ icon) rather than deleting on tap, since a bare badge
+        // tap isn't an obvious delete gesture on its own.
         const isSelected = selectedPhraseIds.has(p.id);
         const cardClasses = ['phrase-card', slotColor ? 'has-color' : '', isSelected ? 'selected' : ''].filter(Boolean).join(' ');
         return `
@@ -83,8 +92,10 @@ function renderTable() {
                     : `<div class="phrase-card-icons">
                     <button title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑️</button>
                     <button title="Edit phrase" onclick="editPhraseRow('${p.id}')">✏️</button>
+                    <button title="Move to another context" onclick="openMovePhraseModalForPhrase('${p.id}')">⇄</button>
                 </div>`}
                 <div class="phrase-card-badges">
+                    ${isCardOld(p) ? `<button class="old-badge" title="Created over a month ago — tap to delete" onclick="deletePhraseRow('${p.id}')" ${selectMode ? 'disabled' : ''}>🕓 Old</button>` : ''}
                     <button class="level-badge level-${level}" style="${badgeStyle}" title="${levelBadgeTitle}" onclick="toggleLevel('${p.id}')" ${selectMode ? 'disabled' : ''}>${levelBadgeLabel}</button>
                     <button class="slot-badge" style="${badgeStyle}" onclick="openSlotPicker('${p.id}')" ${selectMode ? 'disabled' : ''}>${badgeLabel}</button>
                 </div>
@@ -92,7 +103,6 @@ function renderTable() {
             <div class="phrase-card-main">
                 <div class="phrase-source" dir="auto">${escapeHtml(p.source_text || '')}</div>
                 <div class="phrase-variant"><button class="tts-btn" title="Play" onclick="playPhraseAudio('${p.id}', ${level}, this)" ${selectMode ? 'disabled' : ''}>🔊</button> ${escapeHtml(displayedVariant || '')}</div>
-                ${isCardOld(p) ? `<div class="card-old-notice">🕓 Created over a month ago</div>` : ''}
             </div>
         </div>
     `;
@@ -102,7 +112,9 @@ function renderTable() {
 // Only one phrase plays at a time. Tracked here (not per-button) so a new
 // play always stops whatever else was going, and so a re-render (slot
 // change, filter, etc.) never leaves audio playing with no visible way to
-// stop it — see the reset at the top of renderTable().
+// stop it — see the reset at the top of renderTable(). Shared as-is by
+// dictionary.js's playDictionaryAudio too, so a word's audio and a
+// phrase's audio can never both be "playing" at once either.
 let currentlyPlayingAudio = null;
 let currentlyPlayingBtn = null;
 
@@ -198,6 +210,10 @@ async function confirmDelete() {
     try {
         if (type === 'dictionary') {
             await deleteDictionaryEntry(id);
+            // Clears this device's cached audio for the word too — see
+            // ttsStorage.js's getOrCreateDictionaryAudioUrl. A deleted
+            // entry has nothing left for that cache entry to point back to.
+            if (typeof deleteTtsBlobForDictionaryEntry === 'function') await deleteTtsBlobForDictionaryEntry(id);
         } else {
             await deletePhrase(id);
             // Clears this device's cached audio for the phrase too — see
@@ -286,12 +302,14 @@ async function confirmSlotPick() {
     await updatePhraseSlotAssignment(phraseId, slotId);
 }
 
-// ===== Select mode (toolbar "Select" toggle) =====
+// ===== Select mode (reached via the Practice scope picker's "Select
+// phrases" option, not a standalone toolbar button any more) =====
 // Swaps each card's icon row for a checkbox and makes the whole card
 // tappable; the level/slot badges and the audio button are disabled while
 // it's active so a stray tap during selection can't retag/replay/relevel
-// something by accident. Exists purely to feed the bulk "Move to..."
-// action below — there's nothing else to do with a selection right now.
+// something by accident. Exists purely to feed
+// startManualPracticeFromSelection (practiceSession.js) — there's nothing
+// else to do with a selection any more (no bulk "Move to...").
 
 function toggleSelectMode() {
     selectMode = !selectMode;
@@ -325,35 +343,63 @@ function toggleCardSelection(id) {
 }
 
 function updateSelectModeUI() {
-    const btn = document.getElementById('select-mode-btn');
-    if (btn) {
-        btn.textContent = selectMode ? 'Cancel' : 'Select';
-        btn.classList.toggle('active', selectMode);
-    }
+    // The plain "🎯 Practice" toolbar and the selection bar never show at
+    // the same time — the selection bar carries its own "🎯 Start
+    // practice" button, so showing both together was just a confusing
+    // duplicate. There's no "select-mode-btn" to toggle any more (that
+    // standalone button is gone — see #table-toolbar, index.html).
+    //
+    // The selection bar itself shows for the whole time selectMode is on,
+    // even with nothing picked yet (count 0) — it's the only Cancel
+    // available once you're in select mode, now that there's no separate
+    // toolbar toggle button to back out through. Its "Start practice"
+    // button is just disabled at count 0 instead.
+    const toolbar = document.getElementById('table-toolbar');
+    if (toolbar) toolbar.style.display = selectMode ? 'none' : 'flex';
     const bar = document.getElementById('selection-action-bar');
     const count = selectedPhraseIds.size;
-    if (bar) bar.style.display = selectMode && count > 0 ? 'flex' : 'none';
+    if (bar) bar.style.display = selectMode ? 'flex' : 'none';
     const countEl = document.getElementById('selection-count');
     if (countEl) countEl.textContent = `${count} selected`;
+    const startBtn = document.getElementById('start-practice-from-selection-btn');
+    if (startBtn) startBtn.disabled = count === 0;
 }
 
-// ===== Move selected phrases to another space (bulk, from the selection bar) =====
+// ===== Move a phrase to another space — one card at a time, via its own
+// "⇄" icon =====
 // A direct space_id update (bulkMovePhrases) — no retranslation, no Add-tab
 // round trip. Level carries over unchanged; a slot doesn't, since it
 // belongs to one specific context's own schedule (see localDb.js's
-// bulkMovePhrases).
+// bulkMovePhrases). There used to be a bulk entry point too (the
+// selection bar's own "Move to..."), moving everything multi-selected at
+// once — removed (Rotem's own call: moving to another context should only
+// ever happen one card at a time, never several together), so Select mode
+// is now purely for picking phrases to practice. openMovePhraseModalForIds
+// still takes an array for bulkMovePhrases's own sake, but every caller
+// now only ever passes it a single id.
 
-function openMovePhraseModal() {
-    if (!selectedPhraseIds.size) return;
+// The id this open of the modal will move once a target is picked — a
+// snapshot taken at open time, read back by confirmBulkMove below.
+let moveModalPhraseIds = [];
+
+// Wired to a single card's own "⇄" icon.
+function openMovePhraseModalForPhrase(id) {
+    openMovePhraseModalForIds([id]);
+}
+
+function openMovePhraseModalForIds(ids) {
+    if (!ids.length) return;
+    moveModalPhraseIds = ids;
     renderMovePhraseList();
     const title = document.getElementById('move-phrase-modal-title');
-    const count = selectedPhraseIds.size;
-    if (title) title.textContent = `Move ${count} phrase${count === 1 ? '' : 's'} to...`;
+    const count = ids.length;
+    if (title) title.textContent = count === 1 ? 'Move to...' : `Move ${count} phrases to...`;
     document.getElementById('move-phrase-modal-overlay').style.display = 'flex';
 }
 
 function closeMovePhraseModal() {
     document.getElementById('move-phrase-modal-overlay').style.display = 'none';
+    moveModalPhraseIds = [];
 }
 
 // Only other Progression/Bridge spaces are valid targets — a dictionary
@@ -369,7 +415,7 @@ function renderMovePhraseList() {
 }
 
 async function confirmBulkMove(targetSpaceId) {
-    const ids = [...selectedPhraseIds];
+    const ids = moveModalPhraseIds;
     closeMovePhraseModal();
     try {
         await bulkMovePhrases({ ids, targetSpaceId });

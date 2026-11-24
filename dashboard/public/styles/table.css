@@ -9,8 +9,12 @@
    "what's coming up today" context, with no count (its cards aren't even
    loaded right now). Every slot is shown in its own color always, not
    just while it's the current/next one — current/next still gets a
-   slightly thicker border on top of that; the selected (filtering) slot
-   gets its own outline instead, so the two don't visually collide. See
+   slightly thicker border on top of that, now in a fixed app-blue rather
+   than the slot's own color (so "this is the one you're in right now" is
+   its own consistent signal, not whatever color that slot happens to be —
+   a slot colored near-black would otherwise make its own current/next
+   state read as no highlight at all); the selected (filtering) slot gets
+   its own outline instead, so the two don't visually collide. See
    slots.js's renderPracticeSlotsScroll/selectSlotBucket for the logic. */
 
 #practice-slots-scroll {
@@ -71,6 +75,10 @@
 .practice-slot-pill.current,
 .practice-slot-pill.next {
     border-width: 2px;
+    /* !important: slots.js sets this pill's border-color inline, to the
+       slot's own color — the current/next state needs to override that
+       with a fixed signal color regardless of what that color is. */
+    border-color: #2563eb !important;
 }
 
 /* Only a slot belonging to the active context is a real filter control —
@@ -79,19 +87,16 @@
     cursor: pointer;
 }
 
-/* The slot (or Unlabeled) the card list is currently filtered to — an
-   outline rather than a border/background change, since every pill's
-   background is already its own slot color (or, for Unlabeled, the
-   plain default look) and inline styles would otherwise fight a CSS
-   border-color override here. */
+/* The slot (or Unlabeled) the card list is currently filtered to — the
+   pill's own border-color overridden directly (!important, same technique
+   as .current/.next above), not an extra box-shadow ring: a box-shadow
+   sits inset from the pill's own existing border rather than replacing
+   it, which read as two separate frames (the real border, plus the inset
+   shadow just inside it) instead of one. Fixed app-blue, same color used
+   for selection elsewhere in the app (e.g. .phrase-card.selected). */
 .practice-slot-pill.selected {
-    /* An inset shadow, not an outline — an outline draws outside the
-       element's own box, and the strip's overflow-x:auto (which clips
-       vertically too, not just horizontally, once any overflow value
-       other than visible is set) was cutting it off on the left and top
-       edges. An inset shadow stays inside the box, so it can't be
-       clipped by the scroll container at all. */
-    box-shadow: inset 0 0 0 2px var(--text);
+    border-width: 2px;
+    border-color: #2563eb !important;
 }
 
 /* "Nothing to show here" note for this strip when a context has no slots
@@ -130,6 +135,16 @@
     flex-shrink: 0;
 }
 
+/* Now holds just the one "🎯 Practice" button, reusing the same
+   .mode-toggle/.mode-toggle-btn full-width pill already used for Add slot,
+   Export/Import and Copy invite message (spaceRules.css) — same reasoning
+   for overriding its default side padding (10px 24px 0, base.css), since
+   #table-toolbar already has its own 10px 12px. */
+#table-toolbar .mode-toggle {
+    padding: 0;
+    flex: 1;
+}
+
 #select-mode-btn.active {
     background: #2563eb;
     border-color: #2563eb;
@@ -139,12 +154,16 @@
 /* ===== Selection action bar (Table tab, multi-select "Move to...") ===== */
 /* Same blue-tinted-bar language as #transcripts-tab-selection-bar (transcripts.css). */
 
+/* Top margin matches .phrase-cards's own padding-top below (12px), so when
+   #table-toolbar is hidden (select mode) this bar sits the same distance
+   from the panel's top edge as the cards do from its sides — previously 0,
+   which left it touching the panel border directly. */
 #selection-action-bar {
     display: none;
     align-items: center;
     gap: 10px;
     padding: 10px 12px;
-    margin: 0 12px 10px;
+    margin: 12px 12px 10px;
     background: rgba(37, 99, 235, 0.12);
     border: 1px solid rgba(37, 99, 235, 0.3);
     border-radius: 10px;
@@ -160,6 +179,16 @@
 #selection-action-bar button {
     flex-shrink: 0;
     font-size: 0.8125rem;
+}
+
+/* "Start practice" while nothing's picked yet — the bar itself stays
+   visible the whole time select mode is on (it's the only Cancel
+   available), so this just marks the one action that needs a selection
+   first as not-yet-usable, same pattern as every other disabled button in
+   the app. */
+#selection-action-bar button:disabled {
+    opacity: 0.35;
+    cursor: default;
 }
 
 /* ===== Select mode on a phrase card ===== */
@@ -178,7 +207,8 @@
 }
 
 .level-badge:disabled,
-.slot-badge:disabled {
+.slot-badge:disabled,
+.old-badge:disabled {
     opacity: 0.5;
     cursor: default;
 }
@@ -307,6 +337,29 @@
     color: #dbeafe;
 }
 
+/* A card older than a month (localDb.js's isCardOld) — a pill in the same
+   badges row as level/slot, not a quiet note under the text, so it's hard
+   to miss. Solid app-blue fill (the same #2563eb used for the active
+   context border in modal.css and #select-mode-btn.active here) rather
+   than a gray tone — fixed, not a theme token, so it reads the same way
+   and stays readable with white text in both light and dark mode (unlike
+   a surface-family gray, which flips lightness between themes). The goal
+   is to make this card's "this is old, go delete it" state the most
+   visually assertive thing on the card, encouraging the tap. Tapping it
+   calls deletePhraseRow directly (phrasesTable.js), which opens the
+   normal delete-confirmation modal — never deletes on tap alone. */
+.old-badge {
+    border: none;
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: #2563eb;
+    color: #fff;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
 .phrase-card-icons {
     display: flex;
     gap: 4px;
@@ -325,12 +378,4 @@
     display: flex;
     align-items: center;
     justify-content: center;
-}
-
-/* A card older than a month (localDb.js's isCardOld) — just a soft nudge
-   to go delete it by hand; nothing here ever deletes it automatically. */
-.card-old-notice {
-    font-size: 0.75rem;
-    color: var(--text-faint);
-    margin-top: 4px;
 }

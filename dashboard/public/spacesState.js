@@ -41,9 +41,10 @@ function renderSpaceHeader() {
     const label = document.getElementById('space-header-name');
     if (!label) return;
     const active = getActiveSpace();
-    label.textContent = active && active.space_type === 'dictionary'
-        ? `📖 ${active.name}`
-        : (active ? active.name : 'Select a context');
+    label.textContent = active ? active.name : 'Select a context';
+    // A dictionary context is set apart by style, not by an icon glued to
+    // the name — just italic, so it stays readable as plain text.
+    label.style.fontStyle = (active && active.space_type === 'dictionary') ? 'italic' : 'normal';
     if (typeof renderSpaceRulesForm === 'function') renderSpaceRulesForm();
 }
 
@@ -97,10 +98,16 @@ function closeSpacePicker() {
 
 // Each row is one self-contained "card" (see modal.css's .space-picker-item):
 // the name and its action icons share the same background instead of the
-// name sitting in its own box next to a row of bare icon buttons. No more
-// placeholder spacer for a dictionary context's missing rename icon either
-// — since every row is its own independent flex container now, there's no
-// cross-row column alignment to keep in sync.
+// name sitting in its own box next to a row of bare icon buttons. The
+// icons sit first (left side), in the same delete/rename/migrate order as
+// a Practice-tab phrase card's own delete/edit/move icons, for visual
+// consistency with that card — including the ✏️ (not ✎) rename icon, so it
+// renders as a colored glyph the same way that card's own edit icon does.
+// No more placeholder spacer for a dictionary context's missing rename
+// icon either — since every row is its own independent flex container
+// now, there's no cross-row column alignment to keep in sync. A dictionary
+// context is set apart by italicizing its name (.space-picker-item-name--
+// dictionary in modal.css) instead of a 📖 glued onto the text.
 function renderSpacePickerList() {
     const list = document.getElementById('space-picker-list');
     // Dictionaries first, everything else after — stable within each
@@ -112,12 +119,12 @@ function renderSpacePickerList() {
     });
     list.innerHTML = ordered.map(s => `
         <div class="space-picker-item ${s.id === activeSpaceId ? 'active' : ''}" onclick="requestSpaceSwitch('${s.id}')">
-            <span class="space-picker-item-name">${s.space_type === 'dictionary' ? '📖 ' : ''}${escapeHtml(s.name)}</span>
             <div class="space-picker-item-icons">
-                <button class="space-picker-icon-btn" onclick="event.stopPropagation(); showMigrateSpaceForm('${s.id}')" title="Migrate into another context">⇄</button>
-                ${s.space_type === 'dictionary' ? '' : `<button class="space-picker-icon-btn" onclick="event.stopPropagation(); showRenameSpaceForm('${s.id}')" title="Rename">✎</button>`}
                 <button class="space-picker-icon-btn" onclick="event.stopPropagation(); showDeleteSpaceForm('${s.id}')" title="Delete">🗑️</button>
+                ${s.space_type === 'dictionary' ? '' : `<button class="space-picker-icon-btn" onclick="event.stopPropagation(); showRenameSpaceForm('${s.id}')" title="Rename">✏️</button>`}
+                <button class="space-picker-icon-btn" onclick="event.stopPropagation(); showMigrateSpaceForm('${s.id}')" title="Migrate into another context">⇄</button>
             </div>
+            <span class="space-picker-item-name${s.space_type === 'dictionary' ? ' space-picker-item-name--dictionary' : ''}">${escapeHtml(s.name)}</span>
         </div>
     `).join('');
 }
@@ -175,16 +182,23 @@ function showDeleteSpaceForm(id) {
 }
 
 async function submitDeleteSpace(id) {
-    // Grab the phrase ids first so their cached audio can be cleared from
-    // this device's IndexedDB after the delete succeeds — deleteSpace()
-    // only touches the Supabase tables, same division of responsibility as
-    // a single phrase delete (see phrasesTable.js).
+    // Grab the phrase and dictionary-entry ids first so their cached audio
+    // can be cleared from this device's IndexedDB after the delete
+    // succeeds — deleteSpace() only touches the local DB's own tables,
+    // same division of responsibility as a single phrase/word delete (see
+    // phrasesTable.js's confirmDelete).
     let phrasesInSpace = [];
+    let dictionaryEntriesInSpace = [];
     try {
         phrasesInSpace = await getPhrases(id);
     } catch (err) {
         // Non-fatal — worst case a few orphaned cache entries stay in
         // IndexedDB. Proceed with the delete regardless.
+    }
+    try {
+        dictionaryEntriesInSpace = await getDictionaryEntries(id);
+    } catch (err) {
+        // Same non-fatal reasoning as the phrases fetch just above.
     }
 
     try {
@@ -196,6 +210,9 @@ async function submitDeleteSpace(id) {
 
     for (const phrase of phrasesInSpace) {
         await deleteTtsBlobsForPhrase(phrase.id);
+    }
+    for (const entry of dictionaryEntriesInSpace) {
+        if (typeof deleteTtsBlobForDictionaryEntry === 'function') await deleteTtsBlobForDictionaryEntry(entry.id);
     }
 
     // The deleted context's own time slots are already gone from

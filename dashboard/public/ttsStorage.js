@@ -22,6 +22,12 @@ const TTS_DB_NAME = 'fraza-tts-cache';
 const TTS_DB_VERSION = 1;
 const TTS_STORE_NAME = 'audio';
 
+// `variant` is a plain string/number distinguishing which "slot" of a
+// given id's audio this is — a phrase passes 1 or 2 (its two translated
+// variants), a dictionary entry passes the literal string 'word' (see
+// getOrCreateDictionaryAudioUrl below). Template-literal interpolation
+// doesn't care which, so the same key scheme covers both without needing
+// a separate store.
 function ttsKey(phraseId, variant) {
     return `${phraseId}-v${variant}`;
 }
@@ -101,4 +107,38 @@ async function getOrCreatePhraseAudioUrl(phrase, variant) {
     await updatePhraseTtsFlag({ id: phrase.id, variant, cached: true });
 
     return URL.createObjectURL(blob);
+}
+
+// ===== Dictionary entry audio =====
+// Same lazy-generate-once-then-cache pattern as a phrase's own 🔊, just for
+// a dictionary entry's single "word" field instead of two numbered
+// variants — see dictionary.js's playDictionaryAudio for the button that
+// calls this. There's no tts flag column on a dictionary entry the way a
+// phrase has tts_url_variant1/2 (that column was never more than
+// informational — nothing reads it back), so this only touches the
+// IndexedDB cache, nothing in localDb.js's `dictionary` store.
+// `entry` must have id, word.
+async function getOrCreateDictionaryAudioUrl(entry) {
+    const cached = await getTtsBlob(entry.id, 'word');
+    if (cached) {
+        return URL.createObjectURL(cached);
+    }
+
+    const text = entry.word;
+    if (!text) {
+        throw new Error('This word has no text yet');
+    }
+
+    const blob = await generateSpeechBlob(text);
+    await saveTtsBlob(entry.id, 'word', blob);
+
+    return URL.createObjectURL(blob);
+}
+
+// Mirrors deleteTtsBlobsForPhrase above, for one dictionary entry's own
+// cached word audio — called on deleting that entry (phrasesTable.js's
+// confirmDelete) and when a whole space is deleted (spacesState.js's
+// submitDeleteSpace).
+async function deleteTtsBlobForDictionaryEntry(entryId) {
+    await deleteTtsBlob(entryId, 'word');
 }

@@ -278,8 +278,14 @@ async function renderPracticeSlotsScroll() {
         const isSelected = isOwn && s.id === selectedSlotBucketId;
         const isActive = !!active && s.id === active.id;
         const isNext = !!next && s.id === next.id;
-        const contrast = getContrastColor(s.color);
-        const style = `background:${s.color || '#333'}; color:${contrast}; border-color:${s.color || '#333'};`;
+        // A slot with no color at all (legacy data from before a color was
+        // required, or any other gap) gets NO inline override here — it
+        // just falls through to .practice-slot-pill's own plain CSS
+        // (var(--surface)/var(--text-muted)/var(--border)), the exact same
+        // neutral, theme-aware look as the "Unlabeled" pill below, instead
+        // of a hardcoded dark fallback that used to make a colorless slot
+        // look like an actual (and very dark) chosen color.
+        const style = s.color ? `background:${s.color}; color:${getContrastColor(s.color)}; border-color:${s.color};` : '';
         const classes = ['practice-slot-pill', isActive ? 'current' : '', isNext ? 'next' : '', isOwn ? 'selectable' : '', isSelected ? 'selected' : ''].filter(Boolean).join(' ');
         return `
         <div class="${classes}" style="${style}" ${isOwn ? `onclick="selectSlotBucket('${s.id}')"` : ''}>
@@ -390,16 +396,19 @@ function renderSlotsList() {
         // all — treated as on (true), same as a freshly created one, never
         // as silently off.
         const enabled = s.enabled !== false;
-        const color = s.color || '#333';
 
         // The slot's own color is its at-a-glance identity now (same
         // border-accent language as .practice-slot-pill in
         // renderPracticeSlotsScroll below) — no more tag chips stacked on
-        // the card. Deleting is modal-only (the edit
-        // modal's own Delete button). See .disabled below for the dimmed
-        // look when the toggle is off.
+        // the card. A slot with no color (see renderPracticeSlotsScroll's
+        // own comment) just keeps slots.css's default transparent
+        // border-inline-start instead of a hardcoded dark one standing in
+        // for a "real" color it never actually has. Deleting is modal-only
+        // (the edit modal's own Delete button). See .disabled below for
+        // the dimmed look when the toggle is off.
+        const colorStyle = s.color ? `border-inline-start-color:${s.color}` : '';
         return `
-        <div class="slot-card${enabled ? '' : ' disabled'}" style="border-inline-start-color:${color}">
+        <div class="slot-card${enabled ? '' : ' disabled'}" style="${colorStyle}">
             <div class="slot-card-main" onclick="openSlotModal('${s.id}')">
                 <div class="slot-card-time">${formatSlotRange(s.start_minutes, s.end_minutes)}</div>
                 <div class="slot-card-text">${escapeHtml(s.name || '')}</div>

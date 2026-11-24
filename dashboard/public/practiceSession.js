@@ -41,6 +41,12 @@ let practiceSessionItemCount = 0;   // for the "Practiced N phrases/words" done 
 let practiceSessionItemLabel = 'phrase'; // 'phrase' | 'word'
 let practiceRevealed = false;
 let practiceScopeSlotIds = new Set();
+// Set right before beginPracticeSession only by startManualPracticeFromSelection
+// below — the one entry point where a 7-unit cap could come as a surprise
+// (every other scope already explains itself via the scope-picker option
+// text, e.g. "Choose time slots"). Shown once, on the session's first
+// step only (renderPracticeStep), then left alone for the rest of it.
+let practiceShowCapNotice = false;
 
 function openPracticeModal() {
     const overlay = document.getElementById('practice-modal-overlay');
@@ -54,11 +60,12 @@ function closePracticeSession() {
     practiceStepIndex = 0;
     practiceRevealed = false;
     practiceScopeSlotIds = new Set();
+    practiceShowCapNotice = false;
 }
 
 // ===== Entry points =====
 
-// Wired to the Practice tab toolbar's "Start practice" button, for both
+// Wired to the Practice tab toolbar's "🎯 Practice" button, for both
 // phrase contexts and dictionary contexts (dictionary.js's
 // applyDictionaryModeUI keeps this button visible either way, just with a
 // different flow behind it — dictionary practice has nothing to scope by
@@ -75,20 +82,26 @@ function startPracticeFlow() {
 }
 
 // Wired to the selection bar's own "Start practice" action
-// (startPracticeFromSelection, phrasesTable.js) — practices exactly the
-// phrases that were manually checked, in full, with no 7-unit cap. A
-// deliberate pick IS the scope here, not a sample to be trimmed from.
-// (The selection bar only exists in phrase contexts — dictionary cards
-// don't currently support multi-select — so this is always phrases.)
+// (startPracticeFromSelection, phrasesTable.js) — same 7-unit cap as every
+// other scope (Rotem's own call: keeps every session short, manual
+// selection included, rather than letting a big selection turn into a
+// long one). A manual pick still picks WHICH phrases are even eligible;
+// capped just means a selection bigger than ~7 units gets trimmed to the
+// least-recently-practiced ones within it, same as any other scope. The
+// practice-cap-notice shown on the first step below is what tells her
+// that up front. (The selection bar only exists in phrase contexts —
+// dictionary cards don't currently support multi-select — so this is
+// always phrases.)
 function startManualPracticeFromSelection() {
     const ids = [...selectedPhraseIds];
     if (!ids.length) return;
     const chosen = allPhrases.filter(p => ids.includes(p.id));
     exitSelectMode();
     openPracticeModal();
+    practiceShowCapNotice = true;
     beginPracticeSession({
         candidates: chosen,
-        capped: false,
+        capped: true,
         countUnitsFn: countUnitsForPhrase,
         buildUnitsFn: buildPhraseUnits,
         itemLabel: 'phrase'
@@ -148,9 +161,14 @@ function renderPracticeScopePicker() {
     }
 
     body.innerHTML = `
+        <div class="practice-scope-notice">
+            <div>Sessions are kept short — around 5 minutes, up to 7 cards each.</div>
+            <div>Phrases are picked automatically — prioritizing the ones you haven't practiced in a while.</div>
+        </div>
         <div class="practice-scope-options">
             <button type="button" class="mode-toggle-btn active practice-scope-btn" onclick="startRandomRoutinePractice()">🔀 Random from this context</button>
             <button type="button" class="mode-toggle-btn active practice-scope-btn" onclick="renderPracticeSlotScopePicker()">🕐 Choose time slots</button>
+            <button type="button" class="mode-toggle-btn active practice-scope-btn" onclick="selectPhrasesFromScopePicker()">✅ Select phrases</button>
         </div>
     `;
 }
@@ -163,6 +181,17 @@ function startRandomRoutinePractice() {
         buildUnitsFn: buildPhraseUnits,
         itemLabel: 'phrase'
     });
+}
+
+// The old standalone "Select" toolbar button (table-toolbar, index.html)
+// is gone — this is now the only way into manual multi-select, as this
+// scope picker's third option. Just hands off to the exact same
+// toggleSelectMode flow (phrasesTable.js) that button used to open
+// directly: closes this overlay first (picking a scope was never actually
+// going to run a session here), then turns on select mode.
+function selectPhrasesFromScopePicker() {
+    closePracticeSession();
+    if (typeof toggleSelectMode === 'function') toggleSelectMode();
 }
 
 function renderPracticeSlotScopePicker() {
@@ -396,7 +425,14 @@ function renderPracticeStep() {
     if (title) title.textContent = `Practice — ${practiceStepIndex + 1} of ${practiceQueue.length}`;
     const body = document.getElementById('practice-modal-body');
     if (!body) return;
+    // Shown once, on this session's very first step only — explains why a
+    // bigger manual selection might not all show up here (see
+    // startManualPracticeFromSelection's own comment on practiceShowCapNotice).
+    const capNoticeHtml = (practiceShowCapNotice && practiceStepIndex === 0)
+        ? `<div class="practice-cap-notice">Sessions are capped at ~${PRACTICE_SESSION_TARGET_UNITS} phrases, starting with whichever you haven't practiced in the longest — so not everything you selected may show up here.</div>`
+        : '';
     body.innerHTML = `
+        ${capNoticeHtml}
         <div class="practice-source" dir="auto">${escapeHtml(unit.source)}</div>
         <textarea id="practice-attempt-input" class="practice-attempt-input" rows="2" placeholder="Try saying it in English, then type it here..."></textarea>
         <div class="practice-reveal-area" id="practice-reveal-area" style="display:none"></div>

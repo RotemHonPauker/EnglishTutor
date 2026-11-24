@@ -221,7 +221,10 @@
    contents (#slots-permission-warning, #slots-list, and the slot add/edit
    modal) are unchanged and still styled entirely by slots.css — this
    file only adds the card wrapper itself, same as it does for Backup and
-   Invite above. */
+   Invite above. "+ Add slot" (index.html) reuses the same .mode-toggle/
+   .mode-toggle-btn pattern as Backup/Invite's own action buttons just
+   above, for the same reason .mode-toggle's padding needs overriding
+   here too. */
 
 #schedule-section {
     background: var(--surface);
@@ -231,4 +234,8 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
+}
+
+#schedule-section .mode-toggle {
+    padding: 0;
 }

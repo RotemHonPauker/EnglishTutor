@@ -133,9 +133,11 @@
    the same background, rather than a plain name box sitting next to a
    row of bare icon buttons beside it. The action icons reuse the same
    circular-icon-button language as a Practice-tab phrase card's own
-   🗑️/✏️ icons (table.css's .phrase-card-icons button), just scoped to
-   this modal under their own class names. The active context gets a
-   blue border only, no fill — the card's own background/text color stay
+   🗑️/✏️/⇄ icons (table.css's .phrase-card-icons button), just scoped to
+   this modal under their own class names — same left-aligned position and
+   same delete/rename/migrate order as that card's own delete/edit/move
+   icons, for visual consistency between the two. The active context gets
+   a blue border only, no fill — the card's own background/text color stay
    exactly as they are for any other row. */
 
 #space-picker-list {
@@ -150,7 +152,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 8px 10px 14px;
+    padding: 10px 14px 10px 8px;
     border-radius: 10px;
     border: 1px solid transparent;
     background: var(--surface-2);
@@ -164,6 +166,7 @@
 }
 
 .space-picker-item.active {
+    border-width: 2px;
     border-color: #2563eb;
 }
 
@@ -173,6 +176,13 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+/* A dictionary context is set apart from a regular one by style alone —
+   no icon glued onto its name, here or in the header (spacesState.js's
+   renderSpaceHeader applies the same italic inline). */
+.space-picker-item-name--dictionary {
+    font-style: italic;
 }
 
 .space-picker-item-icons {
