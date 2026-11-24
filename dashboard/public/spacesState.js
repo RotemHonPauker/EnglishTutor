@@ -95,6 +95,12 @@ function closeSpacePicker() {
     migrateSourceSpaceId = null;
 }
 
+// Each row is one self-contained "card" (see modal.css's .space-picker-item):
+// the name and its action icons share the same background instead of the
+// name sitting in its own box next to a row of bare icon buttons. No more
+// placeholder spacer for a dictionary context's missing rename icon either
+// — since every row is its own independent flex container now, there's no
+// cross-row column alignment to keep in sync.
 function renderSpacePickerList() {
     const list = document.getElementById('space-picker-list');
     // Dictionaries first, everything else after — stable within each
@@ -104,17 +110,16 @@ function renderSpacePickerList() {
         const bDict = b.space_type === 'dictionary' ? 0 : 1;
         return aDict - bDict;
     });
-    const spaceRows = ordered.map(s => `
-        <div class="space-picker-row">
-            <div class="space-picker-item ${s.id === activeSpaceId ? 'active' : ''}" onclick="requestSpaceSwitch('${s.id}')">
-                ${s.space_type === 'dictionary' ? '📖 ' : ''}${escapeHtml(s.name)}
+    list.innerHTML = ordered.map(s => `
+        <div class="space-picker-item ${s.id === activeSpaceId ? 'active' : ''}" onclick="requestSpaceSwitch('${s.id}')">
+            <span class="space-picker-item-name">${s.space_type === 'dictionary' ? '📖 ' : ''}${escapeHtml(s.name)}</span>
+            <div class="space-picker-item-icons">
+                <button class="space-picker-icon-btn" onclick="event.stopPropagation(); showMigrateSpaceForm('${s.id}')" title="Migrate into another context">⇄</button>
+                ${s.space_type === 'dictionary' ? '' : `<button class="space-picker-icon-btn" onclick="event.stopPropagation(); showRenameSpaceForm('${s.id}')" title="Rename">✎</button>`}
+                <button class="space-picker-icon-btn" onclick="event.stopPropagation(); showDeleteSpaceForm('${s.id}')" title="Delete">🗑️</button>
             </div>
-            <button class="space-picker-edit-btn" onclick="event.stopPropagation(); showMigrateSpaceForm('${s.id}')" title="Migrate into another context">⇄</button>
-            ${s.space_type === 'dictionary' ? '<span class="space-picker-edit-btn-placeholder"></span>' : `<button class="space-picker-edit-btn" onclick="event.stopPropagation(); showRenameSpaceForm('${s.id}')" title="Rename">✎</button>`}
-            <button class="space-picker-edit-btn" onclick="event.stopPropagation(); showDeleteSpaceForm('${s.id}')" title="Delete">🗑️</button>
         </div>
     `).join('');
-    list.innerHTML = spaceRows;
 }
 
 function showRenameSpaceForm(id) {

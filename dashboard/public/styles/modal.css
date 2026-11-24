@@ -129,57 +129,34 @@
 }
 
 /* ===== Space picker modal ===== */
+/* Each row is now one self-contained "card" — name and action icons share
+   the same background, rather than a plain name box sitting next to a
+   row of bare icon buttons beside it. The action icons reuse the same
+   circular-icon-button language as a Practice-tab phrase card's own
+   🗑️/✏️ icons (table.css's .phrase-card-icons button), just scoped to
+   this modal under their own class names. The active context gets a
+   blue border only, no fill — the card's own background/text color stay
+   exactly as they are for any other row. */
 
 #space-picker-list {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
     max-height: 40vh;
     overflow-y: auto;
 }
 
-.space-picker-row {
+.space-picker-item {
     display: flex;
     align-items: center;
-    gap: 4px;
-}
-
-.space-picker-row .space-picker-item {
-    flex: 1;
-    min-width: 0; /* lets text-overflow ellipsis actually kick in inside a flex item */
-}
-
-.space-picker-edit-btn {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    font-size: 0.9375rem;
-    padding: 6px 4px;
-    flex-shrink: 0;
-}
-
-.space-picker-edit-btn:hover {
-    color: var(--text-2);
-    background: none;
-}
-
-.space-picker-edit-btn-placeholder {
-    display: inline-block;
-    width: 23px; /* matches .space-picker-edit-btn's rendered width (icon + padding) */
-    flex-shrink: 0;
-}
-
-.space-picker-item {
-    padding: 10px 10px;
-    border-radius: 8px;
+    gap: 8px;
+    padding: 10px 8px 10px 14px;
+    border-radius: 10px;
+    border: 1px solid transparent;
     background: var(--surface-2);
     color: var(--text-2);
     cursor: pointer;
     font-size: 0.9375rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
 .space-picker-item:hover {
@@ -187,8 +164,41 @@
 }
 
 .space-picker-item.active {
-    background: #2563eb;
-    color: white;
+    border-color: #2563eb;
+}
+
+.space-picker-item-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.space-picker-item-icons {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.space-picker-icon-btn {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    border: none;
+    border-radius: 50%;
+    background: var(--surface-3);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.space-picker-icon-btn:hover {
+    color: var(--text-2);
 }
 
 #space-picker-new-form input[type="text"] {
