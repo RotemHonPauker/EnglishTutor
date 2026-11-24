@@ -103,16 +103,16 @@ Your full phrase list as cards — in a dictionary context, each card is a looke
 - **Cards** have:
   - **Level / language code badge**: toggles which translation is shown — "Level 1"/"Level 2" in a progression context, or the actual language code (e.g. "EN"/"CS") in a bridge context, since there variant 2 is a different language, not a more advanced version of variant 1.
   - **Slot badge**: shows which time slot the card belongs to (or "Assign to slot" if it has none yet) — tap to reassign it.
+  - **Old badge**: a card created over a month ago gets a solid-blue "Old" pill — just a nudge to go delete it if it's not useful any more. Tapping it opens the same delete confirm as the 🗑️ icon; nothing is ever deleted automatically.
   - **✏️**: edit a phrase's wording, re-translating it in place.
+  - **⇄**: move this one card into another context — moving is always a single-card action, there's no bulk "move several at once".
   - **🗑️**: delete, with a confirm.
   - **🔊**: hear the shown variant spoken aloud — generated once on first play and cached on this device from then on.
-  - A card created over a month ago gets a small "🕓 Created over a month ago" note — just a nudge to go delete it if it's not useful any more; nothing is ever deleted automatically.
-- **Select**: a toolbar toggle for multi-select — pick several cards, then **Move to...** moves them all into another context at once, or **🎯 Start practice** drills exactly that selection.
 - **🎯 Practice** — a short, self-graded practice session, the actual daily-review habit loop:
-  - Pick a scope first: a random sample from the whole context, specific time slots, or (via Select, above) a manual pick of exact cards.
+  - Tap it to pick a scope: a random sample from the whole context, specific time slots, or **✅ Select phrases** to hand-pick exact cards.
+  - Practice sessions are kept short — around 5 minutes, up to 7 cards each — and that the automatic scopes (Random / time slots) prioritize whatever you haven't practiced in a while.
   - Each unit shows the phrase's source-language sentence, lets you try saying/typing your own attempt (never saved anywhere, not even temporarily), then reveals the real wording it was actually captured/corrected to.
   - A phrase recorded as several sentences back-to-back is drilled one sentence at a time; on the very last sentence (or a dictionary word's own single unit) you choose **Continue** (keep it — just marks it as recently practiced, so future sessions prioritize other things) or **Delete** (it's solid enough that there's no reason to keep seeing it).
-  - A session targets about 7 units, prioritizing whatever hasn't been practiced in a while.
   - In a dictionary context, practice skips the scope picker and just starts a session over the whole context.
 
 ### 🎙️ Transcripts tab
@@ -136,7 +136,7 @@ Not shown at all for a dictionary context.
   - Each slot has a name, a "Notify at" time (when the reminder fires), an "Active until" time (how long its window stays open for labeling anything captured during it), and a color shared across every context in the app, so no two slots anywhere clash.
   - Each slot has its own on/off toggle for push reminders — turning one on is what triggers the browser's notification-permission prompt the first time.
   - See [🔔 Reminders](#-reminders-and-what-leaves-this-device) below for how the actual push works, and for a phone setting worth double-checking if a reminder isn't showing up.
-  - "+ Add slot" itself lives in the Practice tab's toolbar, not here.
+  - **"Add slot"** sits right here in this section.
 - **Backup** — export or import all your data. See [💾 Backup](#-backup) below.
 - **Invite a friend** — copies a ready-to-send message with the app's link to your clipboard, to paste into WhatsApp or wherever, so you don't have to type it out each time.
 - **Translation & Transcription Guidelines** — this is where you help sharpen the translations: each field you fill in becomes part of the AI prompt that shapes this context's transcription and translation. Four fields, each opening one at a time with its own Save/Cancel and a "Copy from..." option to pull that field's content from another context:
