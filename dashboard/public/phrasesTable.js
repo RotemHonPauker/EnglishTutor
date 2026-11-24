@@ -83,12 +83,19 @@ function renderTable() {
         // as the 🗑️ icon) rather than deleting on tap, since a bare badge
         // tap isn't an obvious delete gesture on its own.
         const isSelected = selectedPhraseIds.has(p.id);
-        const cardClasses = ['phrase-card', slotColor ? 'has-color' : '', isSelected ? 'selected' : ''].filter(Boolean).join(' ');
+        // Once the running total hits the 7-unit cap, every unselected
+        // card's checkbox (and the card itself) goes disabled — she asked
+        // for this to be a hard stop while selecting, not something that
+        // only trims the selection down once practice actually starts.
+        // An already-selected card stays tappable either way, so it can
+        // still be deselected to free up room.
+        const selectionBlocked = selectMode && !isSelected && (selectedUnitTotal() + unitsForPhraseId(p.id) > selectionCap());
+        const cardClasses = ['phrase-card', slotColor ? 'has-color' : '', isSelected ? 'selected' : '', selectionBlocked ? 'selection-blocked' : ''].filter(Boolean).join(' ');
         return `
-        <div class="${cardClasses}" style="${cardStyle}" ${selectMode ? `onclick="toggleCardSelection('${p.id}')"` : ''}>
+        <div class="${cardClasses}" style="${cardStyle}" ${selectMode && !selectionBlocked ? `onclick="toggleCardSelection('${p.id}')"` : ''}>
             <div class="phrase-card-header">
                 ${selectMode
-                    ? `<input type="checkbox" class="phrase-select-checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleCardSelection('${p.id}')">`
+                    ? `<input type="checkbox" class="phrase-select-checkbox" ${isSelected ? 'checked' : ''} ${selectionBlocked ? 'disabled' : ''} onclick="event.stopPropagation(); toggleCardSelection('${p.id}')">`
                     : `<div class="phrase-card-icons">
                     <button title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑️</button>
                     <button title="Edit phrase" onclick="editPhraseRow('${p.id}')">✏️</button>
@@ -335,9 +342,41 @@ function resetSelectMode() {
     exitSelectMode();
 }
 
+// How many practice "units" a given phrase counts for — mirrors
+// practiceSession.js's own countUnitsForPhrase (a multi-sentence phrase is
+// several units), falling back to 1 if that file hasn't loaded for some
+// reason. Used below to enforce the 7-unit cap live, while selecting —
+// not just trim a selection down after the fact once practice starts.
+function unitsForPhraseId(id) {
+    const p = allPhrases.find(ph => ph.id === id);
+    if (!p) return 1;
+    return typeof countUnitsForPhrase === 'function' ? countUnitsForPhrase(p) : 1;
+}
+
+function selectedUnitTotal() {
+    let total = 0;
+    selectedPhraseIds.forEach(id => { total += unitsForPhraseId(id); });
+    return total;
+}
+
+// Same cap practiceSession.js sessions target (PRACTICE_SESSION_TARGET_UNITS
+// = 7) — read from there so the two numbers can never drift apart, with a
+// literal 7 as a fallback only if that file somehow hasn't loaded.
+function selectionCap() {
+    return typeof PRACTICE_SESSION_TARGET_UNITS === 'number' ? PRACTICE_SESSION_TARGET_UNITS : 7;
+}
+
 function toggleCardSelection(id) {
-    if (selectedPhraseIds.has(id)) selectedPhraseIds.delete(id);
-    else selectedPhraseIds.add(id);
+    if (selectedPhraseIds.has(id)) {
+        selectedPhraseIds.delete(id);
+    } else {
+        // Already at (or would cross) the cap — ignore the tap rather than
+        // select-then-silently-trim-later. renderTable() below is what
+        // actually grays the checkbox out once this is true, so in
+        // practice this branch is just a safety net.
+        if (selectedUnitTotal() + unitsForPhraseId(id) > selectionCap()) return;
+        selectedPhraseIds.add(id);
+    }
     updateSelectModeUI();
     renderTable();
 }

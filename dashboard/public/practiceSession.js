@@ -41,12 +41,6 @@ let practiceSessionItemCount = 0;   // for the "Practiced N phrases/words" done 
 let practiceSessionItemLabel = 'phrase'; // 'phrase' | 'word'
 let practiceRevealed = false;
 let practiceScopeSlotIds = new Set();
-// Set right before beginPracticeSession only by startManualPracticeFromSelection
-// below — the one entry point where a 7-unit cap could come as a surprise
-// (every other scope already explains itself via the scope-picker option
-// text, e.g. "Choose time slots"). Shown once, on the session's first
-// step only (renderPracticeStep), then left alone for the rest of it.
-let practiceShowCapNotice = false;
 
 function openPracticeModal() {
     const overlay = document.getElementById('practice-modal-overlay');
@@ -60,7 +54,6 @@ function closePracticeSession() {
     practiceStepIndex = 0;
     practiceRevealed = false;
     practiceScopeSlotIds = new Set();
-    practiceShowCapNotice = false;
 }
 
 // ===== Entry points =====
@@ -85,11 +78,12 @@ function startPracticeFlow() {
 // (startPracticeFromSelection, phrasesTable.js) — same 7-unit cap as every
 // other scope (Rotem's own call: keeps every session short, manual
 // selection included, rather than letting a big selection turn into a
-// long one). A manual pick still picks WHICH phrases are even eligible;
-// capped just means a selection bigger than ~7 units gets trimmed to the
-// least-recently-practiced ones within it, same as any other scope. The
-// practice-cap-notice shown on the first step below is what tells her
-// that up front. (The selection bar only exists in phrase contexts —
+// long one). Unlike the other scopes, the cap here is enforced live while
+// she's still picking cards (phrasesTable.js's toggleCardSelection/
+// selectionCap disables any checkbox that would push the running total
+// over it), so by the time this runs the selection can never actually be
+// over ~7 units — capped: true below is just a defensive no-op, not a
+// silent trim. (The selection bar only exists in phrase contexts —
 // dictionary cards don't currently support multi-select — so this is
 // always phrases.)
 function startManualPracticeFromSelection() {
@@ -98,7 +92,6 @@ function startManualPracticeFromSelection() {
     const chosen = allPhrases.filter(p => ids.includes(p.id));
     exitSelectMode();
     openPracticeModal();
-    practiceShowCapNotice = true;
     beginPracticeSession({
         candidates: chosen,
         capped: true,
@@ -425,14 +418,7 @@ function renderPracticeStep() {
     if (title) title.textContent = `Practice — ${practiceStepIndex + 1} of ${practiceQueue.length}`;
     const body = document.getElementById('practice-modal-body');
     if (!body) return;
-    // Shown once, on this session's very first step only — explains why a
-    // bigger manual selection might not all show up here (see
-    // startManualPracticeFromSelection's own comment on practiceShowCapNotice).
-    const capNoticeHtml = (practiceShowCapNotice && practiceStepIndex === 0)
-        ? `<div class="practice-cap-notice">Sessions are capped at ~${PRACTICE_SESSION_TARGET_UNITS} phrases, starting with whichever you haven't practiced in the longest — so not everything you selected may show up here.</div>`
-        : '';
     body.innerHTML = `
-        ${capNoticeHtml}
         <div class="practice-source" dir="auto">${escapeHtml(unit.source)}</div>
         <textarea id="practice-attempt-input" class="practice-attempt-input" rows="2" placeholder="Try saying it in English, then type it here..."></textarea>
         <div class="practice-reveal-area" id="practice-reveal-area" style="display:none"></div>

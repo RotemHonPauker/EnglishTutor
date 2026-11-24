@@ -76,18 +76,6 @@
 
 /* ===== Drill step ===== */
 
-/* Shown once, only on a session's first step, when it was started from a
-   manual selection (practiceSession.js's practiceShowCapNotice) — same
-   one-line explainer look as .slot-time-explainer (slots.css), reused here
-   for the one thing the scope-picker notice above can't cover: a manual
-   selection bigger than the ~7-unit cap getting trimmed down. */
-.practice-cap-notice {
-    font-size: 0.78rem;
-    color: var(--text-2);
-    line-height: 1.4;
-    margin: -4px 0 4px;
-}
-
 .practice-source {
     font-size: 1.125rem;
     line-height: 1.5;

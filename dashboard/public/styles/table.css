@@ -206,6 +206,17 @@
     outline-offset: -1px;
 }
 
+/* Hit the 7-unit selection cap (phrasesTable.js's selectionBlocked) — this
+   card can't be added without going over, so it's dimmed and its checkbox
+   disabled until something else is deselected to free up room. */
+.phrase-card.selection-blocked {
+    opacity: 0.4;
+}
+
+.phrase-select-checkbox:disabled {
+    cursor: default;
+}
+
 .level-badge:disabled,
 .slot-badge:disabled,
 .old-badge:disabled {
