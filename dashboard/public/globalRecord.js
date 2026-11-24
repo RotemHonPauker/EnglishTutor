@@ -1,10 +1,10 @@
 // globalRecord.js — the global record button: a single always-available
 // trigger (red circular button, raised in the center of the tab bar) that
-// isn't scoped to whichever Routine happens to be open. Tapping it opens a
-// large routine picker FIRST (see "Which routine?" picker below); only
-// once a routine is chosen does in-browser recording actually start
+// isn't scoped to whichever Context happens to be open. Tapping it opens a
+// large context picker FIRST (see "Which context?" picker below); only
+// once a context is chosen does in-browser recording actually start
 // (MediaRecorder/getUserMedia — Android/Chrome only; the existing
-// per-routine Add-tab record-via-file-upload flow, see captureTab.js's
+// per-context Add-tab record-via-file-upload flow, see captureTab.js's
 // handleRecordingFileSelected, stays as the fallback on browsers without
 // this support, e.g. iOS Safari). Tap the button again to stop.
 //
@@ -14,12 +14,12 @@
 // cards afterward (see captureTab.js's finishRecordingIntoTranscript,
 // shared by both flows).
 //
-// Which Routine the transcript belongs to is decided UP FRONT, before
+// Which Context the transcript belongs to is decided UP FRONT, before
 // recording starts — always, via the picker, never guessed from context.
 // (An earlier version of this decided it from the active Slot, if any,
 // right after stopping instead — dropped because stopping isn't actually
 // any more free a moment to make that decision than starting is, and it
-// was confusing in cases where the person had moved on from the routine
+// was confusing in cases where the person had moved on from the context
 // they started recording for by the time they stopped.)
 //
 // Needs localDb.js, audioEngine.js, spacesState.js (spaces/setActiveSpace)
@@ -41,7 +41,7 @@ let globalRecordStartedAt = null;
 let globalRecordTimerInterval = null;
 let globalRecordAutoStopTimeout = null;
 
-// The routine chosen in the picker before recording starts — set once,
+// The context chosen in the picker before recording starts — set once,
 // read once (in handleGlobalRecordingStopped), then cleared. Unlike the
 // old design, stopping never needs to ask again.
 let globalRecordSpaceId = null;
@@ -53,7 +53,7 @@ function initGlobalRecordButton() {
     if (!RECORDING_SUPPORTED) {
         // No in-browser recording on this browser (iOS Safari, mainly) —
         // hide the button entirely rather than show something that can't
-        // work. The per-routine Add-tab flow (file picker) is still there.
+        // work. The per-context Add-tab flow (file picker) is still there.
         const wrap = document.querySelector('.global-record-wrap');
         if (wrap) wrap.style.display = 'none';
         return;
@@ -200,7 +200,7 @@ function updateGlobalRecordTimerLabel() {
     label.textContent = `${mm}:${String(ss).padStart(2, '0')}`;
 }
 
-// ===== "Which routine?" picker — shown every time, before recording
+// ===== "Which context?" picker — shown every time, before recording
 // starts. Large, high-contrast, single-tap options (see the
 // .record-routine-option styling in tabs.css) since this is meant to be
 // read and tapped in a hurry, not browsed. =====
@@ -212,7 +212,7 @@ function openRecordRoutinePicker(onChosen) {
     applyGlobalRecordButtonUI();
     pendingRoutinePickCallback = onChosen;
 
-    // A dictionary routine does word lookups, not phrase capture, so it's
+    // A dictionary context does word lookups, not phrase capture, so it's
     // not a valid target for a recording's transcript — same restriction
     // phrasesTable.js's bulk "Move to..." already applies.
     const candidates = (typeof spaces !== 'undefined' ? spaces : []).filter(s => s.space_type !== 'dictionary');
@@ -220,12 +220,12 @@ function openRecordRoutinePicker(onChosen) {
 
     list.innerHTML = candidates.length
         ? candidates.map(s => `<button type="button" class="record-routine-option" onclick="chooseRecordRoutine('${s.id}')">${escapeHtml(s.name)}</button>`).join('')
-        : '<div class="slots-empty">No routine to save this recording into yet — create one first.</div>';
+        : '<div class="slots-empty">No context to save this recording into yet — create one first.</div>';
 
     document.getElementById('record-routine-modal-overlay').style.display = 'flex';
 }
 
-// Picking a routine starts recording right away (see toggleGlobalRecording's
+// Picking a context starts recording right away (see toggleGlobalRecording's
 // callback), so this just hides the modal and lets that callback run.
 function chooseRecordRoutine(spaceId) {
     const callback = pendingRoutinePickCallback;

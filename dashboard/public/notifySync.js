@@ -58,7 +58,7 @@ async function getOneSignalSubscriptionId() {
     }
 }
 
-// Gathers every slot across every routine (not just the active one — the
+// Gathers every slot across every context (not just the active one — the
 // Worker needs the full picture to know what's due for this device) and
 // pushes it, with this device's timezone and OneSignal subscription id,
 // to the Worker's /sync endpoint.
@@ -175,7 +175,7 @@ async function requestNotificationPermission() {
 // page reload that follows a backup Import (see backup.js), and general
 // drift if an earlier sync was missed (offline, etc.). The short delay
 // lets the rest of the app's own startup (opening the database, loading
-// routines) finish first.
+// contexts) finish first.
 window.addEventListener('load', () => {
     setTimeout(syncSlotsToNotifyServer, 1500);
 });

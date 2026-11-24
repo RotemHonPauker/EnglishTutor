@@ -7,8 +7,8 @@
 // everywhere else cross-file calls happen in this app.
 // Needs remoteDb.js loaded first.
 //
-// NOTE on naming: "Space" was renamed to "Routine" in the UI only — every
-// displayed string below says "routine", but the internal field/dbKey
+// NOTE on naming: "Space" was renamed to "Context" in the UI only — every
+// displayed string below says "context", but the internal field/dbKey
 // names (space_rules_*, variant_1_notes, etc.) are unchanged.
 
 // ===== Space rules (Setup tab) =====
@@ -19,7 +19,7 @@
 // whatever's already in `spaces`.
 
 const SPACE_RULE_FIELDS = {
-    about: { textareaId: 'space-rules-about', dbKey: 'about_this_space', bodyKey: 'aboutThisSpace', label: 'About this routine' },
+    about: { textareaId: 'space-rules-about', dbKey: 'about_this_space', bodyKey: 'aboutThisSpace', label: 'About this context' },
     level1: { textareaId: 'space-rules-level1', dbKey: 'variant_1_notes', bodyKey: 'variant1Notes', label: 'Level 1' },
     level2: { textareaId: 'space-rules-level2', dbKey: 'variant_2_notes', bodyKey: 'variant2Notes', label: 'Level 2' },
     audio: { textareaId: 'space-rules-audio', dbKey: 'audio_recording_notes', bodyKey: 'audioRecordingNotes', label: 'Audio Recording' }
@@ -169,7 +169,7 @@ function renderCopyPicker(field) {
     container.classList.add('open');
     container.innerHTML = candidates.length
         ? `<div class="tag-picker-chip-list">${candidates.map(s => `<div class="tag-chip" onclick="copyFieldFromSpace('${field}', '${s.id}')">${escapeHtml(s.name)}</div>`).join('')}</div>`
-        : `<div class="space-rules-copy-empty">No other routine has "${escapeHtml(cfg.label)}" filled in yet.</div>`;
+        : `<div class="space-rules-copy-empty">No other context has "${escapeHtml(cfg.label)}" filled in yet.</div>`;
 }
 
 function copyFieldFromSpace(field, sourceSpaceId) {

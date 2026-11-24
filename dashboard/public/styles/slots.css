@@ -28,7 +28,7 @@
     line-height: 1.6;
 }
 
-/* ===== Per-routine slot list ===== */
+/* ===== Per-context slot list ===== */
 
 #slots-list {
     display: flex;

@@ -147,7 +147,7 @@ button.danger:hover { background: #b91c1c; }
    "+ Add slot" quick actions that used to flank it (and the #header-row
    wrapper that carried for that) moved into the Practice tab's own
    #table-toolbar instead (index.html), alongside Select, per Rotem's own
-   call — so this is just the routine-switcher pill again, nothing else
+   call — so this is just the context-switcher pill again, nothing else
    needs to share its row any more. */
 
 #space-header {

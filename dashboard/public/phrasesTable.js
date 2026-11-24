@@ -9,10 +9,10 @@ let allPhrases = [];
 let selectMode = false;
 let selectedPhraseIds = new Set();
 
-// Slot filtering itself — picking exactly one of this routine's own slots
+// Slot filtering itself — picking exactly one of this context's own slots
 // (or "Unlabeled") to narrow the list down to — now lives in slots.js, as
 // part of the same Practice-tab slots scroll that shows today's
-// cross-routine schedule (renderPracticeSlotsScroll/selectSlotBucket).
+// cross-context schedule (renderPracticeSlotsScroll/selectSlotBucket).
 // phraseMatchesSlotFilter is defined there; renderTable below just calls
 // it.
 
@@ -261,7 +261,7 @@ function closeSlotPicker() {
     document.getElementById('slot-picker-modal-overlay').style.display = 'none';
 }
 
-// Only this routine's own slots are offered — same `slots` global
+// Only this context's own slots are offered — same `slots` global
 // (slots.js) the Schedule tab itself reads from.
 function renderSlotPickerList() {
     const noneChip = `<div class="tag-chip none ${!slotPickerSelectedSlot ? 'selected' : ''}" onclick="selectPickerSlot(null)">—</div>`;
@@ -340,7 +340,7 @@ function updateSelectModeUI() {
 // ===== Move selected phrases to another space (bulk, from the selection bar) =====
 // A direct space_id update (bulkMovePhrases) — no retranslation, no Add-tab
 // round trip. Level carries over unchanged; a slot doesn't, since it
-// belongs to one specific routine's own schedule (see localDb.js's
+// belongs to one specific context's own schedule (see localDb.js's
 // bulkMovePhrases).
 
 function openMovePhraseModal() {
@@ -365,7 +365,7 @@ function renderMovePhraseList() {
         .filter(s => s.id !== activeSpaceId && s.space_type !== 'dictionary');
     container.innerHTML = candidates.length
         ? candidates.map(s => `<div class="tag-chip" onclick="confirmBulkMove('${s.id}')">${escapeHtml(s.name)}</div>`).join('')
-        : `<div class="tag-name">No other phrase routine to move these into.</div>`;
+        : `<div class="tag-name">No other phrase context to move these into.</div>`;
 }
 
 async function confirmBulkMove(targetSpaceId) {
@@ -382,7 +382,7 @@ async function confirmBulkMove(targetSpaceId) {
 
 // ===== Start a practice session from a manual selection =====
 // The selection bar's other action besides "Move to...". Unlike the other
-// two practice scopes (random from the routine / specific time slots —
+// two practice scopes (random from the context / specific time slots —
 // see practiceSession.js), a manual pick is practiced in full, exactly as
 // selected, with no 7-unit cap — the deliberate choice of phrases IS the
 // scope here, not a sample to be trimmed.

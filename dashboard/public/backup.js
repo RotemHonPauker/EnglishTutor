@@ -197,7 +197,7 @@ async function handleImportBackupFileSelected(inputEl) {
 //
 // A function, not a plain string, because the target-language mention
 // ("...in English") shouldn't be hardcoded — Fraza isn't Hebrew→English
-// specifically, each Space/Routine has its own source/target language
+// specifically, each Space/Context has its own source/target language
 // pair (see spacesState.js), so this pulls whatever language the person's
 // CURRENTLY ACTIVE space is actually practicing, falling back to
 // "English" only if somehow there's no active space yet to read it from.

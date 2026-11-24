@@ -75,13 +75,13 @@ function openDb() {
                 transcripts.createIndex('space_id', 'space_id');
             }
 
-            // v2: Slots — a time-of-day window, linked to one Routine
+            // v2: Slots — a time-of-day window, linked to one Context
             // (space_id). See the Slots section below for what a slot row
             // actually holds now (v3 onward: its own color, no more
             // tag_ids). Overlap validation (findOverlappingSlot) scans
             // every slot regardless of space_id, so no extra index is
             // needed for that — the space_id index here is only for
-            // loading one routine's own slots in the Slots/Schedule screen
+            // loading one context's own slots in the Slots/Schedule screen
             // (slots.js).
             if (!db.objectStoreNames.contains('slots')) {
                 const slots = db.createObjectStore('slots', { keyPath: 'id' });
@@ -175,7 +175,7 @@ function notFoundError(storeName, id) {
 
 // --- Card age (phrases + dictionary entries) ----------------------------
 // There used to be a whole lifetime/saved/trash mechanism here — a
-// per-routine expiry policy, a one-way "saved" flag, and a 24h grace
+// per-context expiry policy, a one-way "saved" flag, and a 24h grace
 // window before a hard delete. Rotem's own call to drop all of it: too
 // much machinery for what the app actually needed, once cards are browsed
 // by which time slot they belong to (see slots.js's
@@ -264,9 +264,9 @@ const bulkMovePhrases = async ({ ids, targetSpaceId }) => {
     for (const id of ids) {
         const existing = await reqToPromise(store.get(id));
         if (!existing) continue;
-        // slot_id cleared on a cross-routine move, same reasoning as the
+        // slot_id cleared on a cross-context move, same reasoning as the
         // old tag_id clear it replaces — a slot belongs to one specific
-        // routine's own schedule, so it has nothing to do with wherever
+        // context's own schedule, so it has nothing to do with wherever
         // the phrase lands.
         const row = { ...existing, space_id: targetSpaceId, slot_id: null };
         store.put(row);
@@ -297,11 +297,11 @@ const updatePhraseTtsFlag = async ({ id, variant, cached }) => {
 };
 
 // Mirrors the original's LEFT JOIN onto tags, now flattened against this
-// routine's own slots instead: slot_name/slot_color so calling code can
+// context's own slots instead: slot_name/slot_color so calling code can
 // show a phrase card's color/label without a second lookup. Only this
-// routine's own slots are considered, which is correct — a phrase's
+// context's own slots are considered, which is correct — a phrase's
 // slot_id is only ever set to a slot belonging to its own space_id (see
-// bulkMovePhrases above, which clears it on any cross-routine move).
+// bulkMovePhrases above, which clears it on any cross-context move).
 const getPhrases = async (spaceId) => {
     const [phrases, slots] = await Promise.all([
         idbGetAllByIndex('phrases', 'space_id', spaceId),
@@ -350,7 +350,7 @@ const updateSpace = async ({ id, name, aboutThisSpace, variant1Notes, variant2No
 // Deletes everything scoped to a space, then the space itself — same
 // order as the original (phrases, dictionary, transcripts, space), all
 // inside one IndexedDB transaction, so it's genuinely all-or-nothing.
-// Also removes this routine's own slots — a slot with no routine left to
+// Also removes this context's own slots — a slot with no context left to
 // belong to has no reminder to send, so it cannot be allowed to linger as
 // an orphan the next time slots are listed or checked for overlap.
 // Doesn't touch IndexedDB-cached TTS audio — the caller (phrasesTable.js
@@ -376,12 +376,12 @@ const deleteSpace = async (id) => {
     return existing;
 };
 
-// Moves a routine's phrases and transcripts into another routine, then
+// Moves a context's phrases and transcripts into another context, then
 // deletes the source. Tags used to be merged here too (duplicate/
 // conflicting names and colors resolved, same as mergeTags) — there's
 // nothing left to merge now that tags are gone. Slots aren't touched by a
 // migration (same as before this change): they stay with whichever
-// routine they were created in, and a migrated phrase's own slot_id is
+// context they were created in, and a migrated phrase's own slot_id is
 // cleared, same reasoning as bulkMovePhrases above. Transcripts used to be
 // blocked from migrating past a hard cap (MAX_TRANSCRIPTS_PER_SPACE) — gone
 // now that transcripts expire on their own after 24h (see
@@ -498,7 +498,7 @@ const deleteTranscript = async (id) => {
 // loadTranscriptsTabList — so the list is always accurate without needing
 // a running timer), UNLESS it's pinned (isTranscriptPinned above) — a
 // pinned transcript never expires on its own, no matter how old. Scans
-// every space at once rather than just the active one, since a routine
+// every space at once rather than just the active one, since a context
 // switch shouldn't be what decides whether a stale transcript elsewhere
 // finally gets cleaned up.
 const TRANSCRIPT_RETENTION_MS = 24 * 60 * 60 * 1000;
@@ -563,17 +563,17 @@ const deleteDictionaryEntry = async (id) => {
 // minutes-since-midnight, 0-1439, for easy arithmetic — see
 // getSelectedMinutes/setTimeSelects in slots.js for the <-> hour/minute
 // <select> conversion), a short name (NOT free-typed notification text —
-// see buildSlotNotificationText in slots.js), the one Routine (space_id)
+// see buildSlotNotificationText in slots.js), the one Context (space_id)
 // it belongs to, and its own color.
 //
 // A slot's color IS its identity now — there's no separate Tag entity any
 // more. A phrase captured while a slot's time window is open is linked
 // directly to that slot (phrases.slot_id) and takes on its color/name for
 // display, with no in-between "which tag applies" step. Colors come from
-// one shared pool of MAX_SLOTS_TOTAL below, enforced across EVERY routine
-// in the app at once, not per-routine — two slots can never share a
+// one shared pool of MAX_SLOTS_TOTAL below, enforced across EVERY context
+// in the app at once, not per-context — two slots can never share a
 // color anywhere in the app, since a slot's color is how it's told apart
-// on the Practice tab's own cross-routine slots scroll (every routine's
+// on the Practice tab's own cross-context slots scroll (every context's
 // slots together — see slots.js's renderPracticeSlotsScroll).
 
 // One color per slot, one slot per color — so the color pool's size IS
@@ -586,8 +586,8 @@ const getSlots = async (spaceId) => {
     return [...rows].sort((a, b) => a.start_minutes - b.start_minutes);
 };
 
-// Every slot from every routine — used by the Practice tab's own
-// cross-routine slots scroll (slots.js's renderPracticeSlotsScroll), the
+// Every slot from every context — used by the Practice tab's own
+// cross-context slots scroll (slots.js's renderPracticeSlotsScroll), the
 // global color-uniqueness check in the slot add/edit modal, and
 // findActiveSlotNow/findOverlappingSlot below.
 const getAllSlots = async () => {
@@ -599,9 +599,9 @@ function slotRangesOverlap(aStart, aEnd, bStart, bEnd) {
     return aStart < bEnd && bStart < aEnd;
 }
 
-// The hard-block overlap check, across ALL routines — not just the one
+// The hard-block overlap check, across ALL contexts — not just the one
 // being edited, per the agreed design (a slot at 8:15 for "Breakfast" and
-// another at 8:00-8:30 for "Commute" conflict regardless of which routine
+// another at 8:00-8:30 for "Commute" conflict regardless of which context
 // either belongs to). excludeId lets editing an existing slot compare
 // against every OTHER slot without the slot flagging itself.
 // Returns the first conflicting slot, or null.

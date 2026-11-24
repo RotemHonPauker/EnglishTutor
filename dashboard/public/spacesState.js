@@ -1,6 +1,6 @@
 // Needs remoteDb.js and ttsStorage.js loaded first.
 //
-// NOTE on naming: "Space" was renamed to "Routine" in the UI only (every
+// NOTE on naming: "Space" was renamed to "Context" in the UI only (every
 // user-facing string below). The internal store name ('spaces'), this
 // file's own variable/function names (spaces/activeSpaceId/getActiveSpace/
 // setActiveSpace/etc.) and every id/dbKey stay exactly as they were — only
@@ -43,12 +43,12 @@ function renderSpaceHeader() {
     const active = getActiveSpace();
     label.textContent = active && active.space_type === 'dictionary'
         ? `📖 ${active.name}`
-        : (active ? active.name : 'Select a routine');
+        : (active ? active.name : 'Select a context');
     if (typeof renderSpaceRulesForm === 'function') renderSpaceRulesForm();
 }
 
 // Switching spaces reloads everything that's scoped to a space — the
-// phrase table and that routine's own time slots — same as a fresh page
+// phrase table and that context's own time slots — same as a fresh page
 // load would, just without actually reloading the page.
 async function setActiveSpace(id) {
     activeSpaceId = id;
@@ -58,9 +58,9 @@ async function setActiveSpace(id) {
     closeSpacePicker();
     if (typeof resetSlotScroll === 'function') resetSlotScroll();
     if (typeof resetSelectMode === 'function') resetSelectMode();
-    // A practice session in progress is scoped to the routine it started
+    // A practice session in progress is scoped to the context it started
     // in (its queue holds actual phrase objects, not just ids) — closing it
-    // outright on a routine switch is simplest and safest, rather than
+    // outright on a context switch is simplest and safest, rather than
     // trying to keep a half-finished session valid against a now-different
     // activeSpaceId.
     if (typeof closePracticeSession === 'function') closePracticeSession();
@@ -71,11 +71,11 @@ async function setActiveSpace(id) {
     if (typeof resetCaptureLog === 'function') resetCaptureLog();
     // Same reasoning, for the Transcripts tab — closes any open transcript
     // editor and reloads the list so it's never left showing another
-    // routine's transcripts (see transcriptsTab.js).
+    // context's transcripts (see transcriptsTab.js).
     if (typeof resetTranscriptsTab === 'function') await resetTranscriptsTab();
     await loadTable();
-    // The Schedule section is scoped to whichever routine is active —
-    // reload it too so it's never left showing another routine's time
+    // The Schedule section is scoped to whichever context is active —
+    // reload it too so it's never left showing another context's time
     // slots. Safe to call even when the Setup tab (where it now lives)
     // isn't the one on screen right now (see loadSlotsScreen's own no-op
     // guard, slots.js).
@@ -109,7 +109,7 @@ function renderSpacePickerList() {
             <div class="space-picker-item ${s.id === activeSpaceId ? 'active' : ''}" onclick="requestSpaceSwitch('${s.id}')">
                 ${s.space_type === 'dictionary' ? '📖 ' : ''}${escapeHtml(s.name)}
             </div>
-            <button class="space-picker-edit-btn" onclick="event.stopPropagation(); showMigrateSpaceForm('${s.id}')" title="Migrate into another routine">⇄</button>
+            <button class="space-picker-edit-btn" onclick="event.stopPropagation(); showMigrateSpaceForm('${s.id}')" title="Migrate into another context">⇄</button>
             ${s.space_type === 'dictionary' ? '<span class="space-picker-edit-btn-placeholder"></span>' : `<button class="space-picker-edit-btn" onclick="event.stopPropagation(); showRenameSpaceForm('${s.id}')" title="Rename">✎</button>`}
             <button class="space-picker-edit-btn" onclick="event.stopPropagation(); showDeleteSpaceForm('${s.id}')" title="Delete">🗑️</button>
         </div>
@@ -138,7 +138,7 @@ async function submitRenameSpace(id) {
     try {
         updated = await updateSpace({ id, name });
     } catch (err) {
-        alert(err.message || 'Failed to rename routine');
+        alert(err.message || 'Failed to rename context');
         return;
     }
 
@@ -185,7 +185,7 @@ async function submitDeleteSpace(id) {
     try {
         await deleteSpace(id);
     } catch (err) {
-        alert(err.message || 'Failed to delete routine');
+        alert(err.message || 'Failed to delete context');
         return;
     }
 
@@ -193,12 +193,12 @@ async function submitDeleteSpace(id) {
         await deleteTtsBlobsForPhrase(phrase.id);
     }
 
-    // The deleted routine's own time slots are already gone from
+    // The deleted context's own time slots are already gone from
     // IndexedDB at this point (deleteSpace() cascades to the slots store).
     // Push that updated picture to the notify Worker now too — otherwise
     // its stored copy of this device's slots would keep the deleted
-    // routine's time slots, and the cron could keep sending notifications
-    // for a routine that no longer exists.
+    // context's time slots, and the cron could keep sending notifications
+    // for a context that no longer exists.
     if (typeof syncSlotsToNotifyServer === 'function') syncSlotsToNotifyServer();
 
     document.getElementById('space-picker-new-form').innerHTML = '';
@@ -265,7 +265,7 @@ function renderSpaceCreateForm() {
         </div>
         <div class="space-create-field">
             <label class="space-create-label" for="new-space-name-input">Name</label>
-            <input id="new-space-name-input" type="text" placeholder="Routine name" autocomplete="off" />
+            <input id="new-space-name-input" type="text" placeholder="Context name" autocomplete="off" />
         </div>
         <div class="form-buttons">
             <button onclick="closeSpaceCreateModal()">Cancel</button>
@@ -325,7 +325,7 @@ async function submitNewSpace() {
     try {
         space = await createSpace({ name, spaceType, sourceLanguage, targetLanguage, bridgeLanguage });
     } catch (err) {
-        alert(err.message || 'Failed to create routine');
+        alert(err.message || 'Failed to create context');
         return;
     }
 
@@ -335,7 +335,7 @@ async function submitNewSpace() {
 }
 
 // ===== Space migration =====
-// Moves a routine's phrases and transcripts into another routine, then
+// Moves a context's phrases and transcripts into another context, then
 // deletes the source. Reuses the same chip/form-button styling used
 // throughout the space picker's own forms.
 
@@ -362,7 +362,7 @@ function showMigrateSpaceForm(id) {
 
     if (!candidates.length) {
         form.innerHTML = `
-            <div class="tag-name">No other routine with the same type and languages to migrate "${escapeHtml(source.name)}" into.</div>
+            <div class="tag-name">No other context with the same type and languages to migrate "${escapeHtml(source.name)}" into.</div>
             <div class="form-buttons">
                 <button onclick="document.getElementById('space-picker-new-form').innerHTML = ''">Close</button>
             </div>
@@ -411,18 +411,18 @@ async function submitMigrateSpace(sourceId, targetId) {
         const errEl = document.getElementById('migrate-space-error');
         if (errEl) {
             errEl.style.display = 'block';
-            errEl.textContent = err.message || 'Failed to migrate routine';
+            errEl.textContent = err.message || 'Failed to migrate context';
         } else {
-            alert(err.message || 'Failed to migrate routine');
+            alert(err.message || 'Failed to migrate context');
         }
         return;
     }
 
-    // Migration ends by deleting the source routine (see the confirm text
+    // Migration ends by deleting the source context (see the confirm text
     // above), which cascades-deletes its Slots locally the same as a plain
     // delete does. Same reasoning as submitDeleteSpace(): push the updated
     // picture to the notify Worker so it doesn't keep a stale slot from a
-    // routine that no longer exists.
+    // context that no longer exists.
     if (typeof syncSlotsToNotifyServer === 'function') syncSlotsToNotifyServer();
 
     document.getElementById('space-picker-new-form').innerHTML = '';

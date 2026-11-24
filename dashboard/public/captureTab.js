@@ -126,7 +126,7 @@ function resetCaptureLog() {
     const hasActiveSpace = typeof getActiveSpace === 'function' && !!getActiveSpace();
     applyNoSpaceUI(!hasActiveSpace);
     if (!hasActiveSpace) {
-        captureLog.innerHTML = '<div class="recording-info-note">👋<br>No routine yet — tap the title above, then "+ New routine" to create one. Come back here once it\'s made.</div>';
+        captureLog.innerHTML = '<div class="recording-info-note">👋<br>No context yet — tap the title above, then "+ New context" to create one. Come back here once it\'s made.</div>';
         return;
     }
 
@@ -153,7 +153,7 @@ async function submitTypedPhrase() {
 
     if ((typeof isDictionarySpace === 'function' && isDictionarySpace()) || addInputMode === 'dictionary') {
         // Only warn when there's an actual Type mode to switch to — a
-        // dictionary routine has no alternative, so there's nothing to
+        // dictionary context has no alternative, so there's nothing to
         // mistake it for.
         const canSwitchToType = !(typeof isDictionarySpace === 'function' && isDictionarySpace());
         if (canSwitchToType && looksLikeSentence(text)) {

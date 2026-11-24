@@ -96,9 +96,9 @@
 
 <!-- SPACE HEADER: shown above every tab, always. Tapping it opens the
      space picker/create modal. (Internal id/name kept as "space" — only
-     the displayed text says "Routine", per the UI-only rename.) -->
+     the displayed text says "Context", per the UI-only rename.) -->
 <header id="space-header" onclick="requestOpenSpacePicker()">
-    <span id="space-header-name">Select a routine</span>
+    <span id="space-header-name">Select a context</span>
     <span class="space-header-chevron">▾</span>
 </header>
 
@@ -106,12 +106,12 @@
 
     <!-- PRACTICE VIEW -->
     <div id="view-practice" class="view active">
-        <!-- Today's reminder schedule across EVERY routine, not just the
+        <!-- Today's reminder schedule across EVERY context, not just the
              active one (slots.js's renderPracticeSlotsScroll) — AND, for
-             whichever slot belongs to the active routine, the actual
-             filter for the card list below: tap one of this routine's own
+             whichever slot belongs to the active context, the actual
+             filter for the card list below: tap one of this context's own
              slots (or "Unlabeled") to narrow down to it. A slot from
-             another routine just stays informational, same as before.
+             another context just stays informational, same as before.
              One strip doing both jobs, instead of two separate scrolls. -->
         <div id="practice-slots-scroll">
             <div id="practice-slots-scroll-track"></div>
@@ -120,7 +120,7 @@
             <div id="table-section">
                 <!-- "🎯 Practice" / "Select" / "+ Add slot" all together
                      here now, instead of the "🎯 Practice"/"+ Add slot" pair
-                     sitting beside the routine-switcher pill above — per
+                     sitting beside the context-switcher pill above — per
                      Rotem's own call, now that the old per-card Save/Trash
                      machinery (and the "Slots" filter modal it used to sit
                      next to) is gone and this toolbar has room again. -->
@@ -142,7 +142,7 @@
         </div>
     </div>
 
-    <!-- ROUTINE SETUP VIEW -->
+    <!-- CONTEXT SETUP VIEW -->
     <div id="view-tags" class="view">
         <div id="setup-scroll">
             <!-- Plain, unwrapped row — no card, no "Appearance" header —
@@ -154,12 +154,12 @@
             <!-- SCHEDULE (used to be its own tab — #view-slots — now a
                  section here instead, since the Transcripts tab took its
                  old spot in the bottom nav). Time-of-day slots for the
-                 currently active Routine. Tags are gone — each slot
+                 currently active Context. Tags are gone — each slot
                  carries its own color directly (see the color picker in
                  the slot modal below), and that's what a phrase captured
                  during its window gets labeled/colored with, with no
                  separate tag entity in between. Scoped to that one
-                 routine's own slots — "+ Add time slot" moved to the
+                 context's own slots — "+ Add time slot" moved to the
                  Practice tab's own toolbar instead (see #table-toolbar) —
                  nothing here duplicates it any more. Placed right after
                  the theme toggle, since it's the section Rotem actually
@@ -214,7 +214,7 @@
                 <div class="space-rules-accordion">
                     <div class="space-rules-item" data-field="about">
                         <button type="button" class="space-rules-item-header" onclick="toggleSpaceRuleItem('about')">
-                            <span class="space-rules-item-title">About this routine</span>
+                            <span class="space-rules-item-title">About this context</span>
                             <span class="space-rules-item-chevron">▾</span>
                         </button>
                         <div class="space-rules-item-body">
@@ -356,7 +356,7 @@
         <span>Practice</span>
     </button>
     <!-- GLOBAL RECORD BUTTON (globalRecord.js): not a tab — doesn't switch
-         views or carry a data-view. Not scoped to any one Routine; tap to
+         views or carry a data-view. Not scoped to any one Context; tap to
          start/stop an in-browser recording from anywhere in the app. -->
     <div class="global-record-wrap">
         <!-- A classic microphone icon, drawn as a flat inline SVG (single
@@ -413,14 +413,14 @@
 <div id="space-picker-modal-overlay" style="display:none">
     <div id="space-picker-modal" class="confirm-modal">
         <div class="modal-header">
-            <span>Routines</span>
+            <span>Contexts</span>
             <button onclick="closeSpacePicker()">✕</button>
         </div>
         <div id="space-picker-list"></div>
         <div id="space-picker-new-form"></div>
         <div class="modal-footer">
             <button onclick="closeSpacePicker()">Cancel</button>
-            <button class="primary" onclick="openSpaceCreateModal()">+ New routine</button>
+            <button class="primary" onclick="openSpaceCreateModal()">+ New context</button>
         </div>
     </div>
 </div>
@@ -428,7 +428,7 @@
 <div id="space-create-modal-overlay" style="display:none">
     <div id="space-create-modal" class="confirm-modal">
         <div class="modal-header">
-            <span>New Routine</span>
+            <span>New Context</span>
             <button onclick="closeSpaceCreateModal()">✕</button>
         </div>
         <div id="space-create-form"></div>
@@ -460,15 +460,15 @@
     </div>
 </div>
 
-<!-- RECORD ROUTINE PICKER (globalRecord.js): shown every time the global
-     record button is tapped, BEFORE recording starts — asks which routine
+<!-- RECORD CONTEXT PICKER (globalRecord.js): shown every time the global
+     record button is tapped, BEFORE recording starts — asks which context
      this recording belongs to. Large/high-contrast on purpose (styled by
      id/its own classes in tabs.css, not the regular small chip-picker
      styling), since it needs to be read and tapped in a hurry. -->
 <div id="record-routine-modal-overlay" style="display:none">
     <div id="record-routine-modal" class="confirm-modal">
         <div class="modal-header">
-            <span>Record for which routine?</span>
+            <span>Record for which context?</span>
             <button onclick="cancelRecordRoutinePicker()">✕</button>
         </div>
         <div id="record-routine-list"></div>
@@ -548,7 +548,7 @@
             <input type="text" id="slot-name-input" maxlength="18" placeholder="e.g. Morning coffee" autocomplete="off">
         </div>
         <!-- A slot's color IS its identity now (replaces the old per-tag
-             coloring) — shared across every routine in the app, so two
+             coloring) — shared across every context in the app, so two
              slots anywhere can never have the same color (see slots.js's
              renderSlotColorPicker and localDb.js's MAX_SLOTS_TOTAL). -->
         <div class="slot-color-field">

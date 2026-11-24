@@ -1,10 +1,10 @@
 /* ===== Practice-tab slots scroll — one strip, two jobs ===== */
-/* Shows TODAY's reminder schedule across every routine (as before), and
+/* Shows TODAY's reminder schedule across every context (as before), and
    is ALSO now the filter for the card list below it — Rotem's own call
-   to drop the separate per-routine slot-filter strip this used to sit
+   to drop the separate per-context slot-filter strip this used to sit
    above, rather than have two horizontal scrolls doing related things.
-   A slot belonging to the ACTIVE routine is clickable (.selectable) and
-   carries its own phrase count; a slot belonging to any OTHER routine
+   A slot belonging to the ACTIVE context is clickable (.selectable) and
+   carries its own phrase count; a slot belonging to any OTHER context
    stays exactly what it always was here — plain, non-interactive,
    "what's coming up today" context, with no count (its cards aren't even
    loaded right now). Every slot is shown in its own color always, not
@@ -73,7 +73,7 @@
     border-width: 2px;
 }
 
-/* Only a slot belonging to the active routine is a real filter control —
+/* Only a slot belonging to the active context is a real filter control —
    cursor:pointer marks that, same as any other tappable chip. */
 .practice-slot-pill.selectable {
     cursor: pointer;
@@ -94,7 +94,7 @@
     box-shadow: inset 0 0 0 2px var(--text);
 }
 
-/* "Nothing to show here" note for this strip when a routine has no slots
+/* "Nothing to show here" note for this strip when a context has no slots
    (and no unlabeled phrases) at all. */
 .scroll-empty-note {
     color: var(--text-faint);
