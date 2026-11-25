@@ -110,7 +110,7 @@ Your full phrase list as cards — in a dictionary space, each card is a looked-
 - **🎯 Practice** — a short, self-graded practice session, the actual daily-review habit loop:
   - Tap it to pick a scope: a random sample from the whole space, specific time slots, or **✅ Select phrases** to hand-pick exact cards.
   - Practice sessions are kept short — around 5 minutes, up to 7 cards each — and that the automatic scopes (Random / time slots) prioritize whatever you haven't practiced in a while.
-  - Each unit shows the phrase's source-language sentence, lets you try saying/typing your own attempt (never saved anywhere, not even temporarily), then reveals the real wording it was actually captured/corrected to.
+  - Each unit shows the phrase's source-language sentence, lets you try saying/typing your own attempt (never saved anywhere, not even temporarily), then shows an AI-polished version of what you actually said — the closest correct wording to your own attempt with anything the AI changed or added highlighted so you can see exactly what shifted. The real saved translation sits tucked behind a "Show saved translation" toggle underneath.
   - A phrase recorded as several sentences back-to-back is drilled one sentence at a time; on the very last sentence (or a dictionary word's own single unit) you choose **Continue** (keep it — just marks it as recently practiced, so future sessions prioritize other things) or **Delete** (it's solid enough that there's no reason to keep seeing it).
   - In a dictionary space, practice skips the scope picker and just starts a session over the whole space.
 
@@ -150,7 +150,7 @@ Not shown at all for a dictionary space.
 | Piece                           | Technology                                                   |
 | -------------------------------- | -------------------------------------------------------------- |
 | Translation & audio processing  | Google Gemini (`gemini-3.6-flash`), called straight from the browser |
-| Text-to-speech                  | Google Gemini TTS (`gemini-3.1-flash-tts-preview`), called straight from the browser |
+| Text-to-speech                  | Google Gemini TTS (`gemini-3.8-flash-lite-tts`), called straight from the browser |
 | Storage                         | IndexedDB, built into the browser — your phrases, transcripts, and spaces never leave this device unless you export them |
 | Reminders                       | OneSignal (Web Push) + a small Cloudflare Worker that decides when each slot's reminder is due — see [🔔 Reminders](#-reminders-and-what-leaves-this-device) below |
 | Hosting                         | Any static file host (GitHub Pages, Netlify, or your own computer for local use) — plain HTML/CSS/JS, no build step, no server process for the app itself |
