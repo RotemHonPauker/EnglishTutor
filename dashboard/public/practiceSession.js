@@ -42,12 +42,127 @@ let practiceSessionItemLabel = 'phrase'; // 'phrase' | 'word'
 let practiceRevealed = false;
 let practiceScopeSlotIds = new Set();
 
+// ===== Recording an attempt instead of typing it =====
+// A small, self-contained alternative to typing into #practice-attempt-input
+// — tap the mic, say the attempt, tap again to stop, and whatever was said
+// gets transcribed straight into that same textarea (still fully editable,
+// still never saved anywhere — see renderPracticeStep's own comment). This
+// deliberately doesn't reuse globalRecord.js's recorder: that one carries a
+// 15-minute cap, a full-screen overlay and a wake lock, all built for a
+// long recording of a whole conversation — none of which fits a single
+// practice attempt, which is always just one short sentence. The audio
+// itself is never written to IndexedDB or kept past this one transcription
+// call; only the resulting text lands anywhere, and even that only in the
+// textarea, exactly like a typed attempt.
+const PRACTICE_ATTEMPT_RECORDING_SUPPORTED = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+let practiceAttemptRecordState = 'idle'; // 'idle' | 'recording' | 'transcribing'
+let practiceAttemptMediaRecorder = null;
+let practiceAttemptChunks = [];
+let practiceAttemptStream = null;
+
+function practiceAttemptPickMimeType() {
+    const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
+    return candidates.find(t => typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported(t)) || null;
+}
+
+function practiceAttemptBlobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
+
+function togglePracticeAttemptRecording() {
+    if (practiceAttemptRecordState === 'idle') {
+        startPracticeAttemptRecording();
+    } else if (practiceAttemptRecordState === 'recording') {
+        stopPracticeAttemptRecording();
+    }
+    // 'transcribing' — ignore taps; the button is disabled during this state anyway.
+}
+
+async function startPracticeAttemptRecording() {
+    let stream;
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err) {
+        alert('Microphone access is needed to record. Check your browser/site permissions and try again.');
+        return;
+    }
+    practiceAttemptStream = stream;
+    practiceAttemptChunks = [];
+    const mimeType = practiceAttemptPickMimeType();
+    practiceAttemptMediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    practiceAttemptMediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) practiceAttemptChunks.push(e.data);
+    };
+    practiceAttemptMediaRecorder.onstop = handlePracticeAttemptRecordingStopped;
+    practiceAttemptMediaRecorder.start();
+    practiceAttemptRecordState = 'recording';
+    updatePracticeAttemptRecordButtonUI();
+}
+
+function stopPracticeAttemptRecording() {
+    if (!practiceAttemptMediaRecorder || practiceAttemptRecordState !== 'recording') return;
+    practiceAttemptRecordState = 'transcribing';
+    updatePracticeAttemptRecordButtonUI();
+    practiceAttemptMediaRecorder.stop();
+    practiceAttemptStream.getTracks().forEach(t => t.stop());
+}
+
+// Cuts a recording short with no transcription attempt — used when leaving
+// the step (or the whole session) while the mic is still live, so it never
+// keeps recording in the background once the card it belongs to is gone.
+function cancelPracticeAttemptRecording() {
+    if (practiceAttemptMediaRecorder && practiceAttemptRecordState === 'recording') {
+        practiceAttemptMediaRecorder.onstop = null;
+        practiceAttemptMediaRecorder.stop();
+    }
+    if (practiceAttemptStream) practiceAttemptStream.getTracks().forEach(t => t.stop());
+    practiceAttemptMediaRecorder = null;
+    practiceAttemptStream = null;
+    practiceAttemptChunks = [];
+    practiceAttemptRecordState = 'idle';
+}
+
+async function handlePracticeAttemptRecordingStopped() {
+    const mimeType = practiceAttemptMediaRecorder.mimeType || 'audio/webm';
+    const blob = new Blob(practiceAttemptChunks, { type: mimeType });
+    practiceAttemptChunks = [];
+    practiceAttemptMediaRecorder = null;
+    practiceAttemptStream = null;
+
+    const input = document.getElementById('practice-attempt-input');
+    try {
+        const audioBase64 = await practiceAttemptBlobToBase64(blob);
+        const { transcript } = await processRecording({ audioBase64, mimeType, spaceId: activeSpaceId });
+        if (input) input.value = transcript;
+    } catch (err) {
+        alert(err.code === 'NO_API_KEY' ? 'No Gemini API key set yet.' : "Couldn't transcribe that — try again, or just type it instead.");
+    } finally {
+        practiceAttemptRecordState = 'idle';
+        updatePracticeAttemptRecordButtonUI();
+    }
+}
+
+function updatePracticeAttemptRecordButtonUI() {
+    const btn = document.getElementById('practice-attempt-record-btn');
+    if (!btn) return;
+    btn.classList.toggle('recording', practiceAttemptRecordState === 'recording');
+    btn.disabled = practiceAttemptRecordState === 'transcribing';
+    btn.textContent = practiceAttemptRecordState === 'recording' ? '⏹' : (practiceAttemptRecordState === 'transcribing' ? '⏳' : '🎙️');
+    btn.title = practiceAttemptRecordState === 'recording' ? 'Stop recording' : (practiceAttemptRecordState === 'transcribing' ? 'Transcribing…' : 'Record your attempt instead of typing it');
+}
+
 function openPracticeModal() {
     const overlay = document.getElementById('practice-modal-overlay');
     if (overlay) overlay.style.display = 'flex';
 }
 
 function closePracticeSession() {
+    cancelPracticeAttemptRecording();
     const overlay = document.getElementById('practice-modal-overlay');
     if (overlay) overlay.style.display = 'none';
     practiceQueue = [];
@@ -159,9 +274,9 @@ function renderPracticeScopePicker() {
             <div>Phrases are picked automatically — prioritizing the ones you haven't practiced in a while.</div>
         </div>
         <div class="practice-scope-options">
-            <button type="button" class="mode-toggle-btn active practice-scope-btn" onclick="startRandomRoutinePractice()">🔀 Random from this context</button>
-            <button type="button" class="mode-toggle-btn active practice-scope-btn" onclick="renderPracticeSlotScopePicker()">🕐 Choose time slots</button>
-            <button type="button" class="mode-toggle-btn active practice-scope-btn" onclick="selectPhrasesFromScopePicker()">✅ Select phrases</button>
+            <button type="button" class="practice-scope-btn active" onclick="startRandomRoutinePractice()">🔀 Random from this context</button>
+            <button type="button" class="practice-scope-btn" onclick="renderPracticeSlotScopePicker()">🕐 Choose time slots</button>
+            <button type="button" class="practice-scope-btn" onclick="selectPhrasesFromScopePicker()">✅ Select phrases</button>
         </div>
     `;
 }
@@ -412,15 +527,25 @@ function beginPracticeSession({ candidates, capped, countUnitsFn, buildUnitsFn, 
 }
 
 function renderPracticeStep() {
+    cancelPracticeAttemptRecording(); // in case the mic was still live from the previous step
     practiceRevealed = false;
     const unit = practiceQueue[practiceStepIndex];
     const title = document.getElementById('practice-modal-title');
     if (title) title.textContent = `Practice — ${practiceStepIndex + 1} of ${practiceQueue.length}`;
     const body = document.getElementById('practice-modal-body');
     if (!body) return;
+    // The mic button (when recording is supported) transcribes straight
+    // into this same textarea — see the "Recording an attempt instead of
+    // typing it" block above for why that's a separate, much simpler
+    // recorder than globalRecord.js's.
     body.innerHTML = `
-        <div class="practice-source" dir="auto">${escapeHtml(unit.source)}</div>
-        <textarea id="practice-attempt-input" class="practice-attempt-input" rows="2" placeholder="Try saying it in English, then type it here..."></textarea>
+        <div class="practice-question-group">
+            <div class="practice-source" dir="auto">${escapeHtml(unit.source)}</div>
+            <div class="practice-attempt-row">
+                <textarea id="practice-attempt-input" class="practice-attempt-input" rows="2" placeholder="Try saying it in English, then type it here..."></textarea>
+                ${PRACTICE_ATTEMPT_RECORDING_SUPPORTED ? `<button type="button" id="practice-attempt-record-btn" class="practice-attempt-record-btn" title="Record your attempt instead of typing it" onclick="togglePracticeAttemptRecording()">🎙️</button>` : ''}
+            </div>
+        </div>
         <div class="practice-reveal-area" id="practice-reveal-area" style="display:none"></div>
         <div class="form-buttons" id="practice-step-actions">
             <button type="button" class="primary" onclick="revealPracticeAnswer()">Show the real answer</button>
@@ -464,6 +589,9 @@ function revealPracticeAnswer() {
     const unit = practiceQueue[practiceStepIndex];
     const attemptInput = document.getElementById('practice-attempt-input');
     if (attemptInput) attemptInput.disabled = true;
+    cancelPracticeAttemptRecording();
+    const attemptRecordBtn = document.getElementById('practice-attempt-record-btn');
+    if (attemptRecordBtn) attemptRecordBtn.disabled = true;
 
     const revealArea = document.getElementById('practice-reveal-area');
     if (revealArea) {

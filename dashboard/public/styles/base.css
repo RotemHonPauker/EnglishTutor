@@ -98,14 +98,25 @@ body {
     border-inline: 1px solid var(--divider);
 }
 
-/* font-family/font: inherit added here — without it, a real <button>
-   picks up the browser's own default UI font rather than this page's
-   'Segoe UI' (browsers don't automatically inherit font onto form
-   controls the way they do for plain text elements). That meant a
-   <button class="mode-toggle-btn"> and a <label class="mode-toggle-btn">
-   sitting right next to each other (see Import data, spaceRules.css)
-   could render in two visibly different fonts despite sharing the exact
-   same class — not a sizing/color issue, a missing inherit. */
+/* font-family/font: inherit added here — without it, a real <button>,
+   <input> or <textarea> picks up the browser's own default UI font rather
+   than this page's 'Segoe UI' (browsers don't automatically inherit font
+   onto form controls the way they do for plain text elements) — textarea
+   in particular defaults to a monospace font in most browser UA
+   stylesheets, which is why a textarea missing this rule (e.g. the
+   Practice drill's attempt box, before this was added here) stood out as
+   "code-styled" text instead of matching the rest of the app. Covering all
+   three elements in one global rule, rather than patching font-family onto
+   each individual input/textarea across every CSS file, is what actually
+   guarantees every text field in the app — present and future — matches,
+   instead of relying on each one remembering to set it. */
+input,
+textarea,
+select {
+    font: inherit;
+    color: inherit;
+}
+
 button {
     font: inherit;
     background: var(--btn-bg);
