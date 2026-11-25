@@ -1,22 +1,9 @@
 /* ===== Practice session overlay (practiceSession.js) ===== */
-/* Same "centered card over a dimmed backdrop" chrome as every other
-   overlay in the app (compare #slot-modal-overlay in slots.css,
-   .confirm-modal in modal.css) — a dedicated id rather than reusing
-   .confirm-modal since this one's content varies a lot more across its
-   several phases (scope picker, slot picker, drill steps, done screen)
-   and needs its own max-width/height tuning for the drill's textarea. */
 
-/* align-items: flex-start (not center) + overflow-y: auto here, together
-   with #practice-modal's own margin: auto 0 below, is what actually fixes
-   the scrolling — a flex item centered with align-items: center that grows
-   taller than its container gets clipped off the TOP with no way to
-   scroll up to it, because the overlay itself was never scrollable (only
-   #practice-modal's own overflow-y: auto was, and that only helps once
-   the modal itself is already fully on screen). margin: auto on a flex
-   item still centers it vertically whenever there's room to spare, so
-   nothing changes visually in the common case — it only stops clipping
-   once the card is taller than the space available, most often because
-   the on-screen keyboard just ate into that space. */
+/* align-items: flex-start + overflow-y: auto here, with #practice-modal's
+   own margin: auto 0 below, is what lets a tall card scroll instead of
+   clipping off the top — align-items: center has no way to scroll up to
+   content that outgrows its container. */
 #practice-modal-overlay {
     position: fixed;
     inset: 0;
@@ -35,11 +22,8 @@
     border-radius: 12px;
     width: 100%;
     max-width: 400px;
-    /* dvh (not vh) so this actually shrinks when the on-screen keyboard
-       opens on mobile — vh is pinned to the full layout viewport and
-       ignores the keyboard, which is exactly what let the card's bottom
-       (Continue/Delete) end up hidden behind it. Plain vh stays first as a
-       fallback for a browser that doesn't recognize dvh at all. */
+    /* dvh shrinks with the on-screen keyboard; vh (kept as a fallback)
+       ignores it and would hide the card's bottom behind the keyboard. */
     max-height: 85vh;
     max-height: 85dvh;
     overflow-y: auto;
@@ -58,12 +42,6 @@
     gap: 10px;
 }
 
-/* Same "list row" look as the space picker's own items
-   (.space-picker-item/.space-picker-item.active, modal.css) — a plain
-   surface-2 row, with the one marked .active (Random, by default — see
-   renderPracticeScopePicker in practiceSession.js) called out with the
-   same 2px blue border, rather than all three looking like equally-weighted
-   filled pills. */
 .practice-scope-btn {
     width: 100%;
     text-align: start;
@@ -85,20 +63,8 @@
     border-color: #2563eb;
 }
 
-/* Shown above the three scope options on the overlay's very first screen
-   (practiceSession.js's renderPracticeScopePicker) — explains up front that
-   sessions are short/capped, and that phrases are picked automatically
-   (least-recently-practiced first), before she even picks a scope. Same
-   plain muted-text look as the create-space modal's own explanatory line
-   (.space-create-description, modal.css) rather than a boxed callout — just
-   with enough bottom margin to keep clear space before the three scope
-   buttons below it.
-   Prefixed with #practice-modal-body (not !important): DevTools showed a
-   base.css rule beating a bare ".practice-scope-notice div" because it
-   pairs an id with the element (e.g. "#practice-modal-body div"), which
-   outranks a plain class selector. Adding the same id to our own selector
-   makes the comparison id-for-id, and our extra class then wins it
-   properly through specificity instead of forcing it with !important. */
+/* Prefixed with #practice-modal-body (not !important) to match a base.css
+   rule's id+element specificity (#practice-modal-body div) id-for-id. */
 #practice-modal-body .practice-scope-notice {
     line-height: 1.5;
     color: var(--text-muted);
@@ -115,20 +81,12 @@
 
 /* ===== Drill step ===== */
 
-/* #practice-modal-body's own children (this group, the reveal area, the
-   action buttons) — explicit now rather than relying on whatever default
-   spacing block elements happened to pick up. */
 #practice-modal-body {
     display: flex;
     flex-direction: column;
     gap: 16px;
 }
 
-/* The source sentence and the attempt row belong together as one "this is
-   the question" unit — a tighter gap than the 16px that separates that
-   unit from the reveal area and the action buttons below it, so the card
-   reads as question-then-answer rather than four equally-weighted blocks
-   stacked in a row. */
 .practice-question-group {
     display: flex;
     flex-direction: column;
@@ -165,14 +123,7 @@
     outline: none;
 }
 
-/* Mic button beside the attempt textarea (renderPracticeStep,
-   practiceSession.js) — transcribes a short recording straight into that
-   textarea instead of typing. A plain bordered square read as a settings
-   toggle, not a "record" affordance — a solid red circle borrows the same
-   visual language as the app's one other recording control (the global
-   record button/overlay), so it reads instantly as "tap to record"
-   instead of needing a label. Reuses base.css's own pulse keyframes
-   (.global-recording-overlay-btn) rather than redefining them. */
+/* Reuses base.css's pulse keyframes (.global-recording-overlay-btn). */
 .practice-attempt-record-btn {
     flex-shrink: 0;
     width: 52px;
@@ -203,22 +154,11 @@
     border-color: #2563eb;
 }
 
-/* Frozen in place once revealed — stays visible exactly where it was
-   typed, right above the real answer, rather than being echoed a second
-   time elsewhere. */
 .practice-attempt-input:disabled {
     opacity: 0.75;
     cursor: default;
 }
 
-/* One cohesive card instead of two separate same-colored blocks with a gap
-   between them — a thin divider (.practice-answer + .practice-answer)
-   separates the two entries inside it instead. Uses the app's own blue
-   accent (already the only real "color" elsewhere — primary buttons,
-   active states, links) instead of a one-off green that no other screen
-   in the app uses, so the drill card doesn't add yet another hue to the
-   four already competing here (neutral source box, red Delete, blue
-   Continue). */
 .practice-reveal-area {
     display: flex;
     flex-direction: column;

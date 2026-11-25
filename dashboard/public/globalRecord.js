@@ -1,39 +1,12 @@
-// globalRecord.js — the global record button: a single always-available
-// trigger (red circular button, raised in the center of the tab bar) that
-// isn't scoped to whichever Space happens to be open. Tapping it opens a
-// large space picker FIRST (see "Which space?" picker below); only
-// once a space is chosen does in-browser recording actually start
-// (MediaRecorder/getUserMedia — Android/Chrome only; the existing
-// per-space Add-tab record-via-file-upload flow, see captureTab.js's
-// handleRecordingFileSelected, stays as the fallback on browsers without
-// this support, e.g. iOS Safari). Tap the button again to stop.
-//
-// On stop, this works exactly like the file-upload flow: the recording is
-// transcribed and saved as a TRANSCRIPT, not turned straight into a
-// phrase — the person still manually picks which lines become phrase
-// cards afterward (see captureTab.js's finishRecordingIntoTranscript,
-// shared by both flows).
-//
-// Which Space the transcript belongs to is decided UP FRONT, before
-// recording starts — always, via the picker, never guessed from context.
-// (An earlier version of this decided it from the active Slot, if any,
-// right after stopping instead — dropped because stopping isn't actually
-// any more free a moment to make that decision than starting is, and it
-// was confusing in cases where the person had moved on from the space
-// they started recording for by the time they stopped.)
-//
-// Needs localDb.js, audioEngine.js, spacesState.js (spaces/setActiveSpace)
-// and captureTab.js (finishRecordingIntoTranscript) loaded first.
+// globalRecord.js — the always-available record button in the tab bar.
+// Tap opens a space picker; recording starts once a space is chosen
+// (MediaRecorder/getUserMedia — Android/Chrome only, the Add tab's file
+// upload is the fallback elsewhere). Tap again to stop; the recording is
+// saved as a transcript, not a phrase, same as the upload flow.
+// Needs localDb.js, audioEngine.js, spacesState.js and captureTab.js
+// (finishRecordingIntoTranscript) loaded first.
 
 const RECORDING_SUPPORTED = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
-
-// Rotem's own real-world ceiling: she said she rarely records past 15
-// minutes, and a longer transcript just becomes a chore to read through
-// and pick lines out of afterward — stopped automatically here, so
-// recording just ends cleanly on its own instead of running long and
-// producing something nobody wants to read. (Well under audioEngine.js's
-// own much higher inline-size limit, so that one is never actually hit by
-// this button.)
 const MAX_GLOBAL_RECORDING_MS = 15 * 60 * 1000;
 
 let globalRecordState = 'idle'; // 'idle' | 'picking' | 'recording' | 'processing'
@@ -43,10 +16,6 @@ let globalRecordStream = null;
 let globalRecordStartedAt = null;
 let globalRecordTimerInterval = null;
 let globalRecordAutoStopTimeout = null;
-
-// The space chosen in the picker before recording starts — set once,
-// read once (in handleGlobalRecordingStopped), then cleared. Unlike the
-// old design, stopping never needs to ask again.
 let globalRecordSpaceId = null;
 
 function initGlobalRecordButton() {
@@ -54,9 +23,6 @@ function initGlobalRecordButton() {
     if (!btn) return;
 
     if (!RECORDING_SUPPORTED) {
-        // No in-browser recording on this browser (iOS Safari, mainly) —
-        // hide the button entirely rather than show something that can't
-        // work. The per-space Add-tab flow (file picker) is still there.
         const wrap = document.querySelector('.global-record-wrap');
         if (wrap) wrap.style.display = 'none';
         return;
@@ -74,7 +40,6 @@ function toggleGlobalRecording() {
     } else if (globalRecordState === 'recording') {
         stopGlobalRecording();
     }
-    // 'picking'/'processing' — ignore taps; the button is disabled during these states anyway.
 }
 
 function pickSupportedMimeType() {
@@ -123,22 +88,12 @@ function stopGlobalRecording() {
     globalRecordState = 'processing';
     applyGlobalRecordButtonUI();
     globalMediaRecorder.stop();
-    // Stop every track immediately so the browser's mic-in-use indicator
-    // clears right away, rather than lingering until this stream is
-    // garbage-collected.
     globalRecordStream.getTracks().forEach(t => t.stop());
 }
 
-// ===== Screen wake lock while actually recording =====
-// Rotem's own call, weighed deliberately against the tradeoff: a lit
-// screen for up to 15 minutes costs battery, and could register an
-// accidental touch through a pocket/bag — but hold-to-stop below (not a
-// plain tap) is what makes that safe, so nothing stops unless the button
-// is genuinely held down on purpose. Held only for the "recording" state
-// itself, released the moment it ends (stopGlobalRecording, above) — no
-// need to keep the screen awake just for the brief "processing" tail.
-// Unsupported browsers (the Wake Lock API isn't universal) silently get
-// no wake lock at all; recording itself is unaffected either way.
+// ===== Screen wake lock while recording =====
+// Held only during "recording", released on stop. Hold-to-stop (below)
+// is what makes this safe against an accidental touch through a pocket.
 let wakeLockSentinel = null;
 
 async function acquireWakeLock() {
@@ -146,10 +101,6 @@ async function acquireWakeLock() {
     try {
         wakeLockSentinel = await navigator.wakeLock.request('screen');
     } catch (err) {
-        // E.g. battery saver mode refused it, or the tab wasn't visible at
-        // the moment of the request — recording keeps going regardless,
-        // the screen just isn't held on. visibilitychange below retries
-        // once the tab is visible again.
         wakeLockSentinel = null;
     }
 }
@@ -161,11 +112,8 @@ function releaseWakeLock() {
     }
 }
 
-// The Wake Lock API itself auto-releases a lock whenever the document goes
-// into the background (screen manually turned off and back on, switching
-// to another app and back, etc.) — this is the one place that needs to
-// notice and ask for it again, rather than leaving the screen free to
-// turn off for the rest of a still-ongoing recording.
+// The Wake Lock API auto-releases when the document goes to the
+// background — re-acquire it once visible again.
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && globalRecordState === 'recording' && !wakeLockSentinel) {
         acquireWakeLock();
@@ -192,16 +140,10 @@ async function handleGlobalRecordingStopped() {
     }
 }
 
-// No more "mode" to pass — processRecording (audioEngine.js) always just
-// transcribes exactly as spoken now, restricted to this space's own
-// source/target languages (or a mix), with no language hint needed up
-// front. The global button never had language-pair buttons the way the
-// Add tab's own record mode used to (see captureTab.js), so this is just
-// one less thing to pass through.
 async function finishGlobalRecording(audioBase64, mimeType, spaceId) {
     try {
         const { transcript } = await processRecording({ audioBase64, mimeType, spaceId });
-        await finishRecordingIntoTranscript(spaceId, transcript); // captureTab.js — shared with the file-upload flow
+        await finishRecordingIntoTranscript(spaceId, transcript);
     } catch (err) {
         alert(err.code === 'NO_API_KEY' ? 'No Gemini API key set yet.' : (err.message || "Something went wrong processing that recording — try again."));
     } finally {
@@ -226,10 +168,6 @@ function applyGlobalRecordButtonUI() {
     const label = document.getElementById('global-record-label');
     if (!btn) return;
 
-    // No icon/emoji to swap — the button is just a plain ring (drawn in
-    // tabs.css via ::after) in every state. State is shown by the
-    // button's color/pulse (CSS, driven by these same classes) and by
-    // the label text below it.
     btn.classList.toggle('recording', globalRecordState === 'recording');
     btn.classList.toggle('processing', globalRecordState === 'picking' || globalRecordState === 'processing');
     btn.disabled = globalRecordState === 'picking' || globalRecordState === 'processing';
@@ -237,14 +175,6 @@ function applyGlobalRecordButtonUI() {
     const labelText = globalRecordState === 'recording' ? '0:00' : globalRecordState === 'processing' ? 'Saving…' : globalRecordState === 'picking' ? 'Choose...' : 'Record';
     if (label) label.textContent = labelText;
 
-    // Full-screen overlay (base.css's #global-recording-overlay) — up for
-    // as long as recording is actually happening, plus the brief
-    // "processing" tail right after stopping, so there's never a gap
-    // where the small tab-bar button is the only indication something's
-    // still in flight. Not shown for "picking" — the space picker modal
-    // is its own full-screen overlay already (globalRecord.js's
-    // openRecordRoutinePicker), and only one of the two should cover the
-    // screen at a time.
     const overlay = document.getElementById('global-recording-overlay');
     const overlayBtn = document.getElementById('global-recording-overlay-btn');
     const overlayLabel = document.getElementById('global-recording-overlay-label');
@@ -253,20 +183,12 @@ function applyGlobalRecordButtonUI() {
     if (overlay) overlay.classList.toggle('visible', overlayVisible);
     if (overlayBtn) overlayBtn.disabled = globalRecordState === 'processing';
     if (overlayLabel) overlayLabel.textContent = labelText;
-    // The hold-to-stop hint only makes sense while there's actually
-    // something to hold the button down to stop — hidden during the
-    // "processing" tail, when the button is disabled anyway.
     if (overlayHint) overlayHint.style.visibility = globalRecordState === 'recording' ? 'visible' : 'hidden';
     if (globalRecordState !== 'recording') cancelHoldToStop();
 }
 
 // ===== Hold-to-stop (overlay button) =====
-// A plain tap would be too easy to trigger by accident — the overlay's
-// big button only stops the recording after being held down for
-// HOLD_TO_STOP_MS, not on a quick tap/touch; releasing early, or the
-// pointer leaving the button, cancels it with no effect. This (plus the
-// wake-lock comment above) is what makes it safe to keep the screen on
-// while a recording sits in a pocket or bag.
+// Requires holding for HOLD_TO_STOP_MS, not a tap — releasing early cancels it.
 const HOLD_TO_STOP_MS = 600;
 let holdToStopTimeout = null;
 
@@ -310,10 +232,7 @@ function updateGlobalRecordTimerLabel() {
     if (overlayLabel) overlayLabel.textContent = text;
 }
 
-// ===== "Which space?" picker — shown every time, before recording
-// starts. Large, high-contrast, single-tap options (see the
-// .record-routine-option styling in tabs.css) since this is meant to be
-// read and tapped in a hurry, not browsed. =====
+// ===== Space picker, shown before recording starts =====
 
 let pendingRoutinePickCallback = null;
 
@@ -322,9 +241,6 @@ function openRecordRoutinePicker(onChosen) {
     applyGlobalRecordButtonUI();
     pendingRoutinePickCallback = onChosen;
 
-    // A dictionary space does word lookups, not phrase capture, so it's
-    // not a valid target for a recording's transcript — same restriction
-    // phrasesTable.js's bulk "Move to..." already applies.
     const candidates = (typeof spaces !== 'undefined' ? spaces : []).filter(s => s.space_type !== 'dictionary');
     const list = document.getElementById('record-routine-list');
 
@@ -335,8 +251,6 @@ function openRecordRoutinePicker(onChosen) {
     document.getElementById('record-routine-modal-overlay').style.display = 'flex';
 }
 
-// Picking a space starts recording right away (see toggleGlobalRecording's
-// callback), so this just hides the modal and lets that callback run.
 function chooseRecordRoutine(spaceId) {
     const callback = pendingRoutinePickCallback;
     pendingRoutinePickCallback = null;
@@ -344,7 +258,6 @@ function chooseRecordRoutine(spaceId) {
     if (callback) callback(spaceId);
 }
 
-// Explicit Cancel/✕ — backs all the way out, no recording was ever started.
 function cancelRecordRoutinePicker() {
     document.getElementById('record-routine-modal-overlay').style.display = 'none';
     pendingRoutinePickCallback = null;

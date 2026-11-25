@@ -1,4 +1,4 @@
-// Needs remoteDb.js, geminiClient.js, translationEngine.js, audioEngine.js
+// Needs localDb.js, geminiClient.js, translationEngine.js, audioEngine.js
 // and ttsStorage.js loaded first.
 
 const captureLog = document.getElementById('capture-log');
@@ -19,12 +19,6 @@ captureTextInput.addEventListener('keydown', (e) => {
 });
 
 // ===== Add-tab input mode: Type / Dictionary / Record =====
-// Three small icon buttons live in the input box's own footer, next to
-// Send — always visible regardless of which mode is picked, so there's
-// always a way back. Only the content above the footer (the textarea, or
-// the record button) swaps out. The icon itself is intentionally bare (no
-// text label): the clarification is the placeholder text/button that
-// appears the moment you tap one, not the button itself.
 
 let addInputMode = 'type'; // 'type' | 'dictionary' | 'record'
 
@@ -32,9 +26,6 @@ function setAddInputMode(mode, btnEl) {
     applyAddInputModeUI(mode, btnEl);
 }
 
-// Just the visual side of switching input mode (icon state, textarea vs.
-// record button, placeholder text) — split out of setAddInputMode so
-// other code (applyDictionaryModeUI) can force a mode change directly too.
 function applyAddInputModeUI(mode, btnEl) {
     const previousMode = addInputMode;
     addInputMode = mode;
@@ -62,13 +53,9 @@ function applyAddInputModeUI(mode, btnEl) {
     refreshCaptureLog(previousMode);
 }
 
-// The recording note lives in the main log area (center of the screen,
-// room to actually read it). Any actual mode switch clears the log —
-// Dictionary mode in particular tends to leave it full of the back-and-forth
-// clarifying questions Gemini asked about a word's exact meaning or part of
-// speech, which have nothing to do with whatever comes next in Type mode (or
-// a fresh Dictionary lookup). previousMode just guards against clearing when
-// the same mode's button is tapped again (no real switch happened).
+// Clears the log on an actual mode switch (not a re-tap of the same mode) —
+// Dictionary mode's own back-and-forth clarifying questions don't belong
+// in whatever comes next.
 function refreshCaptureLog(previousMode) {
     if (previousMode === addInputMode) return;
     if (addInputMode === 'record') {
@@ -78,41 +65,20 @@ function refreshCaptureLog(previousMode) {
     }
 }
 
-// The single "Upload a recording file" button shown once Record is picked —
-// just opens the file picker. Used to be two buttons ("Recording in
-// Hebrew" / "Recording in English"), each setting a capture/check mode
-// that told Gemini which language to expect for transcription — gone now
-// that the transcription prompt (promptTemplates.js's AUDIO_PROMPT_TEMPLATE,
-// via audioEngine.js) transcribes exactly as spoken either way, in
-// whichever of this space's own two languages (or a mix of them) was
-// actually used, with no language hint needed up front.
 function startRecordingUpload() {
     document.getElementById('recording-file-input').click();
 }
 
-// Entering the Add tab always starts with a clean, empty log — anything
-// shown there this session is cleared.
 function enterCaptureTab(btnEl) {
     showView('add', btnEl);
     resetCaptureLog();
 }
 
-// Shared by enterCaptureTab and space switching (spacesState.js calls this
-// directly, since enterCaptureTab won't fire if the user is already
-// sitting on this tab when they switch spaces from the header). Lands back
-// on the normal capture log and cancels any in-progress phrase edit, since
-// re-entering the tab fresh means starting over.
 function resetCaptureLog() {
     captureLog.innerHTML = '';
     editingPhraseId = null;
     hideEditingBanner();
 
-    // Nothing to capture into yet on a brand-new install (or right after
-    // deleting the last space) — show that plainly instead of leaving a
-    // normal-looking input that fails with a confusing error the moment
-    // someone tries to use it. Re-evaluated every time this runs, so it
-    // clears itself automatically once a space exists (setActiveSpace
-    // already calls resetCaptureLog, see spacesState.js).
     const hasActiveSpace = typeof getActiveSpace === 'function' && !!getActiveSpace();
     applyNoSpaceUI(!hasActiveSpace);
     if (!hasActiveSpace) {
@@ -123,8 +89,6 @@ function resetCaptureLog() {
     setAddInputMode((typeof isDictionarySpace === 'function' && isDictionarySpace()) ? 'dictionary' : 'type');
 }
 
-// Disables the whole input area (text box, mode icons, send) while there's
-// no active space to save into.
 function applyNoSpaceUI(disabled) {
     if (captureTextInput) captureTextInput.disabled = disabled;
     const sendBtn = document.getElementById('capture-send-btn');
@@ -137,14 +101,9 @@ function applyNoSpaceUI(disabled) {
 async function submitTypedPhrase() {
     const text = captureTextInput.value.trim();
     if (!text) return;
-    // Defense in depth — the input is disabled in this state (see
-    // resetCaptureLog), but guard the submit path directly too.
     if (typeof getActiveSpace === 'function' && !getActiveSpace()) return;
 
     if ((typeof isDictionarySpace === 'function' && isDictionarySpace()) || addInputMode === 'dictionary') {
-        // Only warn when there's an actual Type mode to switch to — a
-        // dictionary space has no alternative, so there's nothing to
-        // mistake it for.
         const canSwitchToType = !(typeof isDictionarySpace === 'function' && isDictionarySpace());
         if (canSwitchToType && looksLikeSentence(text)) {
             showModeMismatchConfirm(text, 'to-type');
@@ -159,10 +118,6 @@ async function submitTypedPhrase() {
         return;
     }
 
-    // Same mismatch check in the other direction: one or two words typed
-    // in ⌨️ Type mode reads like a dictionary query, not a phrase. Only
-    // relevant for a fresh capture — editing or moving an existing (short)
-    // phrase is deliberate, so those paths above return before this.
     if (looksLikeSingleTerm(text)) {
         showModeMismatchConfirm(text, 'to-dictionary');
         return;
@@ -171,13 +126,6 @@ async function submitTypedPhrase() {
     await submitPhraseDirect(text);
 }
 
-// Pulled out of submitTypedPhrase so both the normal path and the
-// mode-mismatch "send anyway" path can call it directly, without
-// re-running (and possibly re-triggering) the mismatch check.
-//
-// Used to be one POST to /phrases; now it's two steps done here directly:
-// call Gemini to translate (translationEngine.js), then save the result
-// (remoteDb.js).
 async function submitPhraseDirect(text) {
     const sendBtn = document.getElementById('capture-send-btn');
     captureTextInput.value = '';
@@ -196,7 +144,7 @@ async function submitPhraseDirect(text) {
             slotId: result.slotId
         });
         addCaptureResult(phrase);
-        loadTable(); // so it's already there if the user switches to Practice
+        loadTable();
     } catch (err) {
         addCaptureMessage(err.code === 'NO_API_KEY' ? 'No Gemini API key set yet.' : "Couldn't translate that — try again.");
     } finally {
@@ -207,8 +155,6 @@ async function submitPhraseDirect(text) {
     }
 }
 
-// Pulled out of submitTypedPhrase so the mode-mismatch "look up anyway"
-// path can call it directly too.
 function submitAsDictionaryLookup(text) {
     captureTextInput.value = '';
     captureTextInput.style.height = 'auto';
@@ -218,12 +164,8 @@ function submitAsDictionaryLookup(text) {
 }
 
 // ===== Dictionary/Type mode-mismatch confirm =====
-// Two simple heuristics catch the "forgot which mode I'm in" case before
-// text gets lost to the wrong kind of send: more than 3 words typed while
-// 📖 Dictionary is selected reads as a sentence, not a lookup query; 1-2
-// words typed while ⌨️ Type is selected reads as a lookup query, not a
-// phrase. One modal handles both directions — its copy and buttons just
-// swap depending on which triggered it.
+// >3 words in Dictionary mode reads as a sentence; 1-2 words in Type mode
+// reads as a lookup query. One modal, copy/buttons swap by direction.
 
 function looksLikeSentence(text) {
     const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
@@ -236,7 +178,7 @@ function looksLikeSingleTerm(text) {
 }
 
 let pendingModeMismatchText = null;
-let pendingModeMismatchDirection = null; // 'to-type' (currently in Dictionary) | 'to-dictionary' (currently in Type)
+let pendingModeMismatchDirection = null; // 'to-type' | 'to-dictionary'
 
 function showModeMismatchConfirm(text, direction) {
     pendingModeMismatchText = text;
@@ -247,10 +189,6 @@ function showModeMismatchConfirm(text, direction) {
     const switchBtn = document.getElementById('mode-mismatch-switch-btn');
     const stayBtn = document.getElementById('mode-mismatch-confirm-btn');
 
-    // The "switch" button always carries the primary (colored) styling,
-    // set once in the HTML — it's the more likely intent either way,
-    // since the mismatch itself is usually just forgetting which mode is
-    // active, not a deliberate choice to stay in it.
     if (direction === 'to-dictionary') {
         if (title) title.textContent = 'Look it up instead?';
         if (body) body.textContent = 'This looks like a single word — send it, or look it up?';
@@ -270,7 +208,6 @@ function closeModeMismatchModal() {
     document.getElementById('mode-mismatch-modal-overlay').style.display = 'none';
 }
 
-// "Switch" button: hop to the other mode and act accordingly.
 function modeMismatchSwitchAction() {
     const text = pendingModeMismatchText;
     const direction = pendingModeMismatchDirection;
@@ -289,7 +226,6 @@ function modeMismatchSwitchAction() {
     }
 }
 
-// "Stay" button: keep the currently-selected mode and send as-is, this once.
 function modeMismatchStayAction() {
     const text = pendingModeMismatchText;
     const direction = pendingModeMismatchDirection;
@@ -306,35 +242,18 @@ function modeMismatchStayAction() {
 }
 
 // ===== Recorded input =====
-// A recording only ever gets transcribed — no phrases are created
-// automatically from it. As soon as the transcript is back, the app flips
-// straight to the Transcripts tab, opened right onto it (see
-// finishRecordingIntoTranscript in transcriptsTab.js) so the person can
-// start picking lines right away.
-//
-// Used to be one POST to /recordings; now it's two steps done here
-// directly: transcribe via Gemini (audioEngine.js — the recording itself
-// never leaves this device except as part of that one API call), then
-// save the resulting transcript text (remoteDb.js). The raw audio itself
-// is never stored anywhere, same as the original server version.
+
 async function handleRecordingFileSelected(inputEl) {
     const file = inputEl.files[0];
-    inputEl.value = ''; // allow picking the same file again later
+    inputEl.value = '';
     if (!file) return;
 
     const langBtns = document.querySelectorAll('#capture-record-buttons .record-lang-btn');
     langBtns.forEach(b => b.disabled = true);
 
     try {
-        // Same 15-minute cap the global in-browser recorder enforces live,
-        // via its own auto-stop timer (globalRecord.js's
-        // MAX_GLOBAL_RECORDING_MS) — this is the other way a long
-        // recording can get in: picking an existing, already-long file
-        // instead of recording fresh. Checked here, before transcribing,
-        // rather than left to audioEngine.js's own much-larger inline-size
-        // limit, which exists only as a hard technical ceiling (Gemini's
-        // request-size limit), not a stand-in for what Rotem actually
-        // wants a session capped at.
+        // Same 15-minute cap the live recorder enforces (globalRecord.js's
+        // MAX_GLOBAL_RECORDING_MS) — a long existing file can bypass that otherwise.
         const maxMs = typeof MAX_GLOBAL_RECORDING_MS === 'number' ? MAX_GLOBAL_RECORDING_MS : 15 * 60 * 1000;
         const durationSec = await getAudioDurationSeconds(file).catch(() => null);
         if (durationSec != null && Number.isFinite(durationSec) && durationSec * 1000 > maxMs) {
@@ -365,13 +284,7 @@ async function handleRecordingFileSelected(inputEl) {
     }
 }
 
-// Reads an audio/video file's length client-side, without uploading
-// anything anywhere — just an off-DOM <audio> element long enough to fire
-// its loadedmetadata event, which carries .duration in seconds. Resolves
-// null (via the .catch at the call site) rather than rejecting, for a
-// format the browser can't read metadata for; a length check that can't
-// run isn't a reason to block the upload outright, just a check this
-// particular file doesn't get.
+// Resolves null (not reject) if the browser can't read metadata for this format.
 function getAudioDurationSeconds(file) {
     return new Promise((resolve, reject) => {
         const url = URL.createObjectURL(file);
@@ -389,12 +302,7 @@ function getAudioDurationSeconds(file) {
     });
 }
 
-// finishRecordingIntoTranscript (shared by this file's own file-upload
-// Record mode, called just above, and globalRecord.js's in-browser
-// recording) now lives in transcriptsTab.js — the recording always
-// finishes onto the Transcripts tab these days, not here, so that's a
-// better home for it. Still called by the same name, just defined in a
-// different file.
+// finishRecordingIntoTranscript is defined in transcriptsTab.js.
 
 function fileToBase64(file) {
     return new Promise((resolve, reject) => {
@@ -405,7 +313,7 @@ function fileToBase64(file) {
     });
 }
 
-// ===== Shared log rendering (both input paths append here) =====
+// ===== Shared log rendering =====
 
 function addCaptureResult(phrase) {
     const div = document.createElement('div');
@@ -427,19 +335,11 @@ function addCaptureMessage(text) {
 }
 
 // ===== Editing an existing phrase (✎ on a Practice card) =====
-// Reuses the same Add-tab input as a fresh capture — the difference is
-// just that Send re-translates and overwrites this one phrase in place
-// (same row, same created_at) instead of creating a new card. Tagging is
-// left untouched either way, same as a plain create.
 
 let editingPhraseId = null;
 
-// Called from phrasesTable.js's editPhraseRow. Reaching Practice at all
-// already means no Setup field is left open with an unsaved edit (that
-// would have blocked leaving Setup in the first place), so this jumps
-// straight to Add without going through the tab-switch guard again.
 function startEditingPhrase(phrase) {
-    navigateToTab('add'); // enterCaptureTab -> resetCaptureLog() clears editingPhraseId first
+    navigateToTab('add');
     editingPhraseId = phrase.id;
     setAddInputMode('type');
 
@@ -468,8 +368,6 @@ function hideEditingBanner() {
     if (banner) banner.style.display = 'none';
 }
 
-// Exits edit mode without saving — clears the input too, so nothing
-// half-edited lingers as if it were about to be sent as a new phrase.
 function cancelEditingPhrase() {
     editingPhraseId = null;
     hideEditingBanner();
@@ -477,11 +375,6 @@ function cancelEditingPhrase() {
     captureTextInput.style.height = 'auto';
 }
 
-// Used to be one PATCH to /phrases/:id/retranslate; now it's: re-translate
-// (translationEngine.js), overwrite the phrase in place (updatePhrase,
-// which also clears both tts_url_variant flags), and clear this device's
-// cached audio for it (ttsStorage.js) — the old recording no longer
-// matches the new wording.
 async function submitPhraseEdit(text) {
     const id = editingPhraseId;
     const sendBtn = document.getElementById('capture-send-btn');
@@ -504,7 +397,7 @@ async function submitPhraseEdit(text) {
         addCaptureResult(phrase);
         editingPhraseId = null;
         hideEditingBanner();
-        loadTable(); // so the updated wording is already there in Practice
+        loadTable();
     } catch (err) {
         addCaptureMessage(err.code === 'NO_API_KEY' ? 'No Gemini API key set yet.' : "Couldn't update that phrase — try again.");
     } finally {

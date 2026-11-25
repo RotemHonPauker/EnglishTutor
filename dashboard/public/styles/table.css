@@ -1,21 +1,8 @@
-/* ===== Practice-tab slots scroll — one strip, two jobs ===== */
-/* Shows TODAY's reminder schedule across every space (as before), and
-   is ALSO now the filter for the card list below it — Rotem's own call
-   to drop the separate per-space slot-filter strip this used to sit
-   above, rather than have two horizontal scrolls doing related things.
-   A slot belonging to the ACTIVE space is clickable (.selectable) and
-   carries its own phrase count; a slot belonging to any OTHER space
-   stays exactly what it always was here — plain, non-interactive,
-   "what's coming up today" context, with no count (its cards aren't even
-   loaded right now). Every slot is shown in its own color always, not
-   just while it's the current/next one — current/next still gets a
-   slightly thicker border on top of that, now in a fixed app-blue rather
-   than the slot's own color (so "this is the one you're in right now" is
-   its own consistent signal, not whatever color that slot happens to be —
-   a slot colored near-black would otherwise make its own current/next
-   state read as no highlight at all); the selected (filtering) slot gets
-   its own outline instead, so the two don't visually collide. See
-   slots.js's renderPracticeSlotsScroll/selectSlotBucket for the logic. */
+/* ===== Practice-tab slots scroll — today's cross-space schedule, and
+   also the filter for the card list below it. A slot in the active space
+   is clickable (.selectable) with its own count; a slot from another
+   space is plain context with no count. See slots.js's
+   renderPracticeSlotsScroll/selectSlotBucket. ===== */
 
 #practice-slots-scroll {
     flex-shrink: 0;
@@ -75,42 +62,26 @@
 .practice-slot-pill.current,
 .practice-slot-pill.next {
     border-width: 2px;
-    /* !important: slots.js sets this pill's border-color inline, to the
-       slot's own color — the current/next state needs to override that
-       with a fixed signal color regardless of what that color is. */
+    /* !important overrides slots.js's inline border-color (the slot's own
+       color) with a fixed signal color for current/next. */
     border-color: #2563eb !important;
 }
 
-/* Only a slot belonging to the active space is a real filter control —
-   cursor:pointer marks that, same as any other tappable chip. */
 .practice-slot-pill.selectable {
     cursor: pointer;
 }
 
-/* The slot (or Unlabeled) the card list is currently filtered to — the
-   pill's own border-color overridden directly (!important, same technique
-   as .current/.next above), not an extra box-shadow ring: a box-shadow
-   sits inset from the pill's own existing border rather than replacing
-   it, which read as two separate frames (the real border, plus the inset
-   shadow just inside it) instead of one. Fixed app-blue, same color used
-   for selection elsewhere in the app (e.g. .phrase-card.selected). */
 .practice-slot-pill.selected {
     border-width: 2px;
     border-color: #2563eb !important;
 }
 
-/* "Nothing to show here" note for this strip when a space has no slots
-   (and no unlabeled phrases) at all. */
 .scroll-empty-note {
     color: var(--text-faint);
     font-size: 0.8125rem;
     padding: 8px 4px;
 }
 
-/* No more #table-section white panel around toolbar+list — this is now
-   the only wrapper, holding the same flex/overflow layout #table-section
-   used to (so #table-wrapper below still scrolls, everything else stays
-   fixed), just without a background/border/margin of its own. */
 #table-area {
     flex: 1;
     display: flex;
@@ -127,11 +98,6 @@
     flex-shrink: 0;
 }
 
-/* Now holds just the one "🎯 Practice" button, reusing the same
-   .mode-toggle/.mode-toggle-btn full-width pill already used for Add slot,
-   Export/Import and Copy invite message (spaceRules.css) — same reasoning
-   for overriding its default side padding (10px 24px 0, base.css), since
-   #table-toolbar already has its own 10px 12px. */
 #table-toolbar .mode-toggle {
     padding: 0;
     flex: 1;
@@ -143,13 +109,8 @@
     color: #fff;
 }
 
-/* ===== Selection action bar (Table tab, multi-select "Move to...") ===== */
-/* Same blue-tinted-bar language as #transcripts-tab-selection-bar (transcripts.css). */
+/* ===== Selection action bar ===== */
 
-/* Top margin matches .phrase-cards's own padding-top below (12px), so when
-   #table-toolbar is hidden (select mode) this bar sits the same distance
-   from the panel's top edge as the cards do from its sides — previously 0,
-   which left it touching the panel border directly. */
 #selection-action-bar {
     display: none;
     align-items: center;
@@ -173,11 +134,6 @@
     font-size: 0.8125rem;
 }
 
-/* "Start practice" while nothing's picked yet — the bar itself stays
-   visible the whole time select mode is on (it's the only Cancel
-   available), so this just marks the one action that needs a selection
-   first as not-yet-usable, same pattern as every other disabled button in
-   the app. */
 #selection-action-bar button:disabled {
     opacity: 0.35;
     cursor: default;
@@ -198,9 +154,6 @@
     outline-offset: -1px;
 }
 
-/* Hit the 7-unit selection cap (phrasesTable.js's selectionBlocked) — this
-   card can't be added without going over, so it's dimmed and its checkbox
-   disabled until something else is deselected to free up room. */
 .phrase-card.selection-blocked {
     opacity: 0.4;
 }
@@ -286,11 +239,6 @@
     color: var(--accent-link);
 }
 
-/* A card with a slot gets just a colored border now, not a full-colored
-   background (Rotem's own call — with the list already narrowed to one
-   slot at a time via the slot-filter scroll above, every card on screen
-   shares the same color anyway, so filling the whole card in it added
-   nothing but noise; the border is enough of an accent). */
 .phrase-card.has-color {
     border-width: 2px;
 }
@@ -340,17 +288,6 @@
     color: #dbeafe;
 }
 
-/* A card older than a month (localDb.js's isCardOld) — a pill in the same
-   badges row as level/slot, not a quiet note under the text, so it's hard
-   to miss. Solid app-blue fill (the same #2563eb used for the active
-   space border in modal.css and #select-mode-btn.active here) rather
-   than a gray tone — fixed, not a theme token, so it reads the same way
-   and stays readable with white text in both light and dark mode (unlike
-   a surface-family gray, which flips lightness between themes). The goal
-   is to make this card's "this is old, go delete it" state the most
-   visually assertive thing on the card, encouraging the tap. Tapping it
-   calls deletePhraseRow directly (phrasesTable.js), which opens the
-   normal delete-confirmation modal — never deletes on tap alone. */
 .old-badge {
     border: none;
     border-radius: 4px;

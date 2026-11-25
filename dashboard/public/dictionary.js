@@ -1,16 +1,8 @@
 // ===== Dictionary spaces =====
-// Dictionary is a space_type now (alongside 'progression' and 'bridge'),
-// not a separate global mode — a dictionary space is picked from the
-// normal space picker exactly like any other space, and its id lives in
-// the same activeSpaceId as everything else. This file just supplies the
-// behavior that's specific to that type: word lookup instead of phrase
-// capture, and a different Practice card shape. It repurposes Practice
-// (own data source + card template, sharing the date-scroll machinery
-// already built for phrases) and Add (Send becomes a word lookup instead
-// of a phrase capture). Transcripts and Setup (which the Schedule section
-// now lives inside) don't apply and are disabled while a dictionary space
-// is active.
-// Needs remoteDb.js, dictionaryEngine.js, geminiClient.js and ttsStorage.js
+// A dictionary is a space_type, picked and switched to like any other
+// space. This file supplies the type-specific behavior: word lookup
+// instead of phrase capture, and a different Practice card shape.
+// Needs localDb.js, dictionaryEngine.js, geminiClient.js and ttsStorage.js
 // loaded first.
 
 let allDictionaryEntries = [];
@@ -20,65 +12,30 @@ function isDictionarySpace() {
     return !!space && space.space_type === 'dictionary';
 }
 
-// The single source of truth Practice/date-scroll read from — swaps
-// between the active space's phrases and its dictionary
-// entries depending on type, so that shared machinery (built around
-// allPhrases) works unchanged on either one.
 function getPracticeItems() {
     return isDictionarySpace() ? allDictionaryEntries : allPhrases;
 }
 
-// Applies (or lifts) every UI restriction a dictionary space implies.
-// Called on page load and on every space switch (setActiveSpace) — always
-// derived fresh from the active space's type rather than a separate flag,
-// so there's no "enter/exit" step to keep in sync with space switching.
+// Called on load and on every space switch — derives UI restrictions
+// fresh from the active space's type.
 function applyDictionaryModeUI() {
     const dict = isDictionarySpace();
 
-    // Tab bar — Transcripts (recordings are never made for a dictionary
-    // space — see globalRecord.js's own space filter) and Setup
-    // (space-rules + the Schedule section now living inside it, both
-    // phrase-only) don't apply to a dictionary space.
     const transcriptsBtn = document.querySelector('.tab-btn[data-view="transcripts"]');
     const setupBtn = document.querySelector('.tab-btn[data-view="tags"]');
     [transcriptsBtn, setupBtn].forEach(btn => {
         if (btn) btn.disabled = dict;
     });
 
-    // Add tab — only the typed-word input + Send stay usable. Forces the
-    // Type/Dictionary/Record icon selector onto "Dictionary" and disables
-    // switching away from it entirely, since nothing else applies while
-    // this whole space is dictionary lookups. Only forces the mode while
-    // active — leaving it alone on the way out is resetCaptureLog's job,
-    // so a manual "Dictionary" pick made in a normal space isn't clobbered
-    // by an unrelated re-render here.
     document.querySelectorAll('#capture-mode-icons .capture-mode-icon-btn').forEach(btn => {
         btn.disabled = dict;
     });
     if (dict && typeof setAddInputMode === 'function') {
         setAddInputMode('dictionary');
     }
-
-    // Practice — time slots don't apply to dictionary entries at all
-    // (there's no notion of a "slot" for a looked-up word), so the slots
-    // scroll's own filtering (slots.js's renderPracticeSlotsScroll) just
-    // falls back to its plain display-only self in a dictionary space —
-    // handled there, not here, since it also needs re-checking on every
-    // render, not just on this one-time mode switch. Practice sessions
-    // still apply either way (see practiceSession.js's
-    // startDictionaryPractice) — "Start practice" stays visible, just
-    // with a simpler flow behind it for a dictionary space (no scope to
-    // pick, straight to a random session over the whole space).
 }
 
 // ===== Quick lookup from a non-dictionary space =====
-// Picking 📖 from any regular space's Add tab still routes Send to a
-// dictionary lookup — but now that needs a specific dictionary SPACE to
-// save into (entries carry a space_id). If the active space already is
-// one, use it directly (dict spaces lock straight onto this path via
-// applyDictionaryModeUI above). Otherwise: exactly one dictionary space
-// existing is an easy default; more than one needs the person to pick
-// which; none existing means there's nowhere to save yet.
 
 function resolveDictionarySpaceIdAndProceed(onResolved) {
     if (isDictionarySpace()) {
@@ -125,18 +82,8 @@ function renderDictionarySpacePicker(dictSpaces, onResolved) {
     captureLog.scrollTop = captureLog.scrollHeight;
 }
 
-// ===== Word lookup (triggered from Add's Send button when in a dictionary space) =====
+// ===== Word lookup =====
 
-// query: what's being looked up right now. sourceQuery: the *original*
-// source-language search, carried through when this call is resolving a
-// word chosen from an earlier options list, so the saved entry remembers
-// what was actually searched for. spaceId: which dictionary this lookup
-// (and its language pair) belongs to.
-//
-// Used to be one POST to /dictionary/lookup; now it's three steps done
-// here directly: look up the space's language pair, call Gemini
-// (dictionaryEngine.js), and — once there's an actual word, not just a
-// disambiguation list — save the entry (remoteDb.js).
 async function submitDictionaryLookup(query, sourceQuery, partOfSpeechHint, spaceId) {
     const sendBtn = document.getElementById('capture-send-btn');
     captureTextInput.disabled = true;
@@ -172,10 +119,6 @@ async function submitDictionaryLookup(query, sourceQuery, partOfSpeechHint, spac
     }
 }
 
-// Built with DOM methods rather than an HTML string — words can contain
-// apostrophes ("don't", "it's"), which would break naive
-// string-interpolated onclick attributes. Event listeners with closures
-// sidestep that entirely.
 function addDictionaryOptions(options, kind, query, sourceQuery, spaceId) {
     const container = document.createElement('div');
     container.className = 'capture-log-item';
@@ -208,9 +151,6 @@ function addDictionaryOptions(options, kind, query, sourceQuery, spaceId) {
         chip.addEventListener('click', () => {
             chipList.querySelectorAll('.tag-chip').forEach(c => c.style.pointerEvents = 'none');
             if (kind === 'senses') {
-                // Same word, resubmitted with a part-of-speech hint so the
-                // model locks onto this sense instead of re-triggering the
-                // same ambiguity.
                 submitDictionaryLookup(query, sourceQuery, o.partOfSpeech, spaceId);
             } else {
                 submitDictionaryLookup(o.word, sourceQuery, null, spaceId);
@@ -224,9 +164,6 @@ function addDictionaryOptions(options, kind, query, sourceQuery, spaceId) {
     captureLog.scrollTop = captureLog.scrollHeight;
 }
 
-// Shows the resolved entry the same way it'll look in Practice — word,
-// part of speech, synonyms, example — instead of a bare "added" line, so
-// the person can see (and sanity-check) the actual translation right away.
 function addDictionarySavedMessage(entry) {
     const div = document.createElement('div');
     div.className = 'capture-log-item';
@@ -245,23 +182,11 @@ function addDictionarySavedMessage(entry) {
 
 async function loadDictionaryEntries(spaceId) {
     allDictionaryEntries = await getDictionaryEntries(spaceId);
-    // No slot concept at all for dictionary entries — the slots scroll
-    // just falls back to its plain display-only self (slots.js's
-    // renderPracticeSlotsScroll), so there's nothing to filter the list
-    // by here.
     renderTable();
 }
 
-// ===== Lazy TTS playback for a dictionary entry's own word =====
-// Same generate-once-then-cache pattern as a phrase's own 🔊
-// (phrasesTable.js's playPhraseAudio), and deliberately reuses that same
-// file's shared playback state (currentlyPlayingAudio/currentlyPlayingBtn,
-// stopCurrentAudio, startPlayback) rather than keeping a second, separate
-// "what's playing right now" — so starting a word's audio stops whatever
-// a phrase card might have had playing, and vice versa. Safe to call
-// regardless of script load order: by the time a click can actually reach
-// this function, every script on the page has already run and defined its
-// own top-level functions/consts.
+// Shares phrasesTable.js's playback state (currentlyPlayingAudio/Btn) so
+// a word's audio stops any phrase card's audio, and vice versa.
 async function playDictionaryAudio(entryId, btnEl) {
     if (currentlyPlayingBtn === btnEl && currentlyPlayingAudio) {
         stopCurrentAudio();
@@ -287,19 +212,7 @@ async function playDictionaryAudio(entryId, btnEl) {
     }
 }
 
-// Called from renderTable() (phrasesTable.js) when the active space is a
-// dictionary — a different card shape (word / part of speech / synonyms /
-// example), no slot badge. Reuses .phrase-card/.phrase-card-header/
-// .phrase-card-icons/.phrase-card-main as-is, so only the
-// dictionary-specific inner pieces need their own CSS. Every entry is
-// shown, newest first — there's no filter to narrow it down to any more.
-// The word itself now carries a 🔊 play button, same inline placement as a
-// phrase card's own .phrase-variant (table.css's .tts-btn).
-//
-// The "old" indicator now matches a phrase card's own: a solid-blue "Old"
-// pill in the header's badges row (table.css's .old-badge/.phrase-card-badges,
-// same classes a phrase card uses), tapping straight into the same delete
-// confirm as the 🗑️ icon — not the quiet under-text note this used to be.
+// Called from renderTable() (phrasesTable.js) when the active space is a dictionary.
 function renderDictionaryCards() {
     const sorted = [...allDictionaryEntries].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
@@ -324,8 +237,6 @@ function renderDictionaryCards() {
     `).join('');
 }
 
-// Reuses the same delete-confirm modal as phrases (see pendingDeleteType
-// in phrasesTable.js) — just points it at a word instead of a phrase.
 function deleteDictionaryRow(id) {
     const entry = allDictionaryEntries.find(e => e.id === id);
     pendingDeleteId = id;

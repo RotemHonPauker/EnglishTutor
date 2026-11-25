@@ -1,37 +1,19 @@
 // ===== Practice slot scroll =====
-// Replaces practiceDateScroll.js entirely (delete that file — nothing
-// references it any more) and, with it, the whole card-lifetime/saved/
-// trash + day/week date-bucket machinery that used to live alongside it.
-// Rotem's own call: too much mechanism for what the app actually needed.
-// Cards are now browsed by which time slot of the CURRENT routine they
-// belong to, not by when they were captured.
-//
-// A horizontal strip of pills, one per this routine's own slot (in
-// schedule order, via `slots` — slots.js, scoped to the active routine
-// only), plus a single "📌 Unscheduled" pill for any card with no slot_id
-// at all. Exactly one pill is always selected — same "never 'show
-// everything'" rule the old date-scroll had, just keyed by slot id now.
-// Nothing here touches the Practice tab's OTHER, separate strip
-// (#practice-slots-scroll, slots.js's renderPracticeSlotsScroll) — that
-// one is cross-routine and display-only (today's reminder schedule across
-// every routine); this one is single-routine and does the actual
-// filtering of the card list below it.
+// A horizontal strip of pills, one per the active space's own slots (plus
+// "📌 Unscheduled" for any card with no slot_id), filtering the card list
+// below it. Exactly one pill is always selected. Separate from the
+// Practice tab's other strip (#practice-slots-scroll, slots.js's
+// renderPracticeSlotsScroll), which is cross-space and display-only.
 
-let selectedSlotBucketId = null; // a real slot id, 'unscheduled', or null (nothing to select yet)
-let slotBuckets = [];            // [{ id, label, color, count }] — schedule order, 'unscheduled' last when present
+let selectedSlotBucketId = null; // a real slot id, 'unscheduled', or null
+let slotBuckets = [];            // [{ id, label, color, count }], schedule order, 'unscheduled' last
 
-// Dictionary entries have no slot concept at all (dictionary.js) — the
-// whole strip (and the filtering below) just gets out of the way there.
 function slotScrollApplies() {
     return !(typeof isDictionarySpace === 'function' && isDictionarySpace());
 }
 
-// Builds one bucket per this routine's own slot, in schedule order, plus
-// 'unscheduled' when at least one card has no slot_id — a real slot's own
-// bucket is always shown, even at zero, since browsing to an empty one on
-// purpose (to then assign something into it) is a real use case; an empty
-// Unscheduled bucket would just be clutter, so that one only appears when
-// there's actually something in it.
+// A real slot's bucket is always shown, even at zero; Unscheduled only
+// appears when something is actually in it.
 function generateSlotBuckets() {
     if (!slotScrollApplies()) { slotBuckets = []; return; }
 
@@ -56,9 +38,6 @@ function generateSlotBuckets() {
     }
 
     if (!slotBuckets.find(b => b.id === selectedSlotBucketId)) {
-        // Land on whichever slot is active right now, if any; otherwise
-        // the first bucket there is (first slot in schedule order, or
-        // Unscheduled if this routine has no slots of its own at all).
         const now = new Date();
         const nowMinutes = now.getHours() * 60 + now.getMinutes();
         const activeNow = activeSlots.find(s => s.start_minutes <= nowMinutes && nowMinutes < s.end_minutes);
@@ -97,8 +76,6 @@ function renderSlotScroll() {
     `;
     }).join('');
 
-    // Land on the current selection instead of making the person scroll
-    // there manually.
     const selectedEl = track.querySelector('.slot-filter-pill.selected');
     if (selectedEl) {
         selectedEl.scrollIntoView({ inline: 'center', block: 'nearest' });
@@ -111,10 +88,6 @@ function selectSlotBucket(id) {
     renderTable();
 }
 
-// Whether a card belongs in whichever bucket is currently selected — read
-// by renderTable (phrasesTable.js). Dictionary entries never reach this
-// (slotScrollApplies() is false there, and renderDictionaryCards doesn't
-// call it at all).
 function phraseMatchesSlotFilter(phrase) {
     if (!slotScrollApplies()) return true;
     if (!selectedSlotBucketId) return true;
@@ -122,19 +95,10 @@ function phraseMatchesSlotFilter(phrase) {
     return phrase.slot_id === selectedSlotBucketId;
 }
 
-// Called on routine switch (spacesState.js) — the new routine's own slots
-// (and so its own bucket ids) are completely different, so there's
-// nothing to carry over; generateSlotBuckets picks a fresh default the
-// next time loadTable runs.
 function resetSlotScroll() {
     selectedSlotBucketId = null;
 }
 
-// The Practice tab button calls this instead of showView directly. Used
-// to also jump the old date-scroll back to "today" when arriving from
-// Add — the nearest equivalent now is landing on whichever slot the
-// phrase just captured there actually got (if any), so it's immediately
-// visible without having to go hunting for it.
 function enterPracticeTab(btnEl) {
     const cameFromAdd = document.getElementById('view-add')?.classList.contains('active');
     showView('practice', btnEl);

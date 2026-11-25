@@ -1,24 +1,15 @@
-// notifySync.js — bridges this device's Slots to the Cloudflare Worker
-// backend (fraza-notify) that actually decides when to send a reminder
-// and asks OneSignal to deliver it. This file only keeps the Worker's
-// stored copy of THIS device's slots/timezone/push-subscription-id up to
-// date — it never decides when a notification fires (the Worker's own
-// cron does that) and never talks to OneSignal's send API directly (only
-// the Worker has the secret key for that).
-//
-// Needs localDb.js (getAllSlots) and the OneSignal Web SDK (loaded in
-// index.html, via window.OneSignalDeferred) loaded first.
+// notifySync.js — keeps the Cloudflare Worker backend's (fraza-notify)
+// stored copy of this device's slots/timezone/push-subscription-id up to
+// date. The Worker's own cron decides when a reminder actually fires and
+// talks to OneSignal directly; this file never does either.
+// Needs localDb.js (getAllSlots) and the OneSignal Web SDK (index.html's
+// window.OneSignalDeferred) loaded first.
 
 const NOTIFY_WORKER_URL = 'https://fraza-notify.rotemhon.workers.dev';
 const DEVICE_ID_STORAGE_KEY = 'fraza-device-id';
 
-// A random id generated once per browser and never changed — this IS the
-// "account" as far as the Worker is concerned (there's no login; see the
-// architecture discussion — this id is the only thing distinguishing one
-// device's slots from another's in the Worker's storage). If browser
-// storage is ever cleared, the device just starts syncing under a fresh
-// id going forward; the local Slots themselves are unaffected, since
-// those live in IndexedDB, not here.
+// Random id generated once per browser — there's no login, so this is what
+// distinguishes one device's slots from another's in the Worker's storage.
 function getOrCreateDeviceId() {
     try {
         let id = localStorage.getItem(DEVICE_ID_STORAGE_KEY);
@@ -28,9 +19,6 @@ function getOrCreateDeviceId() {
         }
         return id;
     } catch (err) {
-        // localStorage unavailable (private-mode edge cases) — an
-        // in-memory id for this page load only; nothing persists across
-        // reloads in that case, but the app still works otherwise.
         return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     }
 }
@@ -43,12 +31,6 @@ function getDeviceTimezone() {
     }
 }
 
-// The OneSignal subscription id for push on THIS browser, or null if the
-// person hasn't granted push permission yet (or OneSignal hasn't finished
-// loading). Syncing with a null id is still useful — it keeps the
-// Worker's record of this device's slots/timezone current even before
-// notifications are turned on — the Worker just has nothing to send to
-// until a real id shows up on a later sync.
 async function getOneSignalSubscriptionId() {
     try {
         if (typeof OneSignal === 'undefined') return null;
@@ -58,14 +40,8 @@ async function getOneSignalSubscriptionId() {
     }
 }
 
-// Gathers every slot across every space (not just the active one — the
-// Worker needs the full picture to know what's due for this device) and
-// pushes it, with this device's timezone and OneSignal subscription id,
-// to the Worker's /sync endpoint.
-//
-// Fire-and-forget by design: a failed sync (offline, Worker down) just
-// means the Worker's copy goes stale until the next successful one —
-// never blocks or interrupts whatever the person was doing with Slots.
+// Fire-and-forget: a failed sync just leaves the Worker's copy stale until
+// the next successful one.
 async function syncSlotsToNotifyServer() {
     try {
         const allSlots = (typeof getAllSlots === 'function') ? await getAllSlots() : [];
@@ -80,7 +56,7 @@ async function syncSlotsToNotifyServer() {
                 name: s.name || '',
                 start_minutes: s.start_minutes,
                 end_minutes: s.end_minutes,
-                enabled: s.enabled !== false // a slot saved before this field existed is treated as on, same default used everywhere else
+                enabled: s.enabled !== false
             }))
         };
 
@@ -94,47 +70,20 @@ async function syncSlotsToNotifyServer() {
     }
 }
 
-// Called from slots.js whenever creating or turning on a reminder is the
-// explicit user gesture browsers require before prompting for push
-// permission (there's no separate dedicated button for this any more — see
-// index.html). A no-op prompt-wise if permission was already decided
-// (granted or denied) — OneSignal's own requestPermission() just resolves
-// immediately in that case, so it's always safe to call.
-//
-// IMPORTANT: the caller (slots.js) must call this as close as possible to
-// the actual click/tap — before any other await (an IndexedDB write, a
-// re-render, etc). Chrome may silently refuse to show the permission
-// prompt at all once it decides the call isn't tied closely enough to a
-// real user gesture any more. This function does NOT sync to the Worker
-// itself any more (it used to) — the caller does that afterward, once it
-// knows the final slot state, so a slot created concurrently with this
-// call isn't missed by an early sync.
-//
-// IMPORTANT #2 — do not wrap the actual requestPermission()/optIn() call
-// below in a Promise.race() timeout. A real browser permission prompt
-// waits indefinitely for an actual tap/click from the person — there's no
-// way to know in advance how long that takes, and nothing is wrong if it
-// takes a few seconds. An earlier version of this code raced that call
-// against an 8-second timeout (while debugging a suspected OneSignal
-// hang) combined with a chain of alert() debug popups. That combination
-// was itself the real bug: each alert() is a blocking native dialog, so
-// while the person was still reading/dismissing one, the 8-second timer
-// kept running in the background regardless — and the code gave up on,
-// and reported a "timeout" for, a permission request that was actually
-// still open on screen, patiently waiting for a tap that hadn't happened
-// yet. Confirmed on a real device: the native "Allow/Block" prompt
-// appeared correctly every single time; our own artificial timeout (plus
-// the alert()s racing against it) was just abandoning it before there was
-// ever a real chance to answer it.
+// Called from slots.js as the direct user gesture for creating/enabling a
+// slot. IMPORTANT: the caller must call this as close as possible to the
+// actual click — before any other await — or Chrome may silently refuse
+// to show the permission prompt. Does not sync to the Worker itself; the
+// caller does that afterward once it knows the final slot state.
+// IMPORTANT #2: never wrap requestPermission()/optIn() below in a
+// Promise.race() timeout — a real permission prompt waits indefinitely for
+// an actual tap, and racing it against a timeout can report a false
+// "timeout" while the native prompt is still open on screen.
 async function requestNotificationPermission() {
     if (typeof Notification === 'undefined') return;
 
-    // Waits for OneSignal.init() to have actually finished (see index.html)
-    // before doing anything else. This one IS safe to time out — unlike
-    // the permission prompt below, it's a plain network/setup call with no
-    // user interaction involved, so if it hasn't resolved after 15s
-    // something has genuinely gone wrong (rather than just "waiting on a
-    // tap"), and giving up is the right call.
+    // This wait (for OneSignal.init() to finish) is safe to time out —
+    // unlike the permission prompt below, no user interaction is involved.
     if (typeof window.oneSignalReady !== 'undefined') {
         try {
             const initTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('INIT_TIMEOUT_15S')), 15000));
@@ -154,28 +103,20 @@ async function requestNotificationPermission() {
     try {
         const currentPermission = Notification.permission;
         if (currentPermission === 'granted') {
-            // Already granted at the browser level (e.g. re-enabling a
-            // slot after opting out) — just (re)opt in with OneSignal,
-            // no native prompt involved.
             await OneSignal.User.PushSubscription.optIn();
         } else {
-            // Shows the native browser prompt and waits for the actual
-            // tap — see the big comment above on why this must not be
-            // raced against a timeout.
             await OneSignal.Notifications.requestPermission();
         }
     } catch (err) {
         console.error('Notification permission request failed:', err);
     }
 
-    if (typeof updateSlotsPermissionWarning === 'function') updateSlotsPermissionWarning(); // slots.js
+    if (typeof updateSlotsPermissionWarning === 'function') updateSlotsPermissionWarning();
 }
 
-// Also sync once automatically on every app load/reload — covers the
-// page reload that follows a backup Import (see backup.js), and general
-// drift if an earlier sync was missed (offline, etc.). The short delay
-// lets the rest of the app's own startup (opening the database, loading
-// spaces) finish first.
+// Also sync once automatically on every app load/reload (covers the reload
+// after a backup Import, and drift from a missed sync) — delayed so the
+// app's own startup finishes first.
 window.addEventListener('load', () => {
     setTimeout(syncSlotsToNotifyServer, 1500);
 });

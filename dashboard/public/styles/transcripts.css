@@ -1,21 +1,7 @@
-/* transcripts.css — the Transcripts tab (transcriptsTab.js), which took
-   over the bottom nav slot the Schedule tab used to occupy (Schedule now
-   lives inside Setup instead — see #schedule-section in spaceRules.css).
-
-   Two sub-views share this one tab, toggled by display:none/flex rather
-   than two separate .view elements (see renderTranscriptsTab in
-   transcriptsTab.js):
-     1. #transcripts-tab-list-view — the default: a compact, collapsed
-        list, each row pre-colored by whichever slot was active when that
-        transcript was recorded (decided once, at creation time — see
-        localDb.js's createTranscript/TRANSCRIPT_RETENTION_MS).
-     2. #transcripts-tab-editor-view — one transcript at a time, full tab
-        height, for picking sentences (tap-to-toggle, "Select all", or a
-        2-tap range — see .transcript-sentence below and
-        transcriptsTab.js's toggleSentenceSelection/startRangeSelect) and
-        sending them straight to translation from right here, no Add-tab
-        handoff.
-*/
+/* transcripts.css — the Transcripts tab (transcriptsTab.js). Two sub-views
+   share #view-transcripts, toggled by display:none/flex: the compact list
+   (#transcripts-tab-list-view) and the focused editor
+   (#transcripts-tab-editor-view). */
 
 #view-transcripts {
     overflow: hidden;
@@ -47,12 +33,6 @@
     gap: 10px;
 }
 
-/* One collapsed row per transcript — same border-inline-start-color accent
-   language as .slot-card/.phrase-card's slot badge, so a transcript's
-   color reads consistently with everywhere else a slot's color shows up.
-   A transcript whose slot was since deleted (or that never had one) just
-   falls back to a neutral border — see slotById lookup in
-   transcriptsTab.js's renderTranscriptsTabList. */
 .transcript-row {
     display: flex;
     align-items: center;
@@ -95,14 +75,11 @@
     padding: 2px;
 }
 
-/* Pinned state (the ⭐ toggle, in both the list row and the editor header
-   — see #transcripts-tab-pin-btn) — same amber a filled star implies,
-   rather than the app's usual blue, since this isn't a selection state. */
 .transcript-pin-btn.pinned {
     color: #f59e0b;
 }
 
-/* ===== Focused editor — one transcript, full tab height ===== */
+/* ===== Focused editor ===== */
 
 #transcripts-tab-editor-view {
     display: none;
@@ -110,12 +87,8 @@
     flex-direction: column;
     overflow: hidden;
     min-height: 0;
-    /* The global record button (tabs.css's .global-record-btn) is raised
-       25px above the tab bar's own top edge via a negative margin, which
-       visually pokes it up into whatever sits at the very bottom of the
-       view above — exactly where the selection bar/log used to end flush
-       against the screen edge, so the Send button was partly covered by
-       it. This clears that zone. */
+    /* Clears the zone the global record button pokes into (tabs.css's
+       .global-record-btn negative margin), so it never covers Send. */
     padding-bottom: 28px;
 }
 
@@ -137,9 +110,6 @@
     padding: 4px 6px;
 }
 
-/* "Range" armed (waiting for the start tap, or waiting for the end tap
-   after the start has landed — see startRangeSelect/toggleSentenceSelection
-   in transcriptsTab.js). */
 #transcripts-tab-range-btn.active {
     color: #2563eb;
 }
@@ -151,11 +121,6 @@
     color: var(--text-muted);
 }
 
-/* Full remaining height, scrollable — replaces the old
-   .transcript-card-body's max-height: 11em cap (the original cutoff-bug
-   thread), which made sense for a small accordion panel squeezed above the
-   Add tab's input but doesn't apply here: this view's whole job is to give
-   a transcript real screen space to work with. */
 #transcripts-tab-editor-body {
     flex: 1;
     overflow-y: auto;
@@ -166,15 +131,11 @@
     white-space: pre-wrap;
 }
 
-/* ===== Per-sentence tap targets ===== */
-/* One of these per sentence (transcriptsTab.js's splitIntoSentences/
-   renderTranscriptSentences) — the only way to pick what gets translated
-   now, replacing free-form text selection. Levels 1/2 are the AI's own
-   suggestions (getTranscriptSuggestions), a visual hint only; .selected
-   is whatever's currently picked (by hand or by tapping a suggestion);
-   .sent is a sentence already turned into a card this time the editor's
-   been open, left dim and inert so it's obvious at a glance what's left;
-   .range-anchor is the start of an in-progress 2-tap range pick. */
+/* ===== Per-sentence tap targets =====
+   suggested-level-1/2 are the AI's own suggestions (a visual hint only);
+   .selected is the current pick; .sent is already turned into a card this
+   time the editor's open; .range-anchor is the start of an in-progress
+   2-tap range pick. */
 
 .transcript-sentence {
     cursor: pointer;
@@ -197,10 +158,7 @@
     background: rgba(37, 99, 235, 0.35);
 }
 
-/* An inset shadow, not an outline — same reasoning as the Practice-tab
-   slot pill's own .selected state (table.css): this body scrolls
-   (overflow-y: auto), and an outline drawn outside the span's box would
-   risk getting clipped the same way that one was. */
+/* Inset shadow, not an outline, to avoid clipping in a scrolling container. */
 .transcript-sentence.range-anchor {
     box-shadow: inset 0 0 0 1px var(--accent-text);
 }
@@ -212,9 +170,6 @@
 }
 
 /* ===== Selection -> send bar ===== */
-/* Same look as the old Add-tab #transcript-selection-bar, just renamed —
-   appears the moment a selection lands inside #transcripts-tab-editor-body,
-   and sends straight to translation from here (no Add-tab handoff). */
 
 #transcripts-tab-selection-bar {
     flex-shrink: 0;
@@ -228,11 +183,6 @@
     border-radius: 12px;
 }
 
-/* Shows the actual text of every selected sentence, not just a count (see
-   updateTranscriptSelectionBar in transcriptsTab.js) — capped at 4 lines
-   via -webkit-line-clamp so a long selection is simply cut off with an
-   ellipsis instead of growing the bar indefinitely or pushing the Send
-   button offscreen. */
 #transcripts-tab-selection-preview {
     flex: 1;
     min-width: 0;
@@ -261,11 +211,7 @@
     cursor: default;
 }
 
-/* ===== Result/error log below the selection bar ===== */
-/* Reuses .capture-log-item/.capture-log-item.error (capture.css) for the
-   actual rows — this just caps how much of the editor's own height the
-   log can take, since the transcript body above is the main thing on
-   screen here. */
+/* ===== Result/error log — reuses .capture-log-item (capture.css) ===== */
 
 #transcripts-tab-log {
     flex-shrink: 0;

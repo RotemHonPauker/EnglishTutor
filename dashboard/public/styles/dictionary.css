@@ -1,7 +1,5 @@
-/* Dictionary cards reuse .phrase-card / .phrase-card-header /
-   .phrase-card-icons / .phrase-card-main / .learned-btn / the .learned
-   state (table.css) as-is — only the dictionary-specific inner pieces
-   need their own rules here. */
+/* Dictionary cards reuse .phrase-card and friends from table.css; only
+   the dictionary-specific inner pieces need rules here. */
 
 .dictionary-pos {
     border: none;

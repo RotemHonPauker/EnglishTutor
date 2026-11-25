@@ -1,10 +1,5 @@
-// dictionaryEngine.js (client) — mirrors the server's
-// dashboard/dictionary/dictionaryEngine.js + dictionaryPrompt.txt
-// exactly, reading the prompt from promptTemplates.js and calling Gemini
-// directly (geminiClient.js) instead of a server route.
-// Wrapped in an IIFE so its internal helpers (some share a name with
-// helpers in translationEngine.js / audioEngine.js) stay private.
-// Needs promptTemplates.js and geminiClient.js loaded first.
+// dictionaryEngine.js — word lookup via Gemini (geminiClient.js,
+// promptTemplates.js). IIFE to keep helpers private.
 
 const lookupWord = (function () {
     function parseDictionaryResponse(rawText) {
@@ -12,10 +7,7 @@ const lookupWord = (function () {
         return JSON.parse(cleaned);
     }
 
-    // Enforces the app's word display convention regardless of what the
-    // model happened to return — capitalized first letter, and (for
-    // languages that mark it, like English "to run") no leading
-    // infinitive marker.
+    // Capitalizes and strips a leading infinitive marker (e.g. "to run").
     function normalizeWord(word) {
         if (!word) return word;
         const trimmed = word.trim().replace(/^to\s+/i, '');

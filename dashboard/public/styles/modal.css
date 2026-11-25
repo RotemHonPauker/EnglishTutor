@@ -27,10 +27,6 @@
     gap: 8px;
 }
 
-/* Deliberately slimmer and less rounded than the .mode-toggle-btn buttons
-   (base.css) — the two were sitting at oddly similar visual weight before
-   (tags looked "fatter" than the buttons meant to be the more prominent
-   actions), so this moves in the opposite direction from that change. */
 .tag-chip {
     padding: 4px 12px;
     border-radius: 10px;
@@ -91,18 +87,12 @@
     overflow-y: auto;
 }
 
-/* Generic modal body text — used by Space migrate/delete confirmations
-   (spacesState.js) as well as the slot picker's own "empty" state. Used
-   to live in tags.css, which no longer exists now that tags are gone. */
 .tag-name {
     font-size: 1rem;
     color: var(--text);
     line-height: 1.4;
 }
 
-/* Shared Cancel/Save footer row and inline error line — used throughout
-   the Space picker's forms (spacesState.js) and the slot modal. Used to
-   live in tags.css, which no longer exists now that tags are gone. */
 .form-buttons {
     display: flex;
     gap: 8px;
@@ -129,16 +119,6 @@
 }
 
 /* ===== Space picker modal ===== */
-/* Each row is now one self-contained "card" — name and action icons share
-   the same background, rather than a plain name box sitting next to a
-   row of bare icon buttons beside it. The action icons reuse the same
-   circular-icon-button language as a Practice-tab phrase card's own
-   🗑️/✏️/⇄ icons (table.css's .phrase-card-icons button), just scoped to
-   this modal under their own class names — same left-aligned position and
-   same delete/rename/migrate order as that card's own delete/edit/move
-   icons, for visual consistency between the two. The active space gets
-   a blue border only, no fill — the card's own background/text color stay
-   exactly as they are for any other row. */
 
 #space-picker-list {
     display: flex;
@@ -178,9 +158,6 @@
     white-space: nowrap;
 }
 
-/* A dictionary space is set apart from a regular one by style alone —
-   no icon glued onto its name, here or in the header (spacesState.js's
-   renderSpaceHeader applies the same italic inline). */
 .space-picker-item-name--dictionary {
     font-style: italic;
 }

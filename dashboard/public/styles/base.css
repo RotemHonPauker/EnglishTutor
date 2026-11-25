@@ -1,6 +1,4 @@
-/* ===== Theme variables =====
-   Dark is the default. The active theme is set as data-theme on <html>
-   (see theme.js). Add new colors here instead of hardcoding hex values. */
+/* Dark is the default theme; data-theme on <html> (theme.js) switches it. */
 
 :root,
 :root[data-theme="dark"] {
@@ -98,18 +96,9 @@ body {
     border-inline: 1px solid var(--divider);
 }
 
-/* font-family/font: inherit added here — without it, a real <button>,
-   <input> or <textarea> picks up the browser's own default UI font rather
-   than this page's 'Segoe UI' (browsers don't automatically inherit font
-   onto form controls the way they do for plain text elements) — textarea
-   in particular defaults to a monospace font in most browser UA
-   stylesheets, which is why a textarea missing this rule (e.g. the
-   Practice drill's attempt box, before this was added here) stood out as
-   "code-styled" text instead of matching the rest of the app. Covering all
-   three elements in one global rule, rather than patching font-family onto
-   each individual input/textarea across every CSS file, is what actually
-   guarantees every text field in the app — present and future — matches,
-   instead of relying on each one remembering to set it. */
+/* Form controls don't inherit the page font by default (textarea in
+   particular defaults to monospace) — this makes every input/textarea/
+   select match the rest of the app. */
 input,
 textarea,
 select {
@@ -154,12 +143,6 @@ button.danger {
 button.danger:hover { background: #b91c1c; }
 
 /* ===== Space header (shown above every tab) ===== */
-/* Back to a plain standalone block — the Practice-only "🎯 Practice"/
-   "+ Add slot" quick actions that used to flank it (and the #header-row
-   wrapper that carried for that) moved into the Practice tab's own
-   #table-toolbar instead (index.html), alongside Select, per Rotem's own
-   call — so this is just the space-switcher pill again, nothing else
-   needs to share its row any more. */
 
 #space-header {
     margin: 8px 16px 0;
@@ -187,7 +170,7 @@ button.danger:hover { background: #b91c1c; }
     opacity: 0.6;
 }
 
-/* ===== App loading overlay (shown briefly on initial load, any tab) ===== */
+/* ===== App loading overlay (shown briefly on initial load) ===== */
 
 #app-loading-overlay {
     position: fixed;
@@ -216,21 +199,10 @@ button.danger:hover { background: #b91c1c; }
     50% { transform: scale(1.15); }
 }
 
-/* ===== Full-screen recording overlay (globalRecord.js) ===== */
-/* Up for as long as globalRecordState is "recording" or "processing" (set
-   in applyGlobalRecordButtonUI) — the small record button + its label
-   (tabs.css's .global-record-btn, in the tab bar) already showed this
-   state, but easy to miss and easy to accidentally tap something else
-   while it's running. This sits above everything else instead (z-index
-   higher than every other overlay in the app) and catches every tap, so
-   nothing underneath is reachable until recording actually stops — the
-   same button and label, just much bigger and centered, is the only thing
-   on screen. Hidden by default; .visible is toggled by
-   applyGlobalRecordButtonUI, same as every other state-driven class
-   already used for the small button. Not shown during "picking" — the
-   space picker modal (#record-routine-modal-overlay, modal.css) is its
-   own overlay already, and only one of the two should ever cover the
-   screen at once. */
+/* ===== Full-screen recording overlay (globalRecord.js) =====
+   Shown while recording/processing, above everything else, so no other
+   tap can land until recording actually stops. Not shown during the
+   space-picker step (modal.css's own overlay). */
 #global-recording-overlay {
     position: fixed;
     inset: 0;
@@ -267,10 +239,6 @@ button.danger:hover { background: #b91c1c; }
     fill: currentColor;
 }
 
-/* Shown briefly during "processing" (right after tapping stop, while the
-   recording uploads/transcribes) — same disabled-and-still look used
-   elsewhere in the app, rather than leaving it tappable with nothing left
-   to stop. */
 .global-recording-overlay-btn:disabled {
     animation: none;
     opacity: 0.6;
@@ -282,11 +250,7 @@ button.danger:hover { background: #b91c1c; }
     50% { box-shadow: 0 0 0 18px rgba(220, 38, 38, 0); }
 }
 
-/* While the button is being held down (globalRecord.js's startHoldToStop) —
-   the pulse pauses and a lighter fill sweeps in instead, as its own
-   feedback that holding is registering and building toward the ~600ms
-   needed to actually stop (HOLD_TO_STOP_MS). A quick tap never gets far
-   enough into this transition to look like anything happened, by design. */
+/* Hold-to-stop feedback (globalRecord.js's startHoldToStop). */
 .global-recording-overlay-btn.holding {
     animation: none;
     background: #f87171;
@@ -305,10 +269,8 @@ button.danger:hover { background: #b91c1c; }
     color: rgba(255, 255, 255, 0.7);
 }
 
-/* Shared mode toggle (Capture a phrase / Check my English) — used on both
-   the Type and Record tabs. Also reused, plain/unwrapped (no card, no
-   header) for a row of standalone action buttons — see
-   #theme-toggle-actions (spaceRules.css). */
+/* Shared mode toggle; also reused unwrapped for standalone action-button
+   rows (see #theme-toggle-actions in spaceRules.css). */
 .mode-toggle {
     display: flex;
     gap: 6px;

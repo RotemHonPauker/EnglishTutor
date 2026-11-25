@@ -7,13 +7,6 @@
     padding: 12px;
 }
 
-/* #theme-toggle-actions (index.html) — the Dark/Light row used to live
-   inside a #theme-section card with its own "Appearance" header; both were
-   removed to cut down on this tab's clutter. This is the one addition
-   still needed on top of the shared .mode-toggle styling: without it, .mode-toggle's
-   own default side padding (10px 24px 0) would stack on top of
-   #setup-scroll's own 12px padding, same reasoning as #backup-section's
-   override just below. */
 #theme-toggle-actions {
     padding: 0;
 }
@@ -141,19 +134,7 @@
     color: #f87171;
 }
 
-/* ===== Backup section (Setup tab) — add to spaceRules.css, right after
-   the existing #space-rules-section / #space-rules-header rules, or
-   anywhere in that file. Matches the card look of #space-rules-section, so
-   it reads as the same family of Setup-tab cards rather than a one-off.
-   The two action buttons reuse the existing .mode-toggle / .mode-toggle-btn
-   classes (the same ones Dark/Light use), via index.html's markup:
-     <div class="mode-toggle">
-       <button class="mode-toggle-btn active" ...>Export data</button>
-       <label class="mode-toggle-btn active" for="...">Import data</label>
-       ...
-     </div>
-   Two small additions were needed on top of that shared styling, see
-   below and the note for base.css further down. */
+/* ===== Backup section (Setup tab) ===== */
 
 #backup-section {
     background: var(--surface);
@@ -165,9 +146,6 @@
     gap: 12px;
 }
 
-/* Without this, .mode-toggle's own default side padding (10px 24px 0)
-   stacks on top of #backup-section's own 16px padding, making Export/Import
-   noticeably narrower than they should be. */
 #backup-section .mode-toggle {
     padding: 0;
 }
@@ -191,9 +169,7 @@
     color: #f87171;
 }
 
-/* ===== Invite a friend section (Setup tab) — same card family as
-   #backup-section right above; see index.html for the markup and
-   backup.js for handleCopyInviteClick(). */
+/* ===== Invite a friend section (Setup tab) ===== */
 
 #invite-section {
     background: var(--surface);
@@ -215,16 +191,8 @@
     color: var(--text-muted);
 }
 
-/* ===== Schedule section (Setup tab) — same card family as the sections
-   above. Used to be its own tab (#view-slots); now lives here instead,
-   with the Transcripts tab taking its old spot in the bottom nav. Its own
-   contents (#slots-permission-warning, #slots-list, and the slot add/edit
-   modal) are unchanged and still styled entirely by slots.css — this
-   file only adds the card wrapper itself, same as it does for Backup and
-   Invite above. "+ Add slot" (index.html) reuses the same .mode-toggle/
-   .mode-toggle-btn pattern as Backup/Invite's own action buttons just
-   above, for the same reason .mode-toggle's padding needs overriding
-   here too. */
+/* ===== Schedule section (Setup tab) — slots.js/slots.css own its
+   contents; this just adds the card wrapper. ===== */
 
 #schedule-section {
     background: var(--surface);

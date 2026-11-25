@@ -1,41 +1,11 @@
-// localDb.js — replaces remoteDb.js (and, with it, Supabase entirely).
-// Same function names and shapes as remoteDb.js, so the rest of the app's
-// logic doesn't change at all — just which data-layer file index.html
-// loads. A plain classic script (no import/export), same as every other
-// file in public/: these are top-level consts, which makes them ordinary
-// globals other scripts call directly.
-//
-// Storage: IndexedDB, entirely inside this browser. There is no server,
-// no login, no network call for any of this — every function below reads
-// or writes this device's own local database. Nothing here is shared
-// between devices; see ttsStorage.js for the same idea already in use
-// for cached audio, and backup.js for the Export/Import feature that's
-// the only way data moves between devices now.
-//
-// IndexedDB lets a single transaction span several object stores
-// atomically — unlike the old Supabase-over-REST version, so the
-// multi-table operations below (deleteSpace, migrateSpace) are genuinely
-// all-or-nothing again, the way the original server-side database.js was
-// with a real Postgres transaction.
+// localDb.js — all app data in IndexedDB, entirely on this device. No
+// server, no login, no network call here. See ttsStorage.js for cached
+// audio and backup.js for the Export/Import feature that moves data
+// between devices.
 
 const DB_NAME = 'fraza-db';
-// v2 added the 'slots' store. v3 removes the 'tags' store entirely — tags
-// were replaced by giving each Slot its own color directly (see the Slots
-// section below): a phrase captured during a slot's time window is now
-// colored and labeled by that slot itself, with no separate tag entity in
-// between. openDb()'s onupgradeneeded guards every store-creation behind
-// objectStoreNames.contains(...) so bumping this version on a device that
-// already has an older database only adds/removes what's actually
-// changed, instead of trying (and failing) to recreate stores that
-// already exist.
 const DB_VERSION = 3;
 const STORE_NAMES = ['spaces', 'phrases', 'dictionary', 'transcripts', 'slots'];
-
-// --- IndexedDB plumbing -----------------------------------------------
-// Everything below this block is a thin, promise-based wrapper around the
-// raw IndexedDB API (which is callback/event based). The rest of the
-// file — the actual Fraza functions — never touches IDBRequest/
-// IDBTransaction directly.
 
 let dbPromise = null;
 
@@ -46,12 +16,9 @@ function openDb() {
         req.onupgradeneeded = () => {
             const db = req.result;
 
-            // Every store creation is guarded — onupgradeneeded re-runs
-            // this whole function on an existing older database jumping
-            // straight to the latest version, and createObjectStore()
-            // throws if the store is already there (stores persist across
-            // versions; only each version's own additions actually need
-            // creating).
+            // Every creation is guarded with objectStoreNames.contains —
+            // onupgradeneeded re-runs this whole function on an older
+            // database jumping straight to the latest version.
             if (!db.objectStoreNames.contains('spaces')) {
                 const spaces = db.createObjectStore('spaces', { keyPath: 'id' });
                 spaces.createIndex('created_at', 'created_at');
@@ -60,9 +27,6 @@ function openDb() {
             if (!db.objectStoreNames.contains('phrases')) {
                 const phrases = db.createObjectStore('phrases', { keyPath: 'id' });
                 phrases.createIndex('space_id', 'space_id');
-                // NOTE: no index on slot_id — nothing currently looks up
-                // phrases by slot (getPhrases joins the other direction,
-                // slot-by-id, in memory), so there's nothing to index yet.
             }
 
             if (!db.objectStoreNames.contains('dictionary')) {
@@ -75,22 +39,11 @@ function openDb() {
                 transcripts.createIndex('space_id', 'space_id');
             }
 
-            // v2: Slots — a time-of-day window, linked to one Space
-            // (space_id). See the Slots section below for what a slot row
-            // actually holds now (v3 onward: its own color, no more
-            // tag_ids). Overlap validation (findOverlappingSlot) scans
-            // every slot regardless of space_id, so no extra index is
-            // needed for that — the space_id index here is only for
-            // loading one space's own slots in the Slots/Schedule screen
-            // (slots.js).
             if (!db.objectStoreNames.contains('slots')) {
                 const slots = db.createObjectStore('slots', { keyPath: 'id' });
                 slots.createIndex('space_id', 'space_id');
             }
 
-            // v3: tags are gone — a slot's own color now does what a tag
-            // used to do. Any device upgrading from v1/v2 still has this
-            // store sitting around with old data in it; just drop it.
             if (db.objectStoreNames.contains('tags')) {
                 db.deleteObjectStore('tags');
             }
@@ -173,17 +126,9 @@ function notFoundError(storeName, id) {
     return new Error(`No row with id ${id} in ${storeName}`);
 }
 
-// --- Card age (phrases + dictionary entries) ----------------------------
-// There used to be a whole lifetime/saved/trash mechanism here — a
-// per-space expiry policy, a one-way "saved" flag, and a 24h grace
-// window before a hard delete. Rotem's own call to drop all of it: too
-// much machinery for what the app actually needed, once cards are browsed
-// by which time slot they belong to (see slots.js's
-// renderPracticeSlotsScroll) rather than by when they were captured. All
-// that's left of the idea is this
-// one soft nudge: a card older than CARD_OLD_MS just gets a visible "old"
-// note on its own card (phrasesTable.js/dictionary.js) to encourage
-// deleting it by hand — nothing here ever deletes anything automatically.
+// A card older than CARD_OLD_MS just gets a visible "old" note on its own
+// card (phrasesTable.js/dictionary.js) — nothing here deletes anything
+// automatically.
 const CARD_OLD_MS = 30 * 24 * 60 * 60 * 1000; // 1 month
 
 const isCardOld = (card) => Date.now() - new Date(card.created_at).getTime() > CARD_OLD_MS;
@@ -199,12 +144,6 @@ const saveSentence = async ({ sourceText, variant1, variant2, spaceId, slotId })
         space_id: spaceId,
         slot_id: slotId || null,
         level: 1,
-        // "learned" is gone — a phrase that's solid enough to stop
-        // practicing just gets deleted outright now (see
-        // practiceSession.js). last_practiced_at instead tracks when this
-        // phrase was last stepped through in a practice session (null =
-        // never), which is what decides which phrases a session picks
-        // first (see pickSessionItems in practiceSession.js).
         last_practiced_at: null,
         tts_url_variant1: null,
         tts_url_variant2: null,
@@ -215,9 +154,6 @@ const saveSentence = async ({ sourceText, variant1, variant2, spaceId, slotId })
 
 const getPhraseById = async (id) => idbGet('phrases', id);
 
-// Editor-driven save: same as the original — overwrites wording, clears
-// the cached-audio flags (see updatePhraseTtsFlag below for why these are
-// flags now, not URLs).
 const updatePhrase = async ({ id, sourceText, variant1, variant2 }) => {
     const existing = await idbGet('phrases', id);
     if (!existing) throw notFoundError('phrases', id);
@@ -244,12 +180,6 @@ const updatePhraseLevel = async ({ id, level }) => {
     return idbPut('phrases', { ...existing, level });
 };
 
-// Called once per phrase at the end of a practice-session card (not per
-// sentence — see practiceSession.js's advancePracticeAfterDecision), when
-// the person taps "Continue" rather than "Delete phrase". This is the only
-// thing a successful practice pass writes anywhere — no record of the
-// attempt itself is kept (see the file-level comment in practiceSession.js
-// for why).
 const markPhrasePracticed = async (id) => {
     const existing = await idbGet('phrases', id);
     if (!existing) throw notFoundError('phrases', id);
@@ -264,10 +194,6 @@ const bulkMovePhrases = async ({ ids, targetSpaceId }) => {
     for (const id of ids) {
         const existing = await reqToPromise(store.get(id));
         if (!existing) continue;
-        // slot_id cleared on a cross-space move, same reasoning as the
-        // old tag_id clear it replaces — a slot belongs to one specific
-        // space's own schedule, so it has nothing to do with wherever
-        // the phrase lands.
         const row = { ...existing, space_id: targetSpaceId, slot_id: null };
         store.put(row);
         updated.push(row);
@@ -283,12 +209,8 @@ const deletePhrase = async (id) => {
     return existing;
 };
 
-// TTS, same meaning as in remoteDb.js: this column is a flag ('cached'
-// once this device has generated audio for that variant, or null) — the
-// actual audio lives in IndexedDB too, but in ttsStorage.js's own object
-// store, keyed by phraseId+variant. A phrase played from a different
-// device regenerates its own local copy, same as before it was ever
-// played anywhere.
+// tts_url_variantN is a flag ('cached' or null) — the actual audio lives
+// in ttsStorage.js's own store, keyed by phraseId+variant.
 const updatePhraseTtsFlag = async ({ id, variant, cached }) => {
     const existing = await idbGet('phrases', id);
     if (!existing) throw notFoundError('phrases', id);
@@ -296,12 +218,8 @@ const updatePhraseTtsFlag = async ({ id, variant, cached }) => {
     return idbPut('phrases', { ...existing, [column]: cached ? 'cached' : null });
 };
 
-// Mirrors the original's LEFT JOIN onto tags, now flattened against this
-// space's own slots instead: slot_name/slot_color so calling code can
-// show a phrase card's color/label without a second lookup. Only this
-// space's own slots are considered, which is correct — a phrase's
-// slot_id is only ever set to a slot belonging to its own space_id (see
-// bulkMovePhrases above, which clears it on any cross-space move).
+// Flattens each phrase's slot_name/slot_color in, so callers can show a
+// card's color/label with no second lookup.
 const getPhrases = async (spaceId) => {
     const [phrases, slots] = await Promise.all([
         idbGetAllByIndex('phrases', 'space_id', spaceId),
@@ -347,15 +265,9 @@ const updateSpace = async ({ id, name, aboutThisSpace, variant1Notes, variant2No
     return idbPut('spaces', updated);
 };
 
-// Deletes everything scoped to a space, then the space itself — same
-// order as the original (phrases, dictionary, transcripts, space), all
-// inside one IndexedDB transaction, so it's genuinely all-or-nothing.
-// Also removes this space's own slots — a slot with no space left to
-// belong to has no reminder to send, so it cannot be allowed to linger as
-// an orphan the next time slots are listed or checked for overlap.
-// Doesn't touch IndexedDB-cached TTS audio — the caller (phrasesTable.js
-// / ttsStorage.js) cleans that up itself, same pattern as a single
-// phrase delete.
+// Deletes everything scoped to a space (including its own slots), then the
+// space itself, inside one transaction — all-or-nothing. Cached TTS audio
+// is cleaned up by the caller instead (phrasesTable.js/ttsStorage.js).
 const deleteSpace = async (id) => {
     const db = await openDb();
     const tx = db.transaction(['spaces', 'phrases', 'dictionary', 'transcripts', 'slots'], 'readwrite');
@@ -376,17 +288,9 @@ const deleteSpace = async (id) => {
     return existing;
 };
 
-// Moves a space's phrases and transcripts into another space, then
-// deletes the source. Tags used to be merged here too (duplicate/
-// conflicting names and colors resolved, same as mergeTags) — there's
-// nothing left to merge now that tags are gone. Slots aren't touched by a
-// migration (same as before this change): they stay with whichever
-// space they were created in, and a migrated phrase's own slot_id is
-// cleared, same reasoning as bulkMovePhrases above. Transcripts used to be
-// blocked from migrating past a hard cap (MAX_TRANSCRIPTS_PER_SPACE) — gone
-// now that transcripts expire on their own after 24h (see
-// deleteExpiredTranscripts below), so there's nothing left to overflow and
-// nothing to check here before moving them.
+// Moves a space's phrases and transcripts into another space, then deletes
+// the source. Slots stay with their own space; a migrated phrase's own
+// slot_id is cleared, same as bulkMovePhrases above.
 const migrateSpace = async ({ sourceId, targetId }) => {
     if (sourceId === targetId) {
         throw new Error('Cannot migrate a space into itself');
@@ -426,32 +330,10 @@ const getSpaceRuleFields = async (spaceId) => {
 };
 
 // --- Transcripts --------------------------------------------------------
-// A transcript is short-lived on purpose: it lives for TRANSCRIPT_RETENTION_MS
-// (24h) and is then hard-deleted (see deleteExpiredTranscripts below) —
-// replacing the old MAX_TRANSCRIPTS_PER_SPACE soft-cap/warning entirely.
-// It also carries its own slot_id now, decided once at creation time (the
-// slot active when the recording finished, if any — see
-// transcriptsTab.js's finishRecordingIntoTranscript) and stored permanently,
-// NOT recomputed live against whatever slots exist later. If that slot is
-// later deleted, this is read the same lazy way a phrase's own slot_id is
-// (see getPhrases above): a lookup against the current slots list that
-// simply comes back empty, so the transcript just loses its color — no
-// error, no cascade-clearing needed here.
-//
-// A transcript can also be pinned — protects it from the 24h auto-delete
-// indefinitely, until unpinned. New transcripts are created with
-// pinned: false (see createTranscript below), same as every other
-// explicit default in this file. But every transcript that already
-// existed before this feature shipped has no pinned field at all
-// (undefined) — not false — and isTranscriptPinned treats that missing
-// field as pinned too, same "undefined means legacy, treat it as the
-// safe/protected state" pattern as a slot's own `enabled !== false`
-// elsewhere in this file. That's deliberate, not just a safe default: it's
-// exactly how every transcript sitting in the app right now, recorded
-// before pinning existed, ends up protected automatically the first time
-// this runs, with no separate one-time migration needed. Once any of
-// those is explicitly unpinned (or any new transcript is created), normal
-// 24h expiry applies to it from then on.
+
+// A transcript with no `pinned` field at all predates the pinning feature
+// — treated as pinned too, so every transcript that existed before this
+// shipped is automatically protected with no separate migration needed.
 const isTranscriptPinned = (t) => t.pinned !== false;
 
 const getTranscripts = async (spaceId) => {
@@ -465,12 +347,6 @@ const createTranscript = async ({ spaceId, content, slotId, suggestions }) => {
         space_id: spaceId,
         content,
         slot_id: slotId || null,
-        // The AI's candidate-sentence highlights (transcriptsTab.js's
-        // getTranscriptSuggestions), computed once right here at creation
-        // time — [{index, level}], indices into
-        // splitIntoSentences(content) rather than the sentence text
-        // itself. Empty for a transcript this feature found nothing worth
-        // suggesting in, or that was recorded before this feature existed.
         suggestions: suggestions || [],
         pinned: false,
         created_at: new Date().toISOString()
@@ -492,15 +368,8 @@ const deleteTranscript = async (id) => {
     return existing;
 };
 
-// 24 hours, in milliseconds — a transcript older than this is hard-deleted
-// the next time this runs (app.js's window.onload, and again whenever the
-// Transcripts tab's list is loaded — see transcriptsTab.js's
-// loadTranscriptsTabList — so the list is always accurate without needing
-// a running timer), UNLESS it's pinned (isTranscriptPinned above) — a
-// pinned transcript never expires on its own, no matter how old. Scans
-// every space at once rather than just the active one, since a space
-// switch shouldn't be what decides whether a stale transcript elsewhere
-// finally gets cleaned up.
+// A transcript older than this is hard-deleted the next time this runs
+// (app.js startup, and the Transcripts tab list load), unless pinned.
 const TRANSCRIPT_RETENTION_MS = 24 * 60 * 60 * 1000;
 
 const deleteExpiredTranscripts = async () => {
@@ -533,18 +402,12 @@ const saveDictionaryEntry = async ({ spaceId, sourceQuery, word, partOfSpeech, s
         source_synonyms: sourceSynonyms,
         example_sentence: exampleSentence,
         target_synonyms: targetSynonyms,
-        // Same purpose as a phrase's own last_practiced_at (see
-        // saveSentence above) — null until the first time this word is
-        // stepped through in a practice session (practiceSession.js),
-        // which is what decides which words a session picks first.
         last_practiced_at: null,
         created_at: new Date().toISOString()
     };
     return idbPut('dictionary', row);
 };
 
-// Mirrors markPhrasePracticed above — called once a dictionary word's
-// practice-session unit ends in "Continue" rather than "Delete word".
 const markDictionaryEntryPracticed = async (id) => {
     const existing = await idbGet('dictionary', id);
     if (!existing) throw notFoundError('dictionary', id);
@@ -559,26 +422,11 @@ const deleteDictionaryEntry = async (id) => {
 };
 
 // --- Slots ----------------------------------------------------------------
-// A Slot is a time-of-day window: a start-end range (both stored as
-// minutes-since-midnight, 0-1439, for easy arithmetic — see
-// getSelectedMinutes/setTimeSelects in slots.js for the <-> hour/minute
-// <select> conversion), a short name (NOT free-typed notification text —
-// see buildSlotNotificationText in slots.js), the one Space (space_id)
-// it belongs to, and its own color.
-//
-// A slot's color IS its identity now — there's no separate Tag entity any
-// more. A phrase captured while a slot's time window is open is linked
-// directly to that slot (phrases.slot_id) and takes on its color/name for
-// display, with no in-between "which tag applies" step. Colors come from
-// one shared pool of MAX_SLOTS_TOTAL below, enforced across EVERY space
-// in the app at once, not per-space — two slots can never share a
-// color anywhere in the app, since a slot's color is how it's told apart
-// on the Practice tab's own cross-space slots scroll (every space's
-// slots together — see slots.js's renderPracticeSlotsScroll).
+// A Slot is a time-of-day window (start/end stored as minutes-since-midnight),
+// a short name, the Space it belongs to, and its own color — a slot's color
+// is its identity, with colors shared from one app-wide pool so no two
+// slots anywhere share a color (MAX_SLOTS_TOTAL below).
 
-// One color per slot, one slot per color — so the color pool's size IS
-// the app-wide slot limit. Enforced here (not just in the UI) so the
-// invariant holds regardless of which code path creates a slot.
 const MAX_SLOTS_TOTAL = 16;
 
 const getSlots = async (spaceId) => {
@@ -586,10 +434,6 @@ const getSlots = async (spaceId) => {
     return [...rows].sort((a, b) => a.start_minutes - b.start_minutes);
 };
 
-// Every slot from every space — used by the Practice tab's own
-// cross-space slots scroll (slots.js's renderPracticeSlotsScroll), the
-// global color-uniqueness check in the slot add/edit modal, and
-// findActiveSlotNow/findOverlappingSlot below.
 const getAllSlots = async () => {
     const rows = await idbGetAll('slots');
     return [...rows].sort((a, b) => a.start_minutes - b.start_minutes);
@@ -599,27 +443,14 @@ function slotRangesOverlap(aStart, aEnd, bStart, bEnd) {
     return aStart < bEnd && bStart < aEnd;
 }
 
-// The hard-block overlap check, across ALL spaces — not just the one
-// being edited, per the agreed design (a slot at 8:15 for "Breakfast" and
-// another at 8:00-8:30 for "Commute" conflict regardless of which space
-// either belongs to). excludeId lets editing an existing slot compare
-// against every OTHER slot without the slot flagging itself.
-// Returns the first conflicting slot, or null.
+// Checks across ALL spaces, not just the one being edited — two slots from
+// different spaces still conflict if their times overlap. excludeId lets
+// editing a slot compare against every other slot without flagging itself.
 const findOverlappingSlot = async ({ startMinutes, endMinutes, excludeId }) => {
     const all = await idbGetAll('slots');
     return all.find(s => s.id !== excludeId && slotRangesOverlap(startMinutes, endMinutes, s.start_minutes, s.end_minutes)) || null;
 };
 
-// NOTE: a slot no longer carries free-typed notification text — just a
-// short `name` the person gives it (e.g. "Morning coffee"). The actual
-// push-notification body is a fixed template built from that name in
-// code (see slots.js's buildSlotNotificationText), not something typed
-// per-slot.
-
-// `enabled` defaults to true for every new slot — per the agreed design,
-// a freshly created slot should notify unless the person explicitly
-// turns it off afterwards (see setSlotEnabled below, wired to the
-// per-slot toggle in slots.js).
 const createSlot = async ({ spaceId, startMinutes, endMinutes, name, color }) => {
     const existingCount = await idbCountAll('slots');
     if (existingCount >= MAX_SLOTS_TOTAL) {
@@ -642,9 +473,7 @@ const createSlot = async ({ spaceId, startMinutes, endMinutes, name, color }) =>
     return idbPut('slots', row);
 };
 
-// Deliberately doesn't touch `enabled` — editing a slot's time/name/color
-// from the modal shouldn't silently flip its notification state one way
-// or the other; that's only ever changed via setSlotEnabled below.
+// Doesn't touch `enabled` — only setSlotEnabled below changes that.
 const updateSlot = async ({ id, startMinutes, endMinutes, name, color }) => {
     const existing = await idbGet('slots', id);
     if (!existing) throw notFoundError('slots', id);
@@ -658,9 +487,6 @@ const updateSlot = async ({ id, startMinutes, endMinutes, name, color }) => {
     return idbPut('slots', updated);
 };
 
-// Flips just the per-slot on/off toggle (slots.js) — a separate, narrower
-// action from updateSlot on purpose, so toggling notifications off/on can
-// never accidentally touch the time/name/color fields.
 const setSlotEnabled = async (id, enabled) => {
     const existing = await idbGet('slots', id);
     if (!existing) throw notFoundError('slots', id);
@@ -675,9 +501,6 @@ const deleteSlot = async (id) => {
     return existing;
 };
 
-// Small helper used only by createSlot's app-wide cap check above — not
-// worth a generic addition to the IndexedDB-plumbing section since
-// nothing else needs a plain whole-store count yet.
 async function idbCountAll(storeName) {
     const db = await openDb();
     const tx = db.transaction(storeName, 'readonly');

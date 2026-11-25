@@ -1,13 +1,7 @@
-// translationEngine.js (client) — mirrors the server's
-// dashboard/translation/translationEngine.js + translationPrompt.txt +
-// variantGuidance.txt exactly, just reading prompt text from
-// promptTemplates.js (no filesystem in a browser) and calling Gemini
-// directly (geminiClient.js) instead of going through a server route.
-// Wrapped in an IIFE so its internal helpers stay private — several of
-// them share a name with helpers in dictionaryEngine.js / audioEngine.js
-// (e.g. parseResponse-style JSON cleanup), and as plain global scripts
-// those would otherwise silently collide.
-// Needs promptTemplates.js, geminiClient.js, remoteDb.js and slots.js
+// translationEngine.js — calls Gemini directly (geminiClient.js) using the
+// prompt text in promptTemplates.js. Wrapped in an IIFE since its helpers
+// share names with dictionaryEngine.js's/audioEngine.js's.
+// Needs promptTemplates.js, geminiClient.js, localDb.js and slots.js
 // (findActiveSlotNow) loaded first.
 
 const translatePhrase = (function () {
@@ -47,13 +41,9 @@ const translatePhrase = (function () {
     return async function translatePhrase(sourceText, spaceId) {
         const spaceFields = await getSpaceRuleFields(spaceId);
 
-        // Slot assignment is a plain time-of-day lookup now, not something
-        // Gemini is asked about — whichever Slot is active right now (see
-        // slots.js's findActiveSlotNow) becomes the phrase's slot
-        // directly, as long as it belongs to THIS space. A slot active
-        // for a different space right now simply doesn't apply here
-        // (every space's Add tab only ever colors phrases with ITS OWN
-        // slots). No model call involved in this decision at all.
+        // Slot assignment is a plain time-of-day lookup, not something
+        // Gemini is asked about — whichever slot is active now becomes the
+        // phrase's slot, as long as it belongs to this space.
         const activeSlot = typeof findActiveSlotNow === 'function' ? await findActiveSlotNow() : null;
         const slotId = (activeSlot && activeSlot.space_id === spaceId) ? activeSlot.id : null;
 

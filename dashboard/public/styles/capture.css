@@ -104,9 +104,8 @@
     line-height: 1;
 }
 
-/* ===== Content area (inside the box, above the footer) ===== */
-/* Swaps between the textarea (Type/Dictionary) and the two record-language
-   buttons (Record) — the footer below it (icons + Send) never moves. */
+/* ===== Content area — swaps between the textarea and the record button;
+   the footer below it (icons + Send) never moves. ===== */
 
 #capture-record-buttons {
     display: none;
@@ -122,11 +121,8 @@
     line-height: 1;
 }
 
-/* ===== Type/Dictionary/Record icon strip ===== */
-/* Lives in the box's own footer, next to Send — always visible regardless
-   of mode, so there's always a way back to Type. Icons only (no label):
-   the clarification is the placeholder text/buttons that appear above the
-   moment you tap one, not the icon itself. */
+/* ===== Type/Dictionary/Record icon strip — always visible, so there's
+   always a way back to Type ===== */
 
 #capture-mode-icons {
     display: flex;

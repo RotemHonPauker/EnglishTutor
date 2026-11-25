@@ -1,23 +1,8 @@
-// promptTemplates.js — the exact text of the server's four prompt files
-// (translationPrompt.txt, variantGuidance.txt, dictionaryPrompt.txt,
-// audioPrompt.txt), as plain JS string constants instead of files on
-// disk — there's no filesystem to readFileSync() from in a browser.
-// Every ${...} placeholder below is deliberately escaped (\${...}) so
-// it stays literal text for the engines to .replace() themselves,
-// instead of being evaluated as a real JS template expression right
-// here (there's no local variable named sourceLanguage etc. at this
-// point — these are filled in later, per call, by translationEngine.js /
-// dictionaryEngine.js / audioEngine.js).
-// Content must stay byte-for-byte identical to the .txt files it mirrors
-// — if those change on the server side (while it still exists) or get
-// deleted later, update this file to match.
-//
-// NOTE: TRANSLATION_PROMPT_TEMPLATE used to have a "Step 3: Suggest a
-// Tag" section asking Gemini to pick a tag out of the active slot's
-// candidate list. That's gone — a captured phrase's slot is now decided
-// entirely in code (translationEngine.js just checks which slot's time
-// window is open right now), so there's nothing left for the model to be
-// asked about here.
+// promptTemplates.js — Gemini prompt templates as plain string constants.
+// Every ${...} placeholder is escaped (\${...}) so it stays literal text
+// for the engines to .replace() themselves (translationEngine.js /
+// dictionaryEngine.js / audioEngine.js), rather than evaluating as a real
+// JS template expression here.
 
 const TRANSLATION_PROMPT_TEMPLATE = `## Input
 You will receive a phrase.
@@ -101,14 +86,10 @@ Treat other voices or background sound as context, not something to transcribe v
 Respond ONLY with valid JSON in this exact format, no other text:
 {"transcript": "the cleaned transcript as continuous text"}`;
 
-// Not one of the original server's four prompt files — added for
-// transcriptsTab.js's getTranscriptSuggestions, which asks Gemini to
-// point out which sentences of an already-transcribed recording look
-// worth turning into a practice phrase card. Deliberately works off a
-// pre-split, numbered list of sentences (built in code, not by the
-// model) rather than asking the model to return the sentence text
-// itself — returning plain indices is far more robust than hoping a
-// quoted excerpt matches the original text exactly.
+// Used by transcriptsTab.js's getTranscriptSuggestions. Works off a
+// pre-split, numbered list of sentences and asks for indices back, rather
+// than quoted text, since matching an index is far more robust than
+// matching a quoted excerpt against the original.
 const TRANSCRIPT_SUGGESTIONS_PROMPT_TEMPLATE = `## Input
 You will receive a numbered list of sentences, taken from a transcript of someone speaking \${sourceLanguage} (possibly mixed with \${targetLanguage}) during their day. They're learning \${targetLanguage} and use recordings like this one to capture things worth practicing.
 

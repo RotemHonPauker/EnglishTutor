@@ -1,11 +1,3 @@
-// The frontend's list of supported languages. There's no backend anymore
-// to fetch this from (the old GET /languages route is gone), so the list
-// is just inlined here directly — same values as the original
-// dashboard/languages.js, which no longer exists. LANGUAGES is populated
-// immediately at script-load time, so nothing needs to await it anymore
-// (loadLanguages() is kept as a no-op so app.js doesn't need changing
-// beyond removing it from its startup Promise.all).
-
 const LANGUAGES = [
     { code: 'HE', name: 'Hebrew' },
     { code: 'EN', name: 'English' },

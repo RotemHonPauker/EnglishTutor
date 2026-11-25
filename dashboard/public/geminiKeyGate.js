@@ -1,26 +1,8 @@
-// geminiKeyGate.js — one-time "Enter your Gemini API key" overlay. This
-// is the only setup gate left in the app — there's no database connection
-// or login to wait on anymore (everything else lives in this device's
-// own IndexedDB, see localDb.js). Shown once per device, right at
-// startup; skipped automatically on every later launch as long as a key
-// is still saved.
-//
-// Needs geminiClient.js loaded first (uses hasGeminiApiKey/setGeminiApiKey).
-//
-// Usage from app.js: window.onload should be:
-//   window.onload = async () => {
-//       await waitForGeminiKey();
-//       ...rest as before...
-//   }
+// geminiKeyGate.js — one-time "Enter your Gemini API key" overlay, shown
+// once per device at startup. Needs geminiClient.js loaded first.
+// app.js calls: await waitForGeminiKey() before anything else.
 
 (function () {
-    // The app's original #app-loading-overlay (base.css/index.html) was
-    // designed to hide itself automatically once the old server's initial
-    // fetches finished (see loadingOverlay.js) — a timing assumption that
-    // no longer holds now that startup can pause on a person filling in
-    // this form. This is the first script in the startup chain now (no
-    // more connection/login gates before it), so it force-hides that
-    // overlay directly, the same way connectionGate.js used to.
     const legacyLoadingOverlay = document.getElementById('app-loading-overlay');
     if (legacyLoadingOverlay) legacyLoadingOverlay.style.display = 'none';
 

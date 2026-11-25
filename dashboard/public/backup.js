@@ -1,29 +1,9 @@
-// backup.js — Export/Import for this device's IndexedDB data (see
-// localDb.js). This is the only way data ever moves between devices now
-// that there's no shared database — two separate uses in one feature:
-//
-//   1. A safety-net backup (clearing browser data, losing the device,
-//      switching browsers) — export occasionally, keep the file somewhere.
-//   2. A one-time transfer to a new device — export on the old one,
-//      import on the new one.
-//
-// It is NOT a sync mechanism: import replaces a store's rows wholesale
-// (by id) rather than merging intelligently, so it's meant for restoring
-// into an empty/fresh install, not for reconciling two devices that have
-// both been used independently. See the Setup tab UI (spaceRules.js) for
-// where these are wired to buttons.
+// backup.js — Export/Import for this device's IndexedDB data. Not a sync
+// mechanism: import overwrites rows by id, meant for restoring into a
+// fresh install, not merging two devices.
 
-// 'slots' added here (was missing before — export/import silently skipped
-// time slots entirely until now). Tags are gone — a slot's own color does
-// what a tag used to — so the 'tags' store that used to sit here is gone
-// too.
 const BACKUP_STORE_ORDER = ['spaces', 'slots', 'phrases', 'dictionary', 'transcripts'];
 
-// Reads every row from every store, in one object, and triggers a
-// download of it as a timestamped .json file. IDs are kept exactly as
-// stored, so an import can restore them with all their original
-// relationships (phrase.slot_id -> slot.id, slot.space_id -> space.id,
-// etc.) intact.
 async function exportAllData() {
     const db = await openDb();
     const payload = { exportedAt: new Date().toISOString(), tables: {} };
@@ -48,12 +28,8 @@ async function exportAllData() {
     return { payload, filename };
 }
 
-// Opens the device's default mail app with a prefilled draft, as a
-// reminder to attach the just-downloaded backup file and send it
-// somewhere off this device. Browsers don't allow a file download to be
-// attached to a mailto: draft automatically — the person still has to
-// manually attach it from Downloads in whatever mail app opens — so this
-// is a convenience nudge, not a real attachment.
+// Browsers can't attach a downloaded file to a mailto draft automatically —
+// this just nudges the person to attach it themselves.
 function openBackupMailtoReminder(filename) {
     const subject = `Fraza backup — ${filename}`;
     const body = `Reminder: attach "${filename}" from your Downloads folder before sending.\n\n` +
@@ -62,13 +38,6 @@ function openBackupMailtoReminder(filename) {
     window.location.href = mailtoUrl;
 }
 
-// Restores a backup file produced by exportAllData(). Meant for an
-// empty/fresh install: rows are written with their original ids via put()
-// (insert-or-overwrite), inserted in dependency order (spaces, then
-// everything that references them) inside one transaction, so a restore
-// into a database that already has data with the SAME ids would silently
-// overwrite those rows rather than merge or duplicate them — by design,
-// since this isn't a sync tool (see the file-level note above).
 async function importAllData(payload) {
     if (!payload || typeof payload !== 'object' || !payload.tables) {
         throw new Error('This file doesn\'t look like a Fraza backup.');
@@ -92,7 +61,6 @@ async function importAllData(payload) {
     return { tablesRestored: BACKUP_STORE_ORDER.filter(s => Array.isArray(payload.tables[s])), totalRows };
 }
 
-// Reads a File (from an <input type="file"> change event) as parsed JSON.
 function readFileAsJson(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -108,13 +76,8 @@ function readFileAsJson(file) {
     });
 }
 
-// --- Setup-tab UI glue ---------------------------------------------------
-// Wired to the "Backup" section in index.html (view-tags). Kept here
-// rather than in spaceRules.js so the whole backup feature — logic and
-// UI handler — lives in one file.
+// ===== Setup-tab UI glue =====
 
-// Friendly singular/plural labels for the per-table counts shown after an
-// export, keyed by store name.
 const BACKUP_STORE_LABELS = {
     spaces: 'space',
     slots: 'time slot',
@@ -155,7 +118,7 @@ async function handleExportBackupClick() {
 async function handleImportBackupFileSelected(inputEl) {
     const statusEl = document.getElementById('backup-import-status');
     const file = inputEl.files && inputEl.files[0];
-    inputEl.value = ''; // allow re-selecting the same file later
+    inputEl.value = '';
     if (!file) return;
 
     const confirmed = confirm(
@@ -184,23 +147,6 @@ async function handleImportBackupFileSelected(inputEl) {
 
 // ===== Invite a friend (Setup tab) =====
 
-// Written as a friend recommending an app they already use and like — not
-// "I built this" (anyone using Fraza should be able to send this, not just
-// Rotem), and not an ad-copy pitch either, per her explicit feedback on
-// earlier drafts: first person throughout, no "while you're busy doing
-// whatever you're doing" filler, and the API key framed as a privacy
-// feature (your own key, your own private account, nothing leaking out
-// through anyone else's) rather than just a setup chore. The app link
-// comes early (right after the hook) and the GitHub link comes last, on
-// purpose — two different "go here" asks sitting close together read as
-// cluttered.
-//
-// A function, not a plain string, because the target-language mention
-// ("...in English") shouldn't be hardcoded — Fraza isn't Hebrew→English
-// specifically, each Space has its own source/target language
-// pair (see spacesState.js), so this pulls whatever language the person's
-// CURRENTLY ACTIVE space is actually practicing, falling back to
-// "English" only if somehow there's no active space yet to read it from.
 function buildInviteMessage() {
     const active = (typeof getActiveSpace === 'function') ? getActiveSpace() : null;
     const targetLanguage = (active && active.target_language) || 'English';
@@ -225,9 +171,6 @@ async function handleCopyInviteClick() {
             statusEl.classList.remove('error');
         }
     } catch (e) {
-        // navigator.clipboard can be unavailable/denied in some contexts
-        // (older browsers, non-HTTPS, permission blocked) — fall back to
-        // just showing the text so it can still be copied by hand.
         if (statusEl) {
             statusEl.textContent = 'Could not copy automatically — select and copy the message below:';
             statusEl.classList.add('error');

@@ -1,23 +1,9 @@
 // Space Setup: the 4-field accordion (About this space / Level 1 /
 // Level 2 / Audio Recording), each with its own Save/Cancel/Copy-from,
 // plus the navigation guard that blocks switching tabs or spaces while a
-// field has an unsaved edit. Split out of spacesState.js, which still owns
-// `spaces`/`activeSpaceId`/`getActiveSpace()` and calls renderSpaceRulesForm()
-// from its own renderSpaceHeader() — a plain global-scope call, same as
-// everywhere else cross-file calls happen in this app.
-// Needs remoteDb.js loaded first.
-//
-// NOTE on naming: the UI briefly called this "Context" instead of "Space" —
-// reverted, "Context" didn't work out as a rename. Every displayed string
-// below says "Space" again. The internal field/dbKey names (space_rules_*,
-// variant_1_notes, etc.) were never touched either way.
-
-// ===== Space rules (Setup tab) =====
-// An accordion — each field starts collapsed, one click opens it for
-// editing, and Save/Cancel/Copy-from all act on that one field only. The
-// fields already come along with every space object from getSpaces() (a
-// plain select *), so no separate call is needed here — just read
-// whatever's already in `spaces`.
+// field has an unsaved edit. Split out of spacesState.js, which owns
+// spaces/activeSpaceId/getActiveSpace() and calls renderSpaceRulesForm()
+// from its own renderSpaceHeader(). Needs localDb.js loaded first.
 
 const SPACE_RULE_FIELDS = {
     about: { textareaId: 'space-rules-about', dbKey: 'about_this_space', bodyKey: 'aboutThisSpace', label: 'About this space' },
@@ -26,10 +12,7 @@ const SPACE_RULE_FIELDS = {
     audio: { textareaId: 'space-rules-audio', dbKey: 'audio_recording_notes', bodyKey: 'audioRecordingNotes', label: 'Audio Recording' }
 };
 
-// Only one field open at a time — opening one collapses whatever else was
-// open, so an edit sitting half-finished in another field never quietly
-// falls out of view. Collapsing still doesn't discard anything by itself;
-// only Cancel does that.
+// Only one field open at a time — opening one collapses the others.
 function toggleSpaceRuleItem(field) {
     const item = document.querySelector(`.space-rules-item[data-field="${field}"]`);
     if (!item) return;
@@ -59,12 +42,9 @@ function setFieldStatus(field, text, isError = false) {
     statusEl.classList.toggle('error', isError);
 }
 
-// Repopulates every field from the currently active space (discarding any
-// unsaved edits) and collapses the whole accordion — used both on initial
-// load/space-switch, and as the basis for a single field's Cancel.
 function renderSpaceRulesForm() {
     const aboutEl = document.getElementById('space-rules-about');
-    if (!aboutEl) return; // not on the Setup tab yet
+    if (!aboutEl) return;
 
     const active = getActiveSpace();
     Object.entries(SPACE_RULE_FIELDS).forEach(([field, cfg]) => {
@@ -73,10 +53,8 @@ function renderSpaceRulesForm() {
         setFieldStatus(field, '');
     });
 
-    // Level 1/2 mean something different in a Bridge space — variant_2 is
-    // a separate reference language, not a more advanced version of
-    // variant_1 — so the labels (and what the notes field is even for)
-    // need to say that instead of "Level 1"/"Level 2".
+    // In a Bridge space, variant_2 is a separate reference language, not a
+    // more advanced version of variant_1 — labels reflect that instead.
     const title1 = document.getElementById('space-rules-title-level1');
     const title2 = document.getElementById('space-rules-title-level2');
     const textarea1 = document.getElementById('space-rules-level1');
@@ -96,7 +74,6 @@ function renderSpaceRulesForm() {
     closeAllSpaceRuleItems();
 }
 
-// Discards unsaved edits in just this one field and closes it.
 function cancelSpaceRuleField(field) {
     const cfg = SPACE_RULE_FIELDS[field];
     if (!cfg) return;
@@ -108,8 +85,6 @@ function cancelSpaceRuleField(field) {
     document.querySelector(`.space-rules-item[data-field="${field}"]`)?.classList.remove('open');
 }
 
-// Saves just this one field — updateSpace() only touches whatever keys
-// are actually passed, so the other 3 fields (and name) are untouched.
 async function saveSpaceRuleField(field) {
     const cfg = SPACE_RULE_FIELDS[field];
     const active = getActiveSpace();
@@ -137,8 +112,6 @@ async function saveSpaceRuleField(field) {
 }
 
 // ===== Copy a field's content from another space =====
-// Only fills the textarea — doesn't save anything by itself, so Save/
-// Cancel on that field still apply normally afterward.
 
 function toggleCopyPicker(field) {
     const container = document.getElementById(`space-rules-copy-${field}`);
@@ -163,8 +136,6 @@ function renderCopyPicker(field) {
     const container = document.getElementById(`space-rules-copy-${field}`);
     if (!cfg || !active || !container) return;
 
-    // Only spaces that actually have something written for this specific
-    // field are worth offering — nothing useful about copying blank.
     const candidates = spaces.filter(s => s.id !== active.id && s[cfg.dbKey]);
 
     container.classList.add('open');
@@ -183,11 +154,6 @@ function copyFieldFromSpace(field, sourceSpaceId) {
 }
 
 // ===== Guarding tab switches against an unsaved rules field =====
-// Since only one field can be open at a time, there's at most one to check.
-// If it's open and its textarea no longer matches what's actually saved,
-// switching tabs is blocked until the person explicitly discards the
-// change or goes back to it — Save is deliberately not offered from the
-// prompt itself, only from the field after reviewing it again.
 
 function getDirtySpaceRuleField() {
     const openItem = document.querySelector('.space-rules-item.open');
@@ -203,7 +169,6 @@ function getDirtySpaceRuleField() {
 
 let pendingNavigation = null; // { type: 'tab', view, btnEl } | { type: 'space', spaceId }
 
-// Every tab-bar button calls this instead of navigating directly.
 function requestTabSwitch(view, btnEl) {
     const alreadyThere = document.querySelector('.view.active')?.id === `view-${view}`;
     if (alreadyThere) return;
@@ -217,10 +182,6 @@ function requestTabSwitch(view, btnEl) {
     navigateToTab(view, btnEl);
 }
 
-// The space header calls this instead of openSpacePicker directly —
-// clicking it at all is already "I want to switch spaces", so there's no
-// need to wait until a specific target space is actually chosen before
-// warning about an unsaved field.
 function requestOpenSpacePicker() {
     const dirtyField = getDirtySpaceRuleField();
     if (dirtyField) {
@@ -230,10 +191,6 @@ function requestOpenSpacePicker() {
     openSpacePicker();
 }
 
-// The space picker's own rows call this instead of setActiveSpace directly
-// — kept as a second safety net, though by the time the picker is open
-// there shouldn't be a dirty field left to catch (requestOpenSpacePicker
-// already would have blocked getting here).
 function requestSpaceSwitch(id) {
     if (id === activeSpaceId) {
         closeSpacePicker();
@@ -249,12 +206,6 @@ function requestSpaceSwitch(id) {
     setActiveSpace(id);
 }
 
-// The actual switch, once nothing is blocking it — routes to each tab's
-// own entry function where one exists (Add/Practice/Transcripts have their
-// own reset/load logic), or the generic showView otherwise. Schedule no
-// longer has an entry of its own here — it's a section inside Setup now
-// (see #schedule-section in index.html), not a tab, so switching to Setup
-// just falls through to the generic showView branch below.
 function navigateToTab(view, btnEl) {
     if (view === 'add') {
         enterCaptureTab(btnEl);
@@ -275,9 +226,6 @@ function showUnsavedRulesPrompt(field, pending) {
     document.getElementById('unsaved-rules-modal-overlay').style.display = 'flex';
 }
 
-// "Go back & review" — if a space switch was what got blocked, also close
-// the space picker modal underneath, since going back means looking at
-// the Setup tab clearly, not staring at two overlapping modals.
 function closeUnsavedRulesModal() {
     if (pendingNavigation?.type === 'space') {
         closeSpacePicker();
@@ -299,9 +247,9 @@ function discardUnsavedRulesAndSwitch() {
         navigateToTab(pending.view, pending.btnEl);
     } else if (pending.type === 'space') {
         if (pending.spaceId) {
-            setActiveSpace(pending.spaceId); // this also closes the space picker itself
+            setActiveSpace(pending.spaceId);
         } else {
-            openSpacePicker(); // no target chosen yet — just clear the way to pick one
+            openSpacePicker();
         }
     }
 }

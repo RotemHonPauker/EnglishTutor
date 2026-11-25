@@ -1,59 +1,32 @@
 // ===== Practice session (production drills) =====
-// This is the actual daily habit loop Fraza was missing: capturing and
-// translating a phrase (or looking up a word) was never the same thing as
-// practicing it. A session is short and self-graded — no AI feedback, no
-// scoring, nothing written to the database except when a unit is actually
-// finished (see advancePracticeAfterDecision below). For each unit it:
-//   1. Shows a source-language prompt — a phrase's own Hebrew sentence, or
-//      a dictionary word's own Hebrew query/synonyms (see "Units" below).
-//   2. Lets you try saying/typing it in English yourself — this attempt
-//      is NEVER saved anywhere, not even temporarily to IndexedDB; it's
-//      plain in-memory UI state, frozen in place once revealed and
-//      discarded the moment you move on.
-//   3. Reveals the real English content this unit was actually captured/
-//      corrected to.
-//   4. On the LAST sentence of a (possibly multi-sentence) phrase, or on a
-//      dictionary word's own single unit, offers exactly two choices:
-//      Continue (keep it, stamp last_practiced_at so a future session
-//      deprioritizes it) or Delete (it's solid enough that there's no
-//      reason to keep seeing it). Every other sentence of a multi-sentence
-//      phrase just auto-advances to the next one with a single tap, since
-//      the phrase itself isn't "done" yet.
-//
+// A short, self-graded drill: show the source sentence, let the person try
+// saying/typing it (never saved), reveal the real translation, then on the
+// last sentence of a phrase (or a dictionary word's single unit) either
+// Continue (stamps last_practiced_at) or Delete. Nothing else is written
+// to the database.
 // Needs localDb.js, colorUtils.js, phrasesTable.js, slots.js, and
 // dictionary.js loaded first.
 
-// ===== Units =====
-// A phrase captured from one continuous recording/monologue can contain
-// several sentences back-to-back. Splitting those into separate units (by
-// punctuation — see splitIntoSentenceUnits) is what lets a long card still
-// be practiced sentence-by-sentence instead of as one unwieldy block. A
-// dictionary word is always exactly one unit — there's no multi-sentence
-// concept there. Either way, "units" (not phrases/words) is what the
-// 7-unit session target below actually counts, via each item's own
-// countUnitsFn (see pickSessionItems).
+// A phrase captured from one recording can hold several sentences; splitting
+// them into units (splitIntoSentenceUnits) lets a long card be practiced
+// sentence-by-sentence. A dictionary word is always exactly one unit.
+// "Units", not phrases/words, is what the 7-unit session target counts
+// (each item's own countUnitsFn — see pickSessionItems).
 
 const PRACTICE_SESSION_TARGET_UNITS = 7;
 
-let practiceQueue = [];        // flat list of unit objects — see buildPhraseUnits/buildDictionaryUnits
+let practiceQueue = [];
 let practiceStepIndex = 0;
-let practiceSessionItemCount = 0;   // for the "Practiced N phrases/words" done screen
+let practiceSessionItemCount = 0;
 let practiceSessionItemLabel = 'phrase'; // 'phrase' | 'word'
 let practiceRevealed = false;
 let practiceScopeSlotIds = new Set();
 
 // ===== Recording an attempt instead of typing it =====
-// A small, self-contained alternative to typing into #practice-attempt-input
-// — tap the mic, say the attempt, tap again to stop, and whatever was said
-// gets transcribed straight into that same textarea (still fully editable,
-// still never saved anywhere — see renderPracticeStep's own comment). This
-// deliberately doesn't reuse globalRecord.js's recorder: that one carries a
-// 15-minute cap, a full-screen overlay and a wake lock, all built for a
-// long recording of a whole conversation — none of which fits a single
-// practice attempt, which is always just one short sentence. The audio
-// itself is never written to IndexedDB or kept past this one transcription
-// call; only the resulting text lands anywhere, and even that only in the
-// textarea, exactly like a typed attempt.
+// A separate, much simpler recorder than globalRecord.js's — no cap, no
+// overlay, no wake lock, since an attempt is always one short sentence.
+// The audio itself is discarded after transcription; only the resulting
+// text lands in the attempt textarea, same as a typed attempt.
 const PRACTICE_ATTEMPT_RECORDING_SUPPORTED = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
 let practiceAttemptRecordState = 'idle'; // 'idle' | 'recording' | 'transcribing'
 let practiceAttemptMediaRecorder = null;
@@ -80,7 +53,6 @@ function togglePracticeAttemptRecording() {
     } else if (practiceAttemptRecordState === 'recording') {
         stopPracticeAttemptRecording();
     }
-    // 'transcribing' — ignore taps; the button is disabled during this state anyway.
 }
 
 async function startPracticeAttemptRecording() {
@@ -112,9 +84,8 @@ function stopPracticeAttemptRecording() {
     practiceAttemptStream.getTracks().forEach(t => t.stop());
 }
 
-// Cuts a recording short with no transcription attempt — used when leaving
-// the step (or the whole session) while the mic is still live, so it never
-// keeps recording in the background once the card it belongs to is gone.
+// Cuts a recording short with no transcription — used when leaving the
+// step (or session) while the mic is still live.
 function cancelPracticeAttemptRecording() {
     if (practiceAttemptMediaRecorder && practiceAttemptRecordState === 'recording') {
         practiceAttemptMediaRecorder.onstop = null;
@@ -173,12 +144,6 @@ function closePracticeSession() {
 
 // ===== Entry points =====
 
-// Wired to the Practice tab toolbar's "🎯 Practice" button, for both
-// phrase spaces and dictionary spaces (dictionary.js's
-// applyDictionaryModeUI keeps this button visible either way, just with a
-// different flow behind it — dictionary practice has nothing to scope by
-// the way phrases do (no time slots, no manual multi-select there), so it
-// skips the scope picker entirely and starts straight away).
 function startPracticeFlow() {
     if (typeof isDictionarySpace === 'function' && isDictionarySpace()) {
         openPracticeModal();
@@ -189,18 +154,8 @@ function startPracticeFlow() {
     openPracticeModal();
 }
 
-// Wired to the selection bar's own "Start practice" action
-// (startPracticeFromSelection, phrasesTable.js) — same 7-unit cap as every
-// other scope (Rotem's own call: keeps every session short, manual
-// selection included, rather than letting a big selection turn into a
-// long one). Unlike the other scopes, the cap here is enforced live while
-// she's still picking cards (phrasesTable.js's toggleCardSelection/
-// selectionCap disables any checkbox that would push the running total
-// over it), so by the time this runs the selection can never actually be
-// over ~7 units — capped: true below is just a defensive no-op, not a
-// silent trim. (The selection bar only exists in phrase spaces —
-// dictionary cards don't currently support multi-select — so this is
-// always phrases.)
+// capped: true here is a defensive no-op, not a trim — phrasesTable.js's
+// toggleCardSelection already enforces the 7-unit cap live while selecting.
 function startManualPracticeFromSelection() {
     const ids = [...selectedPhraseIds];
     if (!ids.length) return;
@@ -228,15 +183,8 @@ function startDictionaryPractice() {
     });
 }
 
-// A dictionary word has no sentences to drill through — just its own
-// source-language cue (the Hebrew synonyms saved for it — source_query is
-// only ever set when a lookup got resolved from a disambiguation list, so
-// it's null most of the time; source_synonyms is the one reliably-
-// populated Hebrew field) and, on reveal, everything about it at once: the
-// English word, its synonyms, and the example sentence. Treated as its own
-// single "last sentence" so it reuses the exact same Continue/Delete
-// branch as a phrase's final sentence, with no separate code path needed
-// for that decision.
+// Treated as its own single "last sentence" so it reuses the same
+// Continue/Delete branch as a phrase's final sentence.
 function buildDictionaryUnits(entry) {
     return [{
         type: 'dictionary',
@@ -252,7 +200,7 @@ function countUnitsForDictionaryEntry() {
     return 1;
 }
 
-// ===== Scope picker (phrase spaces only — the overlay's first screen) =====
+// ===== Scope picker (phrase spaces only) =====
 
 function renderPracticeScopePicker() {
     const title = document.getElementById('practice-modal-title');
@@ -291,12 +239,6 @@ function startRandomRoutinePractice() {
     });
 }
 
-// The old standalone "Select" toolbar button (table-toolbar, index.html)
-// is gone — this is now the only way into manual multi-select, as this
-// scope picker's third option. Just hands off to the exact same
-// toggleSelectMode flow (phrasesTable.js) that button used to open
-// directly: closes this overlay first (picking a scope was never actually
-// going to run a session here), then turns on select mode.
 function selectPhrasesFromScopePicker() {
     closePracticeSession();
     if (typeof toggleSelectMode === 'function') toggleSelectMode();
@@ -358,39 +300,26 @@ function startSlotsScopePractice() {
 
 // ===== Splitting a phrase into sentence units =====
 
-// Splits on ".", "?" or "!", keeping the punctuation attached to the
-// sentence it ends. Trims whitespace and drops empty pieces (double
-// punctuation, a trailing space after the last sentence, etc). Falls back
-// to the whole original text as a single "sentence" if nothing matches at
-// all (no terminal punctuation, or an empty string).
+// Splits on ".", "?" or "!", keeping the punctuation. Falls back to the
+// whole text as one "sentence" if nothing matches.
 function splitIntoSentenceUnits(text) {
     if (!text) return [''];
     const parts = (text.match(/[^.!?]+[.!?]*/g) || [text]).map(s => s.trim()).filter(Boolean);
     return parts.length ? parts : [text.trim()];
 }
 
-// A split that leaves a tiny fragment next to it (e.g. "זהו." / "That's
-// it.") isn't a sentence worth practicing on its own — it gets folded into
-// its neighbor instead. Measured in words, not characters, since that's
-// what actually makes a fragment feel too small to stand alone regardless
-// of language.
+// A fragment this short gets folded into its neighbor rather than stand
+// alone as its own unit. Measured in words, not characters.
 const MIN_WORDS_PER_SENTENCE_UNIT = 8;
 
 function countWords(text) {
     return (text || '').trim().split(/\s+/).filter(Boolean).length;
 }
 
-// Pairs a phrase's Hebrew sentences with BOTH of its translated versions'
-// sentences, one-to-one by index — correct whenever each translation
-// really is a sentence-by-sentence rendering of the same recording/
-// monologue, which is the only time a phrase is more than one sentence in
-// the first place. If a translation's own split comes out with a
-// different count than the Hebrew source's (an uneven translation),
-// everything from its last matched sentence onward is folded onto that
-// final pair instead of being dropped, so no text is ever lost — it just
-// appears together on the last sentence rather than split out on its own.
-// The two translations are split independently of each other, so a
-// mismatch on one side never affects the other's own pairing.
+// Pairs the source sentences with both translated versions' sentences,
+// one-to-one by index. If a translation's split has a different count than
+// the source's, everything from its last matched sentence onward is
+// folded onto the final pair so no text is lost.
 function buildPhraseSentencePairs(phrase) {
     const sourceParts = splitIntoSentenceUnits(phrase.source_text);
     const target1Parts = splitIntoSentenceUnits(phrase.variant_1);
@@ -413,14 +342,9 @@ function combineSentencePairs(a, b) {
     };
 }
 
-// Merges a too-short pair into a neighbor (forward when possible, since
-// that reads most naturally; backward only for a short pair stuck at the
-// very end). Judged by the Hebrew source's own word count — that's the
-// side actually being read and attempted in a session, so it's the one
-// that decides whether a sentence feels too small to stand alone.
-// Re-checks each merged result before moving on, so several short
-// fragments in a row still end up combined into one normal-sized sentence
-// rather than merging only one pair at a time.
+// Merges a too-short pair forward into its neighbor (backward only at the
+// very end), judged by the source's word count. Re-checks each merged
+// result so several short fragments in a row still end up combined.
 function mergeShortSentencePairs(pairs) {
     const merged = [...pairs];
     let i = 0;
@@ -432,7 +356,6 @@ function mergeShortSentencePairs(pairs) {
         if (i < merged.length - 1) {
             merged[i] = combineSentencePairs(merged[i], merged[i + 1]);
             merged.splice(i + 1, 1);
-            // stay at i — the just-merged pair might still be short
         } else {
             merged[i - 1] = combineSentencePairs(merged[i - 1], merged[i]);
             merged.splice(i, 1);
@@ -460,10 +383,8 @@ function countUnitsForPhrase(phrase) {
     return buildPhraseSentencePairs(phrase).length || 1;
 }
 
-// Mirrors the level-badge labels used in the table itself (phrasesTable.js's
-// renderTable) — a Bridge space's "second version" is a different
-// language entirely, not a step up, so it gets that language's own code
-// instead of "Level 2".
+// Mirrors phrasesTable.js's level-badge labels — a Bridge space's "second
+// version" is a different language, not a step up.
 function getVariantLabels() {
     const activeSpace = typeof getActiveSpace === 'function' ? getActiveSpace() : null;
     if (activeSpace?.space_type === 'bridge' && typeof codeForLanguage === 'function') {
@@ -473,15 +394,10 @@ function getVariantLabels() {
 }
 
 // ===== Picking which items a capped session practices =====
-// Shared between phrases and dictionary entries — both carry the same
-// last_practiced_at field (see localDb.js's markPhrasePracticed/
-// markDictionaryEntryPracticed), so the same ordering works for either.
+// Shared between phrases and dictionary entries — both carry last_practiced_at.
 
-// Orders candidates so the ones practiced longest ago (or never — null
-// sorts first) come first, with a random tiebreak among equal
-// last_practiced_at values (almost always several "never practiced" items
-// at once) so repeated sessions don't always surface the same handful in
-// the same order.
+// Least-recently-practiced (null first) comes first, with a random
+// tiebreak so repeated sessions don't always surface the same handful.
 function sortByLastPracticed(items) {
     const withTiebreak = items.map(item => ({ item, r: Math.random() }));
     withTiebreak.sort((a, b) => {
@@ -493,12 +409,9 @@ function sortByLastPracticed(items) {
     return withTiebreak.map(x => x.item);
 }
 
-// Greedily adds candidates (least-recently-practiced first) until the
-// running unit count (via countUnitsFn — one sentence-pair count per
-// phrase, always 1 for a dictionary word) reaches targetUnits — always
-// finishing whichever item it's partway through rather than cutting one
-// off mid-sentence, so a session's real unit count can run slightly over
-// the target rather than under it.
+// Greedily adds items until the running unit count reaches targetUnits,
+// always finishing the item it's partway through rather than cutting it
+// off mid-sentence.
 function pickSessionItems(candidates, targetUnits, countUnitsFn) {
     const ordered = sortByLastPracticed(candidates);
     const chosen = [];
@@ -527,17 +440,13 @@ function beginPracticeSession({ candidates, capped, countUnitsFn, buildUnitsFn, 
 }
 
 function renderPracticeStep() {
-    cancelPracticeAttemptRecording(); // in case the mic was still live from the previous step
+    cancelPracticeAttemptRecording();
     practiceRevealed = false;
     const unit = practiceQueue[practiceStepIndex];
     const title = document.getElementById('practice-modal-title');
     if (title) title.textContent = `Practice — ${practiceStepIndex + 1} of ${practiceQueue.length}`;
     const body = document.getElementById('practice-modal-body');
     if (!body) return;
-    // The mic button (when recording is supported) transcribes straight
-    // into this same textarea — see the "Recording an attempt instead of
-    // typing it" block above for why that's a separate, much simpler
-    // recorder than globalRecord.js's.
     body.innerHTML = `
         <div class="practice-question-group">
             <div class="practice-source" dir="auto">${escapeHtml(unit.source)}</div>
@@ -555,8 +464,6 @@ function renderPracticeStep() {
     if (input) input.focus();
 }
 
-// Builds the reveal area's content for a phrase unit — both translated
-// versions of this sentence, labeled (see getVariantLabels).
 function renderPhraseAnswerHtml(unit) {
     const [label1, label2] = getVariantLabels();
     return `
@@ -565,9 +472,6 @@ function renderPhraseAnswerHtml(unit) {
     `;
 }
 
-// Builds the reveal area's content for a dictionary unit — the word
-// itself, its synonyms, and the example sentence, all at once (there's
-// nothing further to step through after this).
 function renderDictionaryAnswerHtml(unit) {
     const e = unit.entry;
     return `
@@ -577,12 +481,6 @@ function renderDictionaryAnswerHtml(unit) {
     `;
 }
 
-// Freezes whatever was just typed right where it is (so it stays visible
-// for comparison without being repeated a second time below) and shows
-// the real answer. Then swaps the action row to either a single "next
-// sentence" button (mid-card, phrases only) or the real Continue/Delete
-// choice (end of card, or always for a dictionary word) — see the
-// file-level comment above for why those are different.
 function revealPracticeAnswer() {
     if (practiceRevealed) return;
     practiceRevealed = true;
@@ -612,10 +510,8 @@ function revealPracticeAnswer() {
     }
 }
 
-// Mid-card sentence — just steps forward. Deliberately doesn't touch
-// last_practiced_at or delete anything; that only ever happens once per
-// phrase/word, on its own final decision below, so a multi-sentence
-// phrase isn't written to IndexedDB several times for one practice pass.
+// Mid-card sentence — just steps forward. Doesn't touch last_practiced_at
+// or delete anything; that only happens once per phrase/word, below.
 function advancePracticeStep() {
     practiceStepIndex++;
     if (practiceStepIndex >= practiceQueue.length) {
@@ -625,12 +521,10 @@ function advancePracticeStep() {
     renderPracticeStep();
 }
 
-// The only two things a practice session ever writes anywhere: deleting a
-// phrase/word outright, or stamping last_practiced_at on one that's kept.
-// Both update the matching in-memory array too (allPhrases or
-// allDictionaryEntries), so the table behind this overlay is already
-// correct the moment the session closes (see finishPracticeSession)
-// without needing a full reload.
+// The only two things a session ever writes: delete a phrase/word, or
+// stamp last_practiced_at on one that's kept. Both update the in-memory
+// array too, so the table behind this overlay is already correct once the
+// session closes.
 async function advancePracticeAfterDecision(shouldDelete) {
     const unit = practiceQueue[practiceStepIndex];
     try {
@@ -675,11 +569,6 @@ function renderPracticeDone() {
            <div class="form-buttons"><button type="button" class="primary" onclick="closePracticeSession()">Close</button></div>`;
 }
 
-// Closes the overlay and refreshes everything behind it that a session
-// could have changed (a deleted phrase/word disappearing, the slots
-// scroll's own per-slot phrase counts) — without a full loadTable()
-// round-trip, since allPhrases/allDictionaryEntries are already up to
-// date (see advancePracticeAfterDecision above).
 function finishPracticeSession() {
     closePracticeSession();
     renderTable();

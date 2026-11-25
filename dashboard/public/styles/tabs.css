@@ -56,7 +56,6 @@
     color: #60a5fa;
 }
 
-/* Transcripts/Setup while in dictionary mode — neither applies there. */
 .tab-btn:disabled {
     opacity: 0.3;
     cursor: default;
@@ -67,10 +66,8 @@
     background: none;
 }
 
-/* ===== Global record button — the red, circular, always-available
-   recording trigger, raised up out of the middle of the tab bar (not
-   scoped to any one tab/space — see globalRecord.js). Sits between
-   Practice and Slots in the markup, which centers it visually. ===== */
+/* ===== Global record button — always-available, not scoped to any one
+   tab/space (globalRecord.js). ===== */
 
 .global-record-wrap {
     flex: 1;
@@ -96,10 +93,6 @@
     transition: background 0.15s ease;
 }
 
-/* The mic icon (inline SVG in index.html) — one flat solid fill, no
-   gradient/shading, same in every state. Icon rendered size currently
-   still doesn't match this (unresolved — see conversation; not a cascade
-   issue, ruled out even !important). Revisit later. */
 .global-record-btn svg {
     display: block;
     width: 38px;
@@ -116,8 +109,6 @@
     opacity: 0.7;
 }
 
-/* Actively recording — the same ring, now pulsing outward as the
-   stop/start feedback moment the redesign asked for. */
 .global-record-btn.recording {
     background: #b91c1c;
     animation: global-record-pulse 1.4s ease-out infinite;
@@ -144,19 +135,12 @@
     font-variant-numeric: tabular-nums; /* keeps the "0:00" timer from jittering in width as digits change */
 }
 
-/* ===== Record space picker (globalRecord.js) — shown every time the
-   record button is tapped, before recording starts. Deliberately bigger
-   and higher-contrast than the small chip-pickers used elsewhere in the
-   app (tags, move-to), since this one needs to be read and tapped in a
-   hurry rather than browsed. Targets #record-routine-modal/-list by id so
-   it doesn't depend on or fight with the regular .confirm-modal sizing
-   used by every other modal. ===== */
+/* ===== Record space picker (globalRecord.js) — bigger/higher-contrast
+   than the small chip-pickers elsewhere, since this needs to be read and
+   tapped in a hurry. ===== */
 
-/* This overlay isn't in modal.css's own list of known overlay ids (every
-   other *-modal-overlay there gets centered full-screen positioning from
-   a rule we don't have visibility into), so without this it just renders
-   inline at the bottom of the page instead of as a centered overlay.
-   Self-contained here rather than guessing at modal.css's exact rule. */
+/* Self-contained positioning — this overlay isn't covered by modal.css's
+   centering rule for the other *-modal-overlay ids. */
 #record-routine-modal-overlay {
     position: fixed;
     inset: 0;

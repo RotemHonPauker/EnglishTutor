@@ -1,35 +1,11 @@
-// audioEngine.js (client) — mirrors the server's
-// dashboard/audio/audioEngine.js + audioPrompt.txt exactly: transcription
-// only (phrase splitting/translation/tagging happen per-phrase afterward,
-// same as the server version), reading the prompt from
-// promptTemplates.js and calling Gemini directly (geminiClient.js)
-// instead of a server route. The recording itself is sent inline, base64-
-// encoded, straight from the browser — same approach as before, just
-// without a server in between.
-// Wrapped in an IIFE so its internal helpers (some share a name with
-// helpers in translationEngine.js / dictionaryEngine.js) stay private.
-// Needs promptTemplates.js and geminiClient.js loaded first.
-//
-// No more "capture" vs "check" mode: AUDIO_PROMPT_TEMPLATE (promptTemplates.js)
-// now just transcribes exactly as spoken either way, restricted to this
-// space's own source/target languages (or a mix of the two) — there was
-// never a real reason for the two to behave differently once "capture"
-// stopped silently translating everything into the source language. See
-// captureTab.js's own comment on its single "Choose a recording" button
-// for the user-facing side of this.
+// audioEngine.js — transcribes a recording via Gemini (geminiClient.js,
+// promptTemplates.js). IIFE to keep helpers private from
+// translationEngine.js/dictionaryEngine.js.
 
 const processRecording = (function () {
-    // Gemini's inline request limit is 100MB total (prompt text + audio,
-    // base64-encoded). 60MB of raw audio keeps the base64-encoded size
-    // (~33% larger) comfortably under that — roughly half an hour of
-    // recording, based on this app's actual observed recording weight
-    // (~1.5MB/minute). Same ceiling as the server version used.
+    // ~30 min of audio, base64-encoded, stays under Gemini's 100MB inline limit.
     const INLINE_SIZE_LIMIT_BYTES = 60 * 1024 * 1024;
 
-    // Estimates raw byte size from a base64 string's length (each 4 base64
-    // characters encode 3 raw bytes; trailing '=' padding trims a little
-    // off the end) — close enough for a size *limit* check, without
-    // needing the original Blob/File on hand.
     function estimateBytesFromBase64(base64) {
         const padding = (base64.match(/=+$/) || [''])[0].length;
         return Math.floor((base64.length * 3) / 4) - padding;
@@ -52,7 +28,6 @@ const processRecording = (function () {
             : '';
     }
 
-    // Returns { transcript }.
     return async function processRecording({ audioBase64, mimeType, spaceId }) {
         if (estimateBytesFromBase64(audioBase64) > INLINE_SIZE_LIMIT_BYTES) {
             throw new Error('Recording is too large (over ~30 minutes). Please use a shorter recording for now.');

@@ -1,14 +1,6 @@
-/* slots.css — the Schedule section (lives inside the Setup tab now — see
-   #schedule-section in index.html/spaceRules.css, which owns the section's
-   own card wrapper) and its own add/edit time-slot modal. The old "Full
-   schedule" merged-timeline overlay is gone — that job is the Practice
-   tab's own slots-scroll now (see renderPracticeSlotsScroll in slots.js),
-   so there's nothing left here duplicating it. Reuses existing patterns
-   from the rest of the app (the chip-grid look from modal.css, accordion
-   spacing from spaceRules.css) rather than inventing new ones.
-   .color-grid/.color-circle below used to live in tags.css — moved here
-   since the slot modal's own color picker is now their only user, now
-   that tags are gone. */
+/* slots.css — the Schedule section (inside the Setup tab — see
+   #schedule-section in index.html/spaceRules.css) and the slot add/edit
+   modal. */
 
 .slots-permission-warning {
     background: rgba(248, 113, 113, 0.12);
@@ -36,10 +28,6 @@
     gap: 10px;
 }
 
-/* Dimmed, at-a-glance "this one won't fire" look for a slot whose toggle
-   is off — the whole card, not just the toggle, so it reads as inactive
-   from a glance at the list rather than only when looking closely at the
-   switch. */
 .slot-card.disabled {
     opacity: 0.55;
 }
@@ -50,10 +38,8 @@
     gap: 10px;
     background: var(--surface);
     border: 1px solid var(--border);
-    /* Default transparent — overridden inline per slot with its own color
-       (slots.js), same border-accent language as .practice-slot-pill
-       (table.css). A slot's color IS its visual identity now, so there's
-       no more stacked tag-chip list on the card the way there used to be. */
+    /* Overridden inline per slot with its own color (slots.js) — a slot's
+       color is its identity now. */
     border-inline-start: 4px solid transparent;
     border-radius: 10px;
     overflow: hidden;
@@ -92,11 +78,6 @@
     white-space: nowrap;
 }
 
-/* Per-slot on/off toggle — a classic checkbox-driven switch (the
-   checkbox itself is visually hidden; its :checked state drives the
-   track's look via the adjacent-sibling selector below). Sits between the
-   clickable main area and the delete button, as its own flex child, so
-   tapping it never also opens the edit modal. */
 .slot-enable-toggle {
     flex-shrink: 0;
     display: flex;
@@ -188,10 +169,9 @@
     letter-spacing: 0.05em;
 }
 
-/* A plain typed "HH:MM" field instead of a native <input type="time">, so
-   the shown value is always exactly what's typed — never reformatted into
-   whatever 12h/24h shape the browser's locale would otherwise pick.
-   formatSlotTimeInput (slots.js) auto-inserts the ":" as digits land. */
+/* Plain typed "HH:MM", not a native <input type="time"> — always exactly
+   what's typed, never reformatted to the browser's locale. slots.js's
+   formatSlotTimeInput auto-inserts the ":". */
 .slot-time-field input[type="text"] {
     background: var(--input-bg);
     border: 1px solid var(--input-border);
@@ -209,15 +189,10 @@
     border-color: #2563eb;
 }
 
-/* Set by validateSlotTimeField (slots.js) when the field's value isn't a
-   complete, valid time at the moment the person tries to leave it. */
 .slot-time-field input[type="text"].invalid {
     border-color: #ef4444;
 }
 
-/* One-line explainer under the Notify at / Active until fields (index.html) —
-   small and muted on purpose, like helper text under a form field, not a
-   competing heading. */
 .slot-time-explainer {
     font-size: 0.78rem;
     color: var(--text-2);
@@ -225,11 +200,6 @@
     margin: -4px 0 4px;
 }
 
-/* Brighter heading/labels inside the slot add/edit modal specifically, to
-   match the Setup tab's heading color (--text-2, see spaceRules.css's
-   .space-rules-item-title) instead of the more muted defaults used by
-   .modal-header (--text-muted) and ordinary form labels (--text-faint) —
-   those read as washed-out in light mode in particular. */
 #slot-modal .modal-header,
 #slot-modal .slot-time-field label,
 #slot-modal .slot-name-field label,
@@ -266,8 +236,6 @@
     border-color: #2563eb;
 }
 
-/* A slot's color picker — same shape/spacing as .slot-name-field just
-   above, plus the .color-grid/.color-circle chips below. */
 .slot-color-field {
     display: flex;
     flex-direction: column;
@@ -282,8 +250,7 @@
     letter-spacing: 0.05em;
 }
 
-/* ===== Color picker (moved here from tags.css — now exclusively the
-   slot modal's own color picker, since tags are gone) ===== */
+/* ===== Color picker ===== */
 
 .color-grid {
     display: grid;

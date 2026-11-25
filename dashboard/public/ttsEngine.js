@@ -1,12 +1,7 @@
-// ttsEngine.js (client) — mirrors the server's dashboard/tts/ttsEngine.js:
-// calls Gemini TTS directly from the browser (geminiClient.js) and wraps
-// the raw PCM audio it returns in a standard WAV header, the same math
-// the server used with Node's Buffer — just built on ArrayBuffer/DataView
-// here, since there's no Buffer in a browser.
-// This file only turns text into a playable WAV Blob. Where that Blob
-// gets stored (this device's IndexedDB, not a server disk) is
-// ttsStorage.js's job — see getOrCreatePhraseAudioUrl there, which is
-// the function the rest of the app should actually call.
+// ttsEngine.js — calls Gemini TTS directly (geminiClient.js) and wraps the
+// raw PCM audio in a standard WAV header (via ArrayBuffer/DataView, since
+// there's no Buffer in a browser). Only turns text into a playable WAV
+// Blob — storage is ttsStorage.js's job (getOrCreatePhraseAudioUrl).
 // Needs geminiClient.js loaded first.
 
 const generateSpeechBlob = (function () {
@@ -47,7 +42,6 @@ const generateSpeechBlob = (function () {
         return new Blob([header, pcmBytes], { type: 'audio/wav' });
     }
 
-    // Generates speech for `text` and returns a playable WAV Blob.
     return async function generateSpeechBlob(text) {
         const response = await geminiGenerateContent({
             model: 'gemini-3.1-flash-tts-preview',

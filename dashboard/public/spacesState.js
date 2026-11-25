@@ -1,18 +1,10 @@
-// Needs remoteDb.js and ttsStorage.js loaded first.
-//
-// NOTE on naming: the UI briefly called this "Context" instead of "Space" —
-// reverted, "Context" didn't work out as a rename. Every user-facing string
-// below says "Space" again. The internal store name ('spaces'), this file's
-// own variable/function names (spaces/activeSpaceId/getActiveSpace/
-// setActiveSpace/etc.) and every id/dbKey were never touched either way.
+// Needs localDb.js and ttsStorage.js loaded first.
 
 let spaces = [];
 let activeSpaceId = localStorage.getItem('activeSpaceId') || null;
 
-// Called once on startup, before anything space-dependent (phrases, time
-// slots) loads. If there's no valid active space yet (first-ever visit,
-// or a stored id that no longer exists), falls back to the first space
-// returned.
+// Called once on startup, before anything space-dependent loads. Falls
+// back to the first space if the stored active id no longer exists.
 async function loadSpaces() {
     spaces = await getSpaces();
 
@@ -42,15 +34,12 @@ function renderSpaceHeader() {
     if (!label) return;
     const active = getActiveSpace();
     label.textContent = active ? active.name : 'Select a space';
-    // A dictionary space is set apart by style, not by an icon glued to
-    // the name — just italic, so it stays readable as plain text.
     label.style.fontStyle = (active && active.space_type === 'dictionary') ? 'italic' : 'normal';
     if (typeof renderSpaceRulesForm === 'function') renderSpaceRulesForm();
 }
 
-// Switching spaces reloads everything that's scoped to a space — the
-// phrase table and that space's own time slots — same as a fresh page
-// load would, just without actually reloading the page.
+// Reloads everything scoped to a space (phrase table, time slots), same as
+// a fresh page load would, without reloading the page.
 async function setActiveSpace(id) {
     activeSpaceId = id;
     persistActiveSpace();
@@ -59,27 +48,12 @@ async function setActiveSpace(id) {
     closeSpacePicker();
     if (typeof resetSlotScroll === 'function') resetSlotScroll();
     if (typeof resetSelectMode === 'function') resetSelectMode();
-    // A practice session in progress is scoped to the space it started
-    // in (its queue holds actual phrase objects, not just ids) — closing it
-    // outright on a space switch is simplest and safest, rather than
-    // trying to keep a half-finished session valid against a now-different
-    // activeSpaceId.
+    // A practice session's queue holds actual phrase objects, not ids — it
+    // can't stay valid against a different activeSpaceId, so just close it.
     if (typeof closePracticeSession === 'function') closePracticeSession();
-    // Only matters if the user is currently sitting on the Add tab — but
-    // it's safe to call regardless (it just clears an off-screen log), and
-    // it's the only way to catch that case, since the tab's own enter-tab
-    // reset won't fire without an actual tab click.
     if (typeof resetCaptureLog === 'function') resetCaptureLog();
-    // Same reasoning, for the Transcripts tab — closes any open transcript
-    // editor and reloads the list so it's never left showing another
-    // space's transcripts (see transcriptsTab.js).
     if (typeof resetTranscriptsTab === 'function') await resetTranscriptsTab();
     await loadTable();
-    // The Schedule section is scoped to whichever space is active —
-    // reload it too so it's never left showing another space's time
-    // slots. Safe to call even when the Setup tab (where it now lives)
-    // isn't the one on screen right now (see loadSlotsScreen's own no-op
-    // guard, slots.js).
     if (typeof loadSlotsScreen === 'function') await loadSlotsScreen();
 }
 
@@ -96,22 +70,8 @@ function closeSpacePicker() {
     migrateSourceSpaceId = null;
 }
 
-// Each row is one self-contained "card" (see modal.css's .space-picker-item):
-// the name and its action icons share the same background instead of the
-// name sitting in its own box next to a row of bare icon buttons. The
-// icons sit first (left side), in the same delete/rename/migrate order as
-// a Practice-tab phrase card's own delete/edit/move icons, for visual
-// consistency with that card — including the ✏️ (not ✎) rename icon, so it
-// renders as a colored glyph the same way that card's own edit icon does.
-// No more placeholder spacer for a dictionary space's missing rename
-// icon either — since every row is its own independent flex container
-// now, there's no cross-row column alignment to keep in sync. A dictionary
-// space is set apart by italicizing its name (.space-picker-item-name--
-// dictionary in modal.css) instead of a 📖 glued onto the text.
 function renderSpacePickerList() {
     const list = document.getElementById('space-picker-list');
-    // Dictionaries first, everything else after — stable within each
-    // group (doesn't reorder beyond that).
     const ordered = [...spaces].sort((a, b) => {
         const aDict = a.space_type === 'dictionary' ? 0 : 1;
         const bDict = b.space_type === 'dictionary' ? 0 : 1;
@@ -162,10 +122,6 @@ async function submitRenameSpace(id) {
     renderSpaceHeader();
 }
 
-// Deletion is one step short of migration: nothing to move anywhere, so no
-// target to pick — just a plain confirm, since it's the one space action
-// that can't be undone once it's done (migration at least leaves everything
-// alive in the target).
 function showDeleteSpaceForm(id) {
     const space = spaces.find(s => s.id === id);
     if (!space) return;
@@ -182,23 +138,19 @@ function showDeleteSpaceForm(id) {
 }
 
 async function submitDeleteSpace(id) {
-    // Grab the phrase and dictionary-entry ids first so their cached audio
-    // can be cleared from this device's IndexedDB after the delete
-    // succeeds — deleteSpace() only touches the local DB's own tables,
-    // same division of responsibility as a single phrase/word delete (see
-    // phrasesTable.js's confirmDelete).
+    // Grabbed before the delete so this device's cached audio for them can
+    // be cleared afterward — deleteSpace() only touches localDb's tables.
     let phrasesInSpace = [];
     let dictionaryEntriesInSpace = [];
     try {
         phrasesInSpace = await getPhrases(id);
     } catch (err) {
-        // Non-fatal — worst case a few orphaned cache entries stay in
-        // IndexedDB. Proceed with the delete regardless.
+        // Non-fatal — worst case a few orphaned cache entries remain.
     }
     try {
         dictionaryEntriesInSpace = await getDictionaryEntries(id);
     } catch (err) {
-        // Same non-fatal reasoning as the phrases fetch just above.
+        // Same non-fatal reasoning as above.
     }
 
     try {
@@ -215,18 +167,12 @@ async function submitDeleteSpace(id) {
         if (typeof deleteTtsBlobForDictionaryEntry === 'function') await deleteTtsBlobForDictionaryEntry(entry.id);
     }
 
-    // The deleted space's own time slots are already gone from
-    // IndexedDB at this point (deleteSpace() cascades to the slots store).
-    // Push that updated picture to the notify Worker now too — otherwise
-    // its stored copy of this device's slots would keep the deleted
-    // space's time slots, and the cron could keep sending notifications
-    // for a space that no longer exists.
+    // Push the updated slot picture to the notify Worker so it doesn't
+    // keep notifying for a space that no longer exists.
     if (typeof syncSlotsToNotifyServer === 'function') syncSlotsToNotifyServer();
 
     document.getElementById('space-picker-new-form').innerHTML = '';
     await loadSpaces();
-    // Same handling as after a migration: land on whatever space remains
-    // if the deleted one was active, otherwise just refresh the list.
     if (!spaces.some(s => s.id === activeSpaceId)) {
         await setActiveSpace(spaces[0]?.id || null);
     } else {
@@ -234,12 +180,9 @@ async function submitDeleteSpace(id) {
     }
 }
 
-// Space type decides what the language fields mean: Progression is the
-// original model (Level 1/2 = two levels of the same target language);
-// Bridge adds a third, reference-only language shown alongside the main
-// translation; Dictionary is a standalone word-lookup list rather than a
-// phrase-practice space. All three still just live in `spaces` — the type
-// only changes how Setup/Add/Practice interpret that space's rows.
+// Space type decides what the language fields mean: Progression is two
+// levels of one target language; Bridge adds a third, reference-only
+// language; Dictionary is a standalone word-lookup list.
 
 const SPACE_TYPE_DESCRIPTIONS = {
     progression: 'Practice one language at two levels of fluency: simple and advanced. Good for steady, ongoing vocabulary building in a single target language.',
@@ -247,9 +190,6 @@ const SPACE_TYPE_DESCRIPTIONS = {
     dictionary: 'Look up individual words and save their definitions, synonyms, and an example sentence.'
 };
 
-// Own modal, separate from the space picker — opening it closes the
-// picker first, so the list of existing spaces isn't sitting there while
-// creating a new one.
 function openSpaceCreateModal() {
     closeSpacePicker();
     renderSpaceCreateForm();
@@ -315,11 +255,8 @@ function onNewSpaceLanguageChange() {
     updateSuggestedSpaceName();
 }
 
-// A dictionary space's name is always "Dictionary (XX→YY)" — locked, not
-// freely editable, so it can't drift out of sync with whatever languages
-// are actually selected (which happened when this was just a one-time
-// suggestion: switching spaces or clearing the field left it stale).
-// Every other type keeps a normal, freely-typed name.
+// A dictionary space's name is locked to "Dictionary (XX→YY)" so it can't
+// drift out of sync with the selected languages.
 function updateSuggestedSpaceName() {
     const type = document.getElementById('new-space-type')?.value;
     const nameInput = document.getElementById('new-space-name-input');
@@ -330,7 +267,7 @@ function updateSuggestedSpaceName() {
         nameInput.value = `Dictionary (${sourceCode}→${targetCode})`;
         nameInput.disabled = true;
     } else {
-        if (nameInput.disabled) nameInput.value = ''; // was locked to the auto-generated name — clear now that it's editable again
+        if (nameInput.disabled) nameInput.value = '';
         nameInput.disabled = false;
     }
 }
@@ -357,9 +294,6 @@ async function submitNewSpace() {
 }
 
 // ===== Space migration =====
-// Moves a space's phrases and transcripts into another space, then
-// deletes the source. Reuses the same chip/form-button styling used
-// throughout the space picker's own forms.
 
 let migrateSourceSpaceId = null;
 
@@ -368,11 +302,7 @@ function showMigrateSpaceForm(id) {
     if (!source) return;
     migrateSourceSpaceId = id;
     // Only spaces of the same type and language pair are valid targets —
-    // migrating across either would either lose data (dictionary entries
-    // never move) or mix phrases from a different language pair into a
-    // space with nothing to tell them apart. Filtered out here so there's
-    // nothing incompatible to even pick, rather than picking it and
-    // hitting a rejection from the database layer.
+    // otherwise data is lost or phrases end up mixed with a different pair.
     const candidates = spaces.filter(s =>
         s.id !== id &&
         s.space_type === source.space_type &&
@@ -410,7 +340,6 @@ function confirmMigrateSpaceTarget(targetId) {
     renderMigrateSpaceConfirm(source, target);
 }
 
-// "Back" returns to the target-picking step of this same flow.
 function renderMigrateSpaceConfirm(source, target) {
     const form = document.getElementById('space-picker-new-form');
     form.innerHTML = `
@@ -440,25 +369,14 @@ async function submitMigrateSpace(sourceId, targetId) {
         return;
     }
 
-    // Migration ends by deleting the source space (see the confirm text
-    // above), which cascades-deletes its Slots locally the same as a plain
-    // delete does. Same reasoning as submitDeleteSpace(): push the updated
-    // picture to the notify Worker so it doesn't keep a stale slot from a
-    // space that no longer exists.
     if (typeof syncSlotsToNotifyServer === 'function') syncSlotsToNotifyServer();
 
     document.getElementById('space-picker-new-form').innerHTML = '';
     migrateSourceSpaceId = null;
     await loadSpaces();
-    // If the space we were sitting on was the one just migrated away,
-    // land on whatever space remains instead of a now-nonexistent id.
     if (!spaces.some(s => s.id === activeSpaceId)) {
         await setActiveSpace(spaces[0]?.id || null);
     } else {
-        // Otherwise we're still on the same space id — but if it was
-        // the migration's target, its phrases just changed under it.
-        // Refresh it instead of leaving the stale pre-migration view up
-        // until the next manual reload.
         renderSpacePickerList();
         await loadTable();
     }
