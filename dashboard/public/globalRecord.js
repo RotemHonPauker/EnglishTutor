@@ -27,11 +27,14 @@
 
 const RECORDING_SUPPORTED = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
 
-// Same ~30-minute safety ceiling as audioEngine.js's own inline-size
-// limit (processRecording would reject anything larger anyway) — stopped
-// automatically here first, so recording just ends cleanly instead of
-// failing afterward on upload.
-const MAX_GLOBAL_RECORDING_MS = 30 * 60 * 1000;
+// Rotem's own real-world ceiling: she said she rarely records past 15
+// minutes, and a longer transcript just becomes a chore to read through
+// and pick lines out of afterward — stopped automatically here, so
+// recording just ends cleanly on its own instead of running long and
+// producing something nobody wants to read. (Well under audioEngine.js's
+// own much higher inline-size limit, so that one is never actually hit by
+// this button.)
+const MAX_GLOBAL_RECORDING_MS = 15 * 60 * 1000;
 
 let globalRecordState = 'idle'; // 'idle' | 'picking' | 'recording' | 'processing'
 let globalMediaRecorder = null;
@@ -105,6 +108,7 @@ async function startGlobalRecording() {
     globalRecordState = 'recording';
     globalRecordStartedAt = Date.now();
     applyGlobalRecordButtonUI();
+    acquireWakeLock();
     globalRecordTimerInterval = setInterval(updateGlobalRecordTimerLabel, 1000);
     globalRecordAutoStopTimeout = setTimeout(() => {
         if (globalRecordState === 'recording') stopGlobalRecording();
@@ -115,6 +119,7 @@ function stopGlobalRecording() {
     if (!globalMediaRecorder || globalRecordState !== 'recording') return;
     clearTimeout(globalRecordAutoStopTimeout);
     clearInterval(globalRecordTimerInterval);
+    releaseWakeLock();
     globalRecordState = 'processing';
     applyGlobalRecordButtonUI();
     globalMediaRecorder.stop();
@@ -123,6 +128,49 @@ function stopGlobalRecording() {
     // garbage-collected.
     globalRecordStream.getTracks().forEach(t => t.stop());
 }
+
+// ===== Screen wake lock while actually recording =====
+// Rotem's own call, weighed deliberately against the tradeoff: a lit
+// screen for up to 15 minutes costs battery, and could register an
+// accidental touch through a pocket/bag — but hold-to-stop below (not a
+// plain tap) is what makes that safe, so nothing stops unless the button
+// is genuinely held down on purpose. Held only for the "recording" state
+// itself, released the moment it ends (stopGlobalRecording, above) — no
+// need to keep the screen awake just for the brief "processing" tail.
+// Unsupported browsers (the Wake Lock API isn't universal) silently get
+// no wake lock at all; recording itself is unaffected either way.
+let wakeLockSentinel = null;
+
+async function acquireWakeLock() {
+    if (!('wakeLock' in navigator)) return;
+    try {
+        wakeLockSentinel = await navigator.wakeLock.request('screen');
+    } catch (err) {
+        // E.g. battery saver mode refused it, or the tab wasn't visible at
+        // the moment of the request — recording keeps going regardless,
+        // the screen just isn't held on. visibilitychange below retries
+        // once the tab is visible again.
+        wakeLockSentinel = null;
+    }
+}
+
+function releaseWakeLock() {
+    if (wakeLockSentinel) {
+        wakeLockSentinel.release().catch(() => {});
+        wakeLockSentinel = null;
+    }
+}
+
+// The Wake Lock API itself auto-releases a lock whenever the document goes
+// into the background (screen manually turned off and back on, switching
+// to another app and back, etc.) — this is the one place that needs to
+// notice and ask for it again, rather than leaving the screen free to
+// turn off for the rest of a still-ongoing recording.
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && globalRecordState === 'recording' && !wakeLockSentinel) {
+        acquireWakeLock();
+    }
+});
 
 async function handleGlobalRecordingStopped() {
     const mimeType = globalMediaRecorder.mimeType || 'audio/webm';
@@ -144,15 +192,15 @@ async function handleGlobalRecordingStopped() {
     }
 }
 
-// mode: 'capture' (source-language hint) — same default audioEngine.js
-// itself uses. The global button has no language-pair buttons the way the
-// Add tab's own record mode does (see captureTab.js's
-// record-lang-source-btn/record-lang-target-btn), since there's no screen
-// context to put them on here; defaulting to the source language matches
-// this app's primary day-to-day capture direction.
+// No more "mode" to pass — processRecording (audioEngine.js) always just
+// transcribes exactly as spoken now, restricted to this context's own
+// source/target languages (or a mix), with no language hint needed up
+// front. The global button never had language-pair buttons the way the
+// Add tab's own record mode used to (see captureTab.js), so this is just
+// one less thing to pass through.
 async function finishGlobalRecording(audioBase64, mimeType, spaceId) {
     try {
-        const { transcript } = await processRecording({ audioBase64, mimeType, spaceId, mode: 'capture' });
+        const { transcript } = await processRecording({ audioBase64, mimeType, spaceId });
         await finishRecordingIntoTranscript(spaceId, transcript); // captureTab.js — shared with the file-upload flow
     } catch (err) {
         alert(err.code === 'NO_API_KEY' ? 'No Gemini API key set yet.' : (err.message || "Something went wrong processing that recording — try again."));
@@ -186,18 +234,80 @@ function applyGlobalRecordButtonUI() {
     btn.classList.toggle('processing', globalRecordState === 'picking' || globalRecordState === 'processing');
     btn.disabled = globalRecordState === 'picking' || globalRecordState === 'processing';
 
-    if (label) {
-        label.textContent = globalRecordState === 'recording' ? '0:00' : globalRecordState === 'processing' ? 'Saving…' : globalRecordState === 'picking' ? 'Choose...' : 'Record';
+    const labelText = globalRecordState === 'recording' ? '0:00' : globalRecordState === 'processing' ? 'Saving…' : globalRecordState === 'picking' ? 'Choose...' : 'Record';
+    if (label) label.textContent = labelText;
+
+    // Full-screen overlay (base.css's #global-recording-overlay) — up for
+    // as long as recording is actually happening, plus the brief
+    // "processing" tail right after stopping, so there's never a gap
+    // where the small tab-bar button is the only indication something's
+    // still in flight. Not shown for "picking" — the context picker modal
+    // is its own full-screen overlay already (globalRecord.js's
+    // openRecordRoutinePicker), and only one of the two should cover the
+    // screen at a time.
+    const overlay = document.getElementById('global-recording-overlay');
+    const overlayBtn = document.getElementById('global-recording-overlay-btn');
+    const overlayLabel = document.getElementById('global-recording-overlay-label');
+    const overlayHint = document.getElementById('global-recording-overlay-hint');
+    const overlayVisible = globalRecordState === 'recording' || globalRecordState === 'processing';
+    if (overlay) overlay.classList.toggle('visible', overlayVisible);
+    if (overlayBtn) overlayBtn.disabled = globalRecordState === 'processing';
+    if (overlayLabel) overlayLabel.textContent = labelText;
+    // The hold-to-stop hint only makes sense while there's actually
+    // something to hold the button down to stop — hidden during the
+    // "processing" tail, when the button is disabled anyway.
+    if (overlayHint) overlayHint.style.visibility = globalRecordState === 'recording' ? 'visible' : 'hidden';
+    if (globalRecordState !== 'recording') cancelHoldToStop();
+}
+
+// ===== Hold-to-stop (overlay button) =====
+// A plain tap would be too easy to trigger by accident — the overlay's
+// big button only stops the recording after being held down for
+// HOLD_TO_STOP_MS, not on a quick tap/touch; releasing early, or the
+// pointer leaving the button, cancels it with no effect. This (plus the
+// wake-lock comment above) is what makes it safe to keep the screen on
+// while a recording sits in a pocket or bag.
+const HOLD_TO_STOP_MS = 600;
+let holdToStopTimeout = null;
+
+function startHoldToStop() {
+    if (globalRecordState !== 'recording') return;
+    const btn = document.getElementById('global-recording-overlay-btn');
+    if (btn) btn.classList.add('holding');
+    holdToStopTimeout = setTimeout(() => {
+        holdToStopTimeout = null;
+        stopGlobalRecording();
+    }, HOLD_TO_STOP_MS);
+}
+
+function cancelHoldToStop() {
+    const btn = document.getElementById('global-recording-overlay-btn');
+    if (btn) btn.classList.remove('holding');
+    if (holdToStopTimeout) {
+        clearTimeout(holdToStopTimeout);
+        holdToStopTimeout = null;
     }
+}
+
+function initGlobalRecordingOverlayButton() {
+    const btn = document.getElementById('global-recording-overlay-btn');
+    if (!btn) return;
+    btn.addEventListener('pointerdown', startHoldToStop);
+    btn.addEventListener('pointerup', cancelHoldToStop);
+    btn.addEventListener('pointerleave', cancelHoldToStop);
+    btn.addEventListener('pointercancel', cancelHoldToStop);
 }
 
 function updateGlobalRecordTimerLabel() {
     const label = document.getElementById('global-record-label');
+    const overlayLabel = document.getElementById('global-recording-overlay-label');
     if (!label || !globalRecordStartedAt) return;
     const elapsedSec = Math.floor((Date.now() - globalRecordStartedAt) / 1000);
     const mm = Math.floor(elapsedSec / 60);
     const ss = elapsedSec % 60;
-    label.textContent = `${mm}:${String(ss).padStart(2, '0')}`;
+    const text = `${mm}:${String(ss).padStart(2, '0')}`;
+    label.textContent = text;
+    if (overlayLabel) overlayLabel.textContent = text;
 }
 
 // ===== "Which context?" picker — shown every time, before recording
@@ -243,3 +353,4 @@ function cancelRecordRoutinePicker() {
 }
 
 initGlobalRecordButton();
+initGlobalRecordingOverlayButton();

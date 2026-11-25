@@ -205,6 +205,95 @@ button.danger:hover { background: #b91c1c; }
     50% { transform: scale(1.15); }
 }
 
+/* ===== Full-screen recording overlay (globalRecord.js) ===== */
+/* Up for as long as globalRecordState is "recording" or "processing" (set
+   in applyGlobalRecordButtonUI) — the small record button + its label
+   (tabs.css's .global-record-btn, in the tab bar) already showed this
+   state, but easy to miss and easy to accidentally tap something else
+   while it's running. This sits above everything else instead (z-index
+   higher than every other overlay in the app) and catches every tap, so
+   nothing underneath is reachable until recording actually stops — the
+   same button and label, just much bigger and centered, is the only thing
+   on screen. Hidden by default; .visible is toggled by
+   applyGlobalRecordButtonUI, same as every other state-driven class
+   already used for the small button. Not shown during "picking" — the
+   context picker modal (#record-routine-modal-overlay, modal.css) is its
+   own overlay already, and only one of the two should ever cover the
+   screen at once. */
+#global-recording-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--overlay);
+    z-index: 10000;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+}
+
+#global-recording-overlay.visible {
+    display: flex;
+}
+
+.global-recording-overlay-btn {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: none;
+    background: #dc2626;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    animation: global-recording-pulse 1.5s ease-in-out infinite;
+}
+
+.global-recording-overlay-btn svg {
+    width: 56px;
+    height: 56px;
+    fill: currentColor;
+}
+
+/* Shown briefly during "processing" (right after tapping stop, while the
+   recording uploads/transcribes) — same disabled-and-still look used
+   elsewhere in the app, rather than leaving it tappable with nothing left
+   to stop. */
+.global-recording-overlay-btn:disabled {
+    animation: none;
+    opacity: 0.6;
+    cursor: default;
+}
+
+@keyframes global-recording-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5); }
+    50% { box-shadow: 0 0 0 18px rgba(220, 38, 38, 0); }
+}
+
+/* While the button is being held down (globalRecord.js's startHoldToStop) —
+   the pulse pauses and a lighter fill sweeps in instead, as its own
+   feedback that holding is registering and building toward the ~600ms
+   needed to actually stop (HOLD_TO_STOP_MS). A quick tap never gets far
+   enough into this transition to look like anything happened, by design. */
+.global-recording-overlay-btn.holding {
+    animation: none;
+    background: #f87171;
+    transition: background 0.6s linear;
+}
+
+.global-recording-overlay-label {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.02em;
+}
+
+.global-recording-overlay-hint {
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
 /* Shared mode toggle (Capture a phrase / Check my English) — used on both
    the Type and Record tabs. Also reused, plain/unwrapped (no card, no
    header) for a row of standalone action buttons — see

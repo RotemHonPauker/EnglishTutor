@@ -3,7 +3,6 @@
 
 const captureLog = document.getElementById('capture-log');
 const captureTextInput = document.getElementById('capture-text-input');
-let captureMode = 'capture';
 
 const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
 
@@ -23,10 +22,9 @@ captureTextInput.addEventListener('keydown', (e) => {
 // Three small icon buttons live in the input box's own footer, next to
 // Send — always visible regardless of which mode is picked, so there's
 // always a way back. Only the content above the footer (the textarea, or
-// the two record-language buttons) swaps out. The icon itself is
-// intentionally bare (no text label): the clarification is the
-// placeholder text/buttons that appear the moment you tap one, not the
-// button itself.
+// the record button) swaps out. The icon itself is intentionally bare (no
+// text label): the clarification is the placeholder text/button that
+// appears the moment you tap one, not the button itself.
 
 let addInputMode = 'type'; // 'type' | 'dictionary' | 'record'
 
@@ -35,7 +33,7 @@ function setAddInputMode(mode, btnEl) {
 }
 
 // Just the visual side of switching input mode (icon state, textarea vs.
-// record buttons, placeholder text) — split out of setAddInputMode so
+// record button, placeholder text) — split out of setAddInputMode so
 // other code (applyDictionaryModeUI) can force a mode change directly too.
 function applyAddInputModeUI(mode, btnEl) {
     const previousMode = addInputMode;
@@ -60,7 +58,6 @@ function applyAddInputModeUI(mode, btnEl) {
             ? `Look up a word in the ${source}-${target} dictionary...`
             : `Translate from ${source}, or polish your ${target}...`;
     }
-    if (isRecord) updateRecordButtonLabels();
 
     refreshCaptureLog(previousMode);
 }
@@ -72,32 +69,22 @@ function applyAddInputModeUI(mode, btnEl) {
 // Record is actually being entered or left.
 function refreshCaptureLog(previousMode) {
     if (addInputMode === 'record') {
-        captureLog.innerHTML = `<div class="recording-info-note">🎙️<br>Recordings are limited to about 30 minutes.<br>Once it's processed, you'll land straight on its transcript. Just select whichever lines you want to translate.</div>`;
+        captureLog.innerHTML = `<div class="recording-info-note">🎙️<br>Recordings are limited to about 15 minutes.<br>Once it's processed, you'll land straight on its transcript. Just select whichever lines you want to translate.</div>`;
     } else if (previousMode === 'record') {
         captureLog.innerHTML = '';
     }
 }
 
-// The two "Recording in Hebrew" / "Recording in English" buttons shown
-// once Record is picked — each one sets which language Gemini should
-// expect (audioPrompt.txt still needs an explicit hint for transcription,
-// unlike typed text) and only then opens the file picker. Nothing opens
-// until one of these two is actually tapped.
-function startRecordingUpload(mode) {
-    captureMode = mode;
+// The single "Choose a recording" button shown once Record is picked —
+// just opens the file picker. Used to be two buttons ("Recording in
+// Hebrew" / "Recording in English"), each setting a capture/check mode
+// that told Gemini which language to expect for transcription — gone now
+// that the transcription prompt (promptTemplates.js's AUDIO_PROMPT_TEMPLATE,
+// via audioEngine.js) transcribes exactly as spoken either way, in
+// whichever of this context's own two languages (or a mix of them) was
+// actually used, with no language hint needed up front.
+function startRecordingUpload() {
     document.getElementById('recording-file-input').click();
-}
-
-// Labels the two record buttons with the active space's actual languages
-// instead of hardcoded names.
-function updateRecordButtonLabels() {
-    const space = typeof getActiveSpace === 'function' ? getActiveSpace() : null;
-    const source = space?.source_language || 'source language';
-    const target = space?.target_language || 'target language';
-    const sourceBtn = document.getElementById('record-lang-source-btn');
-    const targetBtn = document.getElementById('record-lang-target-btn');
-    if (sourceBtn) sourceBtn.textContent = `🎙️ Recording in ${source}`;
-    if (targetBtn) targetBtn.textContent = `🎙️ Recording in ${target}`;
 }
 
 // Entering the Add tab always starts with a clean, empty log — anything
@@ -335,16 +322,32 @@ async function handleRecordingFileSelected(inputEl) {
     const langBtns = document.querySelectorAll('#capture-record-buttons .record-lang-btn');
     langBtns.forEach(b => b.disabled = true);
 
-    addCaptureMessage('Uploading and transcribing your recording...');
-
     try {
+        // Same 15-minute cap the global in-browser recorder enforces live,
+        // via its own auto-stop timer (globalRecord.js's
+        // MAX_GLOBAL_RECORDING_MS) — this is the other way a long
+        // recording can get in: picking an existing, already-long file
+        // instead of recording fresh. Checked here, before transcribing,
+        // rather than left to audioEngine.js's own much-larger inline-size
+        // limit, which exists only as a hard technical ceiling (Gemini's
+        // request-size limit), not a stand-in for what Rotem actually
+        // wants a session capped at.
+        const maxMs = typeof MAX_GLOBAL_RECORDING_MS === 'number' ? MAX_GLOBAL_RECORDING_MS : 15 * 60 * 1000;
+        const durationSec = await getAudioDurationSeconds(file).catch(() => null);
+        if (durationSec != null && Number.isFinite(durationSec) && durationSec * 1000 > maxMs) {
+            const maxMinutes = Math.round(maxMs / 60000);
+            addCaptureMessage(`That recording is longer than ${maxMinutes} minutes — please use a shorter one.`);
+            return;
+        }
+
+        addCaptureMessage('Uploading and transcribing your recording...');
+
         const audioBase64 = await fileToBase64(file);
 
         const { transcript } = await processRecording({
             audioBase64,
             mimeType: file.type || 'audio/mp4',
-            spaceId: activeSpaceId,
-            mode: captureMode
+            spaceId: activeSpaceId
         });
 
         await finishRecordingIntoTranscript(activeSpaceId, transcript);
@@ -357,6 +360,30 @@ async function handleRecordingFileSelected(inputEl) {
     } finally {
         langBtns.forEach(b => b.disabled = false);
     }
+}
+
+// Reads an audio/video file's length client-side, without uploading
+// anything anywhere — just an off-DOM <audio> element long enough to fire
+// its loadedmetadata event, which carries .duration in seconds. Resolves
+// null (via the .catch at the call site) rather than rejecting, for a
+// format the browser can't read metadata for; a length check that can't
+// run isn't a reason to block the upload outright, just a check this
+// particular file doesn't get.
+function getAudioDurationSeconds(file) {
+    return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const audio = new Audio();
+        audio.preload = 'metadata';
+        audio.onloadedmetadata = () => {
+            URL.revokeObjectURL(url);
+            resolve(audio.duration);
+        };
+        audio.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error("Couldn't read this recording's length."));
+        };
+        audio.src = url;
+    });
 }
 
 // finishRecordingIntoTranscript (shared by this file's own file-upload

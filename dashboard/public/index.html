@@ -94,6 +94,29 @@
     <img src="icons/loading.svg" class="loading-logo" alt="Loading">
 </div>
 
+<!-- GLOBAL RECORDING OVERLAY (globalRecord.js): shown full-screen for as
+     long as a global recording is actually "recording" or "processing" —
+     blocks every tap elsewhere in the app, with the same button/label the
+     small tab-bar one shows (globalRecord.js's applyGlobalRecordButtonUI
+     keeps both in sync), just much bigger and impossible to miss. Not
+     shown during "picking" — the context picker modal below is its own
+     overlay already. Tapping the big button here stops the recording, same
+     as tapping the small one. -->
+<!-- No onclick here on purpose: a plain tap would stop the recording the
+     instant a pocket/bag brushes the screen while it's kept awake (see
+     globalRecord.js's wake-lock comment) — this only stops on a genuine
+     ~600ms hold, wired up in globalRecord.js's initGlobalRecordingOverlayButton. -->
+<div id="global-recording-overlay">
+    <button id="global-recording-overlay-btn" class="global-recording-overlay-btn" type="button" title="Hold to stop recording">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+            <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+        </svg>
+    </button>
+    <span id="global-recording-overlay-label" class="global-recording-overlay-label">0:00</span>
+    <span id="global-recording-overlay-hint" class="global-recording-overlay-hint">Hold the button to stop</span>
+</div>
+
 <!-- SPACE HEADER: shown above every tab, always. Tapping it opens the
      space picker/create modal. (Internal id/name kept as "space" — only
      the displayed text says "Context", per the UI-only rename.) -->
@@ -338,9 +361,13 @@
                 <div id="capture-text-row">
                     <div id="capture-content-area">
                         <textarea id="capture-text-input" dir="auto" rows="2"></textarea>
+                        <!-- One button now, not two "Recording in Hebrew"/"Recording in
+                             English" buttons — transcription (audioEngine.js /
+                             promptTemplates.js's AUDIO_PROMPT_TEMPLATE) no longer needs a
+                             language hint up front, it just transcribes exactly as spoken
+                             either way. -->
                         <div id="capture-record-buttons" style="display:none">
-                            <button id="record-lang-source-btn" class="record-lang-btn" onclick="startRecordingUpload('capture')">🎙️ Recording in Hebrew</button>
-                            <button id="record-lang-target-btn" class="record-lang-btn" onclick="startRecordingUpload('check')">🎙️ Recording in English</button>
+                            <button id="record-upload-btn" class="record-lang-btn" onclick="startRecordingUpload()">🎙️ Choose a recording</button>
                         </div>
                     </div>
                     <div id="capture-text-footer">

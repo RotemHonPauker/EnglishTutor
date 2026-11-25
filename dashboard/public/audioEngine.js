@@ -9,6 +9,14 @@
 // Wrapped in an IIFE so its internal helpers (some share a name with
 // helpers in translationEngine.js / dictionaryEngine.js) stay private.
 // Needs promptTemplates.js and geminiClient.js loaded first.
+//
+// No more "capture" vs "check" mode: AUDIO_PROMPT_TEMPLATE (promptTemplates.js)
+// now just transcribes exactly as spoken either way, restricted to this
+// context's own source/target languages (or a mix of the two) — there was
+// never a real reason for the two to behave differently once "capture"
+// stopped silently translating everything into the source language. See
+// captureTab.js's own comment on its single "Choose a recording" button
+// for the user-facing side of this.
 
 const processRecording = (function () {
     // Gemini's inline request limit is 100MB total (prompt text + audio,
@@ -45,7 +53,7 @@ const processRecording = (function () {
     }
 
     // Returns { transcript }.
-    return async function processRecording({ audioBase64, mimeType, spaceId, mode = 'capture' }) {
+    return async function processRecording({ audioBase64, mimeType, spaceId }) {
         if (estimateBytesFromBase64(audioBase64) > INLINE_SIZE_LIMIT_BYTES) {
             throw new Error('Recording is too large (over ~30 minutes). Please use a shorter recording for now.');
         }
@@ -55,7 +63,6 @@ const processRecording = (function () {
         const promptText = AUDIO_PROMPT_TEMPLATE
             .replace(/\$\{sourceLanguage\}/g, spaceFields.sourceLanguage)
             .replace(/\$\{targetLanguage\}/g, spaceFields.targetLanguage)
-            .replace('${mode}', mode)
             .replace('${spaceRulesSection}', buildSpaceRulesSection(spaceFields))
             .replace('${audioRecordingSection}', buildAudioRecordingSection(spaceFields));
 

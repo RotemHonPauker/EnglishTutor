@@ -295,6 +295,11 @@ async function playDictionaryAudio(entryId, btnEl) {
 // shown, newest first — there's no filter to narrow it down to any more.
 // The word itself now carries a 🔊 play button, same inline placement as a
 // phrase card's own .phrase-variant (table.css's .tts-btn).
+//
+// The "old" indicator now matches a phrase card's own: a solid-blue "Old"
+// pill in the header's badges row (table.css's .old-badge/.phrase-card-badges,
+// same classes a phrase card uses), tapping straight into the same delete
+// confirm as the 🗑️ icon — not the quiet under-text note this used to be.
 function renderDictionaryCards() {
     const sorted = [...allDictionaryEntries].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
@@ -304,14 +309,16 @@ function renderDictionaryCards() {
                 <div class="phrase-card-icons">
                     <button title="Delete word" onclick="deleteDictionaryRow('${e.id}')">🗑️</button>
                 </div>
-                <span class="dictionary-pos">${escapeHtml(e.part_of_speech || '')}</span>
+                <div class="phrase-card-badges">
+                    ${isCardOld(e) ? `<button class="old-badge" title="Created over a month ago — tap to delete" onclick="deleteDictionaryRow('${e.id}')">🕓 Old</button>` : ''}
+                    <span class="dictionary-pos">${escapeHtml(e.part_of_speech || '')}</span>
+                </div>
             </div>
             <div class="phrase-card-main">
                 <div class="dictionary-word" dir="auto"><button class="tts-btn" title="Play" onclick="playDictionaryAudio('${e.id}', this)">🔊</button> ${escapeHtml(e.word || '')}</div>
                 ${e.source_synonyms ? `<div class="dictionary-synonyms" dir="auto">${escapeHtml(e.source_synonyms)}</div>` : ''}
                 ${e.example_sentence ? `<div class="dictionary-example">${escapeHtml(e.example_sentence)}</div>` : ''}
                 ${e.target_synonyms ? `<div class="dictionary-synonyms">${escapeHtml(e.target_synonyms)}</div>` : ''}
-                ${isCardOld(e) ? `<div class="card-old-notice">🕓 Created over a month ago</div>` : ''}
             </div>
         </div>
     `).join('');

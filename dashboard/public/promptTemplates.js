@@ -86,21 +86,14 @@ Rule 2 or 3 (ready to define — exactly one part of speech, everything else mat
 The "word" field (here and in translations-type options) should always be capitalized (first letter uppercase). If \${targetLanguage} marks verb citation forms with a leading word (like English "to run"), drop that marker and give the bare verb instead (e.g. "Run", not "to run").`;
 
 const AUDIO_PROMPT_TEMPLATE = `## Input
-You will receive an audio recording and a mode.
+You will receive an audio recording.
 
 \${spaceRulesSection}
 
 ## Step 1: Transcribe
-The mode for this request is: "\${mode}"
-
-If mode is "capture":
-Transcribe the audio into \${sourceLanguage} text, focusing on the primary/main speaker.
+Transcribe the audio exactly as spoken, focusing on the primary/main speaker — do not translate anything, and do not correct grammar or phrasing (that happens in a later step, not here).
+The only two languages that will ever be spoken are \${sourceLanguage} and \${targetLanguage} — everything is one of these two, or a mix of the two (e.g. a sentence mostly in one with a word or two from the other mixed in, where the speaker reached for a word they didn't know in their main language). Never transcribe anything as, or assume, any other language.
 Treat other voices or background sound as context, not something to transcribe verbatim.
-
-If mode is "check":
-Transcribe the audio, focusing on the primary/main speaker.
-The speech is in \${targetLanguage}, or a mix of \${targetLanguage} and \${sourceLanguage} (e.g. a \${targetLanguage} sentence with a word or two in \${sourceLanguage} where the speaker didn't know the \${targetLanguage} word).
-Transcribe it as spoken — grammar and phrasing correction happen in a later step, not here.
 
 \${audioRecordingSection}
 
