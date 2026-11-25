@@ -219,7 +219,7 @@
 #transcripts-tab-selection-bar {
     flex-shrink: 0;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     gap: 12px;
     padding: 12px 14px;
     margin: 0 12px 10px;
@@ -228,14 +228,23 @@
     border-radius: 12px;
 }
 
+/* Shows the actual text of every selected sentence, not just a count (see
+   updateTranscriptSelectionBar in transcriptsTab.js) — capped at 4 lines
+   via -webkit-line-clamp so a long selection is simply cut off with an
+   ellipsis instead of growing the bar indefinitely or pushing the Send
+   button offscreen. */
 #transcripts-tab-selection-preview {
     flex: 1;
     min-width: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
     font-size: 0.9375rem;
     font-weight: 500;
+    line-height: 1.4;
     color: var(--accent-text);
 }
 

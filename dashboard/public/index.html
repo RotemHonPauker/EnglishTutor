@@ -139,38 +139,46 @@
         <div id="practice-slots-scroll">
             <div id="practice-slots-scroll-track"></div>
         </div>
+        <!-- No more white bordered "panel" wrapping the toolbar/selection
+             bar/card list together (Rotem's own call) — it added its own
+             margin+padding on top of .phrase-cards' own padding, shrinking
+             every card for no real reason once the scrolling itself turns
+             out not to need a wrapping box at all: #table-wrapper below is
+             what scrolls (table.css's overflow-y:auto), directly on the
+             app's plain background, same as #practice-slots-scroll above
+             it and #space-header up at the very top — nothing in this tab
+             sits inside its own white card any more, just the phrase cards
+             themselves. -->
         <div id="table-area">
-            <div id="table-section">
-                <!-- "+ Add slot" moved out of here into the Setup tab's own
-                     Schedule section (#schedule-section below) — Rotem's
-                     own call, since adding a time slot is schedule
-                     management, not a Practice-tab action, and the
-                     Schedule section is where every other slot action
-                     (edit/delete/toggle) already lives. The standalone
-                     "Select" button is gone too — manual multi-select is
-                     now the practice scope picker's own third option
-                     (practiceSession.js's selectPhrasesFromScopePicker),
-                     reached through "🎯 Practice" instead of sitting here
-                     as its own separate button. Just "🎯 Practice" here
-                     now. -->
-                <div id="table-toolbar">
-                    <div class="mode-toggle">
-                        <button type="button" class="mode-toggle-btn active" onclick="startPracticeFlow()">🎯 Practice</button>
-                    </div>
+            <!-- "+ Add slot" moved out of here into the Setup tab's own
+                 Schedule section (#schedule-section below) — Rotem's
+                 own call, since adding a time slot is schedule
+                 management, not a Practice-tab action, and the
+                 Schedule section is where every other slot action
+                 (edit/delete/toggle) already lives. The standalone
+                 "Select" button is gone too — manual multi-select is
+                 now the practice scope picker's own third option
+                 (practiceSession.js's selectPhrasesFromScopePicker),
+                 reached through "🎯 Practice" instead of sitting here
+                 as its own separate button. Just "🎯 Practice" here
+                 now. -->
+            <div id="table-toolbar">
+                <div class="mode-toggle">
+                    <button type="button" class="mode-toggle-btn active" onclick="startPracticeFlow()">🎯 Practice</button>
                 </div>
-                <!-- Select mode is now purely for picking phrases to practice —
-                     bulk "Move to..." is gone (Rotem's own call: moving to
-                     another context only ever happens one card at a time
-                     now, via each card's own ⇄ icon — see
-                     openMovePhraseModalForPhrase in phrasesTable.js). -->
-                <div id="selection-action-bar" style="display:none">
-                    <span id="selection-count"></span>
-                    <button onclick="toggleSelectMode()">Cancel</button>
-                    <button class="primary" id="start-practice-from-selection-btn" onclick="startPracticeFromSelection()">🎯 Start practice</button>
-                </div>
-                <div id="table-wrapper">
-                    <div id="table-body" class="phrase-cards"></div>
-                </div>
+            </div>
+            <!-- Select mode is now purely for picking phrases to practice —
+                 bulk "Move to..." is gone (Rotem's own call: moving to
+                 another context only ever happens one card at a time
+                 now, via each card's own ⇄ icon — see
+                 openMovePhraseModalForPhrase in phrasesTable.js). -->
+            <div id="selection-action-bar" style="display:none">
+                <span id="selection-count"></span>
+                <button onclick="toggleSelectMode()">Cancel</button>
+                <button class="primary" id="start-practice-from-selection-btn" onclick="startPracticeFromSelection()">🎯 Start practice</button>
+            </div>
+            <div id="table-wrapper">
+                <div id="table-body" class="phrase-cards"></div>
             </div>
         </div>
     </div>
@@ -336,11 +344,11 @@
                 <button onclick="closeTranscriptEditor()">← Back</button>
                 <span id="transcripts-tab-editor-label"></span>
                 <button id="transcripts-tab-select-all-btn" title="Select or clear every sentence" onclick="toggleSelectAllSentences()">Select all</button>
-                <button id="transcripts-tab-range-btn" title="Select a range: tap this, then tap the first and last sentence" onclick="startRangeSelect()">🔗</button>
+                <button id="transcripts-tab-range-btn" title="Select a range: tap this, then tap the first and last sentence" onclick="startRangeSelect()">[ ]</button>
                 <button class="transcript-pin-btn" id="transcripts-tab-pin-btn" title="Pin — protect from the 24h auto-delete" onclick="toggleOpenTranscriptPinned()">☆</button>
                 <button title="Delete transcript" onclick="deleteOpenTranscript()">🗑️</button>
             </div>
-            <div id="transcripts-tab-editor-body" dir="auto"></div>
+            <div id="transcripts-tab-editor-body" dir="rtl"></div>
             <div id="transcripts-tab-selection-bar" style="display:none">
                 <span id="transcripts-tab-selection-preview" dir="auto"></span>
                 <button class="primary" id="transcripts-tab-send-btn" onclick="submitTranscriptSelection()">➤ Send</button>
@@ -367,7 +375,7 @@
                              language hint up front, it just transcribes exactly as spoken
                              either way. -->
                         <div id="capture-record-buttons" style="display:none">
-                            <button id="record-upload-btn" class="record-lang-btn" onclick="startRecordingUpload()">🎙️ Choose a recording</button>
+                            <button id="record-upload-btn" class="record-lang-btn" onclick="startRecordingUpload()">📁 Upload a recording file</button>
                         </div>
                     </div>
                     <div id="capture-text-footer">
@@ -438,7 +446,6 @@
     <div id="slot-picker-modal" class="confirm-modal">
         <div class="modal-header">
             <span>Choose a time slot</span>
-            <button onclick="closeSlotPicker()">✕</button>
         </div>
         <div class="tag-picker-section">
             <div id="slot-picker-list" class="tag-picker-chip-list"></div>
@@ -455,7 +462,6 @@
     <div id="space-picker-modal" class="confirm-modal">
         <div class="modal-header">
             <span>Contexts</span>
-            <button onclick="closeSpacePicker()">✕</button>
         </div>
         <div id="space-picker-list"></div>
         <div id="space-picker-new-form"></div>
@@ -470,7 +476,6 @@
     <div id="space-create-modal" class="confirm-modal">
         <div class="modal-header">
             <span>New Context</span>
-            <button onclick="closeSpaceCreateModal()">✕</button>
         </div>
         <div id="space-create-form"></div>
     </div>
@@ -492,7 +497,6 @@
     <div id="move-phrase-modal" class="confirm-modal">
         <div class="modal-header">
             <span id="move-phrase-modal-title">Move to...</span>
-            <button onclick="closeMovePhraseModal()">✕</button>
         </div>
         <div id="move-phrase-list" class="tag-picker-chip-list"></div>
         <div class="modal-footer">
@@ -510,7 +514,6 @@
     <div id="record-routine-modal" class="confirm-modal">
         <div class="modal-header">
             <span>Record for which context?</span>
-            <button onclick="cancelRecordRoutinePicker()">✕</button>
         </div>
         <div id="record-routine-list"></div>
         <div class="modal-footer">
@@ -552,7 +555,6 @@
     <div id="slot-modal">
         <div class="modal-header">
             <span id="slot-modal-title">New time slot</span>
-            <button onclick="closeSlotModal()">✕</button>
         </div>
         <!-- Start/end time as a plain typed "HH:MM" text field, not a
              native <input type="time"> — the native control renders in

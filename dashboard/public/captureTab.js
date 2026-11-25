@@ -63,19 +63,22 @@ function applyAddInputModeUI(mode, btnEl) {
 }
 
 // The recording note lives in the main log area (center of the screen,
-// room to actually read it). previousMode lets this be a no-op when
-// switching between Type and Dictionary, so it never clobbers real
-// capture results sitting in the log — it only touches the log when
-// Record is actually being entered or left.
+// room to actually read it). Any actual mode switch clears the log —
+// Dictionary mode in particular tends to leave it full of the back-and-forth
+// clarifying questions Gemini asked about a word's exact meaning or part of
+// speech, which have nothing to do with whatever comes next in Type mode (or
+// a fresh Dictionary lookup). previousMode just guards against clearing when
+// the same mode's button is tapped again (no real switch happened).
 function refreshCaptureLog(previousMode) {
+    if (previousMode === addInputMode) return;
     if (addInputMode === 'record') {
-        captureLog.innerHTML = `<div class="recording-info-note">🎙️<br>Recordings are limited to about 15 minutes.<br>Once it's processed, you'll land straight on its transcript. Just select whichever lines you want to translate.</div>`;
-    } else if (previousMode === 'record') {
+        captureLog.innerHTML = `<div class="recording-info-note">📁<br>Pick an audio file you already have — for recording live instead, use the red button at the bottom of the screen.<br>Recordings are limited to up to 15 minutes.<br>Once it's processed, you'll land straight on its transcript. Just select whichever lines you want to translate.</div>`;
+    } else {
         captureLog.innerHTML = '';
     }
 }
 
-// The single "Choose a recording" button shown once Record is picked —
+// The single "Upload a recording file" button shown once Record is picked —
 // just opens the file picker. Used to be two buttons ("Recording in
 // Hebrew" / "Recording in English"), each setting a capture/check mode
 // that told Gemini which language to expect for transcription — gone now

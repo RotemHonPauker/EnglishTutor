@@ -107,6 +107,10 @@
     padding: 8px 4px;
 }
 
+/* No more #table-section white panel around toolbar+list — this is now
+   the only wrapper, holding the same flex/overflow layout #table-section
+   used to (so #table-wrapper below still scrolls, everything else stays
+   fixed), just without a background/border/margin of its own. */
 #table-area {
     flex: 1;
     display: flex;
@@ -115,23 +119,11 @@
     min-height: 0;
 }
 
-#table-section {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    margin: 12px;
-}
-
 #table-toolbar {
-    padding: 10px 12px;
+    padding: 12px 12px 10px;
     display: flex;
     gap: 8px;
     align-items: center;
-    border-bottom: 1px solid var(--divider);
     flex-shrink: 0;
 }
 

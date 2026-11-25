@@ -426,10 +426,17 @@ function updateTranscriptSelectionBar() {
         if (bar) bar.style.display = 'none';
         return;
     }
+    // Shows the actual selected text, in transcript order — not just a
+    // count — so it's always clear exactly what's about to be sent. The
+    // preview element itself is capped at 4 lines (transcripts.css's
+    // #transcripts-tab-selection-preview), so a long selection is simply
+    // clipped rather than pushing the Send button offscreen.
     if (preview) {
-        preview.textContent = count === 1
-            ? (currentTranscriptSentences[[...selectedSentenceIndices][0]] || '').trim()
-            : `${count} sentences selected`;
+        const orderedText = [...selectedSentenceIndices]
+            .sort((a, b) => a - b)
+            .map(i => (currentTranscriptSentences[i] || '').trim())
+            .join(' ');
+        preview.textContent = orderedText;
     }
     if (bar) bar.style.display = 'flex';
 }

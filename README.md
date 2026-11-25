@@ -2,7 +2,7 @@
 
 **Capture the phrases you actually need. Express yourself naturally.**
 
-Fraza is built for learners who already have a basic grasp of a language, helping them overcome the hurdle of getting stuck on real-life phrasing. Record yourself living your day — a conversation with your kids, rehearsing for a work call — in sessions up to 30 minutes long. Each recording is transcribed right away, and AI makes it easy to pull out exactly the lines worth practicing and turn them into cards. Pick the tone and translation style per context — work, time with your kid, a trip — so each card matches where it was actually captured. Short, roughly five-minute practice sessions turn review into a daily habit, so your phrasing improves faster and you actually notice it.
+Fraza is built for learners who already have a basic grasp of a language, helping them overcome the hurdle of getting stuck on real-life phrasing. Record yourself living your day — a conversation with your kids, rehearsing for a work call — in sessions up to 15 minutes long. Each recording is transcribed right away, and AI makes it easy to pull out exactly the lines worth practicing and turn them into cards. Pick the tone and translation style per context — work, time with your kid, a trip — so each card matches where it was actually captured. Short, roughly five-minute practice sessions turn review into a daily habit, so your phrasing improves faster and you actually notice it.
 
 ---
 
@@ -67,8 +67,8 @@ You can also **⇄ migrate** one context into another — this moves its phrases
 
 ### 🔴 Record
  
-A single red button sits in the middle of the bottom tab bar; tap it, pick which context the recording belongs to, then record straight from the microphone (Android/Chrome) for up to 30 minutes — tap again to stop.
- 
+A single red button sits in the middle of the bottom tab bar; tap it, pick which context the recording belongs to, then record straight from the microphone (Android/Chrome) for up to 15 minutes — tap again to stop.
+
 On browsers without in-browser recording support (iOS Safari, mainly), this button is hidden, and the Add tab's own 🎙️ Record mode (below) — picking an existing recording file instead — is the way in.
  
 Either way, as soon as a recording finishes processing, the app jumps straight to the **Transcripts** tab with that fresh transcript already open, ready to pick lines out of.
@@ -87,8 +87,7 @@ A single text input, with three small icon buttons (**⌨️ 📖 🎙️**).
   - Doesn't require switching to a dictionary context at all — if more than one dictionary context exists, a quick picker asks which one first (if there's only one, it's used directly; if there are none yet, you're told to create one).
   - if what you typed doesn't match the selected icon (a single word while ⌨️ Type is active, or a full phrase while 📖 Dictionary is active), a quick prompt offers to send it the other way instead — catches the easy mistake of forgetting which mode is selected.
 - **🎙️ Record**:
-  - Swaps the text input out for two buttons — "Recording in {source language}" and "Recording in {target language}" — telling the AI up front which language to expect, making it easier to identify correctly in audio. Typed text doesn't need this hint, since the language is already obvious from the text itself.
-  - Opens the file picker to select an existing recording of up to ~30 minutes — the fallback for browsers that can't record straight from the microphone (see 🔴 Record above for the always-available in-browser option).
+  - Swaps the text input out for a single "Choose a recording" button, opening the file picker — the fallback for browsers that can't record straight from the microphone (see 🔴 Record above for the always-available in-browser option).
 
 ### 📋 Practice tab
 
@@ -123,7 +122,7 @@ Opening a transcript shows its text broken up into individual, tappable sentence
 
 - **Tap a sentence** to select/deselect it.
 - **Select all**, then deselect the few exceptions — handy when most of a recording is worth keeping (reading a story aloud, practicing for an interview).
-- **🔗 Range** — tap it, then tap the first and last sentence you want, and everything between gets selected in one go.
+- **[ ] Range** — tap it, then tap the first and last sentence you want, and everything between gets selected in one go.
 - **AI suggestions**: the AI also highlights sentences worth a card — solid for a strong candidate, dotted for a maybe. Just a hint: nothing is created without a tap, and picking lines by hand always works too.
 - **➤ Send** translates and saves everything currently selected, one at a time, logging each result right there — repeat for as many batches as you like, the transcript stays open throughout.
 
