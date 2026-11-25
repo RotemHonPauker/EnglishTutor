@@ -58,7 +58,7 @@
     gap: 10px;
 }
 
-/* Same "list row" look as the context picker's own items
+/* Same "list row" look as the space picker's own items
    (.space-picker-item/.space-picker-item.active, modal.css) — a plain
    surface-2 row, with the one marked .active (Random, by default — see
    renderPracticeScopePicker in practiceSession.js) called out with the
@@ -89,7 +89,7 @@
    (practiceSession.js's renderPracticeScopePicker) — explains up front that
    sessions are short/capped, and that phrases are picked automatically
    (least-recently-practiced first), before she even picks a scope. Same
-   plain muted-text look as the create-context modal's own explanatory line
+   plain muted-text look as the create-space modal's own explanatory line
    (.space-create-description, modal.css) rather than a boxed callout — just
    with enough bottom margin to keep clear space before the three scope
    buttons below it.

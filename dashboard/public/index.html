@@ -99,7 +99,7 @@
      blocks every tap elsewhere in the app, with the same button/label the
      small tab-bar one shows (globalRecord.js's applyGlobalRecordButtonUI
      keeps both in sync), just much bigger and impossible to miss. Not
-     shown during "picking" — the context picker modal below is its own
+     shown during "picking" — the space picker modal below is its own
      overlay already. Tapping the big button here stops the recording, same
      as tapping the small one. -->
 <!-- No onclick here on purpose: a plain tap would stop the recording the
@@ -118,10 +118,10 @@
 </div>
 
 <!-- SPACE HEADER: shown above every tab, always. Tapping it opens the
-     space picker/create modal. (Internal id/name kept as "space" — only
-     the displayed text says "Context", per the UI-only rename.) -->
+     space picker/create modal. The displayed text says "Space" again —
+     "Context" didn't work out as a UI rename, reverted. -->
 <header id="space-header" onclick="requestOpenSpacePicker()">
-    <span id="space-header-name">Select a context</span>
+    <span id="space-header-name">Select a space</span>
     <span class="space-header-chevron">▾</span>
 </header>
 
@@ -129,12 +129,12 @@
 
     <!-- PRACTICE VIEW -->
     <div id="view-practice" class="view active">
-        <!-- Today's reminder schedule across EVERY context, not just the
+        <!-- Today's reminder schedule across EVERY space, not just the
              active one (slots.js's renderPracticeSlotsScroll) — AND, for
-             whichever slot belongs to the active context, the actual
-             filter for the card list below: tap one of this context's own
+             whichever slot belongs to the active space, the actual
+             filter for the card list below: tap one of this space's own
              slots (or "Unlabeled") to narrow down to it. A slot from
-             another context just stays informational, same as before.
+             another space just stays informational, same as before.
              One strip doing both jobs, instead of two separate scrolls. -->
         <div id="practice-slots-scroll">
             <div id="practice-slots-scroll-track"></div>
@@ -169,7 +169,7 @@
             </div>
             <!-- Select mode is now purely for picking phrases to practice —
                  bulk "Move to..." is gone (Rotem's own call: moving to
-                 another context only ever happens one card at a time
+                 another space only ever happens one card at a time
                  now, via each card's own ⇄ icon — see
                  openMovePhraseModalForPhrase in phrasesTable.js). -->
             <div id="selection-action-bar" style="display:none">
@@ -195,12 +195,12 @@
             <!-- SCHEDULE (used to be its own tab — #view-slots — now a
                  section here instead, since the Transcripts tab took its
                  old spot in the bottom nav). Time-of-day slots for the
-                 currently active Context. Tags are gone — each slot
+                 currently active Space. Tags are gone — each slot
                  carries its own color directly (see the color picker in
                  the slot modal below), and that's what a phrase captured
                  during its window gets labeled/colored with, with no
                  separate tag entity in between. Scoped to that one
-                 context's own slots. "+ Add slot" now lives right here
+                 space's own slots. "+ Add slot" now lives right here
                  (moved from the Practice tab's own toolbar — see
                  #table-toolbar) — this section is where every other slot
                  action already is, so adding one belongs here too. Placed
@@ -259,7 +259,7 @@
                 <div class="space-rules-accordion">
                     <div class="space-rules-item" data-field="about">
                         <button type="button" class="space-rules-item-header" onclick="toggleSpaceRuleItem('about')">
-                            <span class="space-rules-item-title">About this context</span>
+                            <span class="space-rules-item-title">About this space</span>
                             <span class="space-rules-item-chevron">▾</span>
                         </button>
                         <div class="space-rules-item-body">
@@ -405,7 +405,7 @@
         <span>Practice</span>
     </button>
     <!-- GLOBAL RECORD BUTTON (globalRecord.js): not a tab — doesn't switch
-         views or carry a data-view. Not scoped to any one Context; tap to
+         views or carry a data-view. Not scoped to any one Space; tap to
          start/stop an in-browser recording from anywhere in the app. -->
     <div class="global-record-wrap">
         <!-- A classic microphone icon, drawn as a flat inline SVG (single
@@ -461,13 +461,13 @@
 <div id="space-picker-modal-overlay" style="display:none">
     <div id="space-picker-modal" class="confirm-modal">
         <div class="modal-header">
-            <span>Contexts</span>
+            <span>Spaces</span>
         </div>
         <div id="space-picker-list"></div>
         <div id="space-picker-new-form"></div>
         <div class="modal-footer">
             <button onclick="closeSpacePicker()">Cancel</button>
-            <button class="primary" onclick="openSpaceCreateModal()">+ New context</button>
+            <button class="primary" onclick="openSpaceCreateModal()">+ New space</button>
         </div>
     </div>
 </div>
@@ -475,7 +475,7 @@
 <div id="space-create-modal-overlay" style="display:none">
     <div id="space-create-modal" class="confirm-modal">
         <div class="modal-header">
-            <span>New Context</span>
+            <span>New Space</span>
         </div>
         <div id="space-create-form"></div>
     </div>
@@ -505,15 +505,15 @@
     </div>
 </div>
 
-<!-- RECORD CONTEXT PICKER (globalRecord.js): shown every time the global
-     record button is tapped, BEFORE recording starts — asks which context
+<!-- RECORD SPACE PICKER (globalRecord.js): shown every time the global
+     record button is tapped, BEFORE recording starts — asks which space
      this recording belongs to. Large/high-contrast on purpose (styled by
      id/its own classes in tabs.css, not the regular small chip-picker
      styling), since it needs to be read and tapped in a hurry. -->
 <div id="record-routine-modal-overlay" style="display:none">
     <div id="record-routine-modal" class="confirm-modal">
         <div class="modal-header">
-            <span>Record for which context?</span>
+            <span>Record for which space?</span>
         </div>
         <div id="record-routine-list"></div>
         <div class="modal-footer">
@@ -591,7 +591,7 @@
             <input type="text" id="slot-name-input" maxlength="18" placeholder="e.g. Morning coffee" autocomplete="off">
         </div>
         <!-- A slot's color IS its identity now (replaces the old per-tag
-             coloring) — shared across every context in the app, so two
+             coloring) — shared across every space in the app, so two
              slots anywhere can never have the same color (see slots.js's
              renderSlotColorPicker and localDb.js's MAX_SLOTS_TOTAL). -->
         <div class="slot-color-field">

@@ -2,7 +2,7 @@
 
 **Capture the phrases you actually need. Express yourself naturally.**
 
-Fraza is built for learners who already have a basic grasp of a language, helping them overcome the hurdle of getting stuck on real-life phrasing. Record yourself living your day — a conversation with your kids, rehearsing for a work call — in sessions up to 15 minutes long. Each recording is transcribed right away, and AI makes it easy to pull out exactly the lines worth practicing and turn them into cards. Pick the tone and translation style per context — work, time with your kid, a trip — so each card matches where it was actually captured. Short, roughly five-minute practice sessions turn review into a daily habit, so your phrasing improves faster and you actually notice it.
+Fraza is built for learners who already have a basic grasp of a language, helping them overcome the hurdle of getting stuck on real-life phrasing. Record yourself living your day — a conversation with your kids, rehearsing for a work call — in sessions up to 15 minutes long. Each recording is transcribed right away, and AI makes it easy to pull out exactly the lines worth practicing and turn them into cards. Pick the tone and translation style per space — work, time with your kid, a trip — so each card matches where it was actually captured. Short, roughly five-minute practice sessions turn review into a daily habit, so your phrasing improves faster and you actually notice it.
 
 ---
 
@@ -10,7 +10,7 @@ Fraza is built for learners who already have a basic grasp of a language, helpin
 
 - [📱 Screenshots](#-screenshots)
 - [🔧 How it works](#-how-it-works)
-  - [🌍 Contexts](#-contexts)
+  - [🌍 Spaces](#-spaces)
   - [🔴 Record](#-record)
   - [➕ Add tab](#-add-tab)
   - [📋 Practice tab](#-practice-tab)
@@ -53,21 +53,21 @@ Fraza is built for learners who already have a basic grasp of a language, helpin
 
 ## 🔧 How it works
 
-### 🌍 Contexts
+### 🌍 Spaces
 
-The app always shows exactly one active context, named in the header at the top of every tab. Tap the name to switch to another context, or create a new one. Creating a context asks for:
+The app always shows exactly one active space, named in the header at the top of every tab. Tap the name to switch to another space, or create a new one. Creating a space asks for:
 
 - **Type**:
   - **Progression** — practice one language at two levels of fluency, simple and advanced. Good for steady, ongoing vocabulary building in a single target language.
   - **Bridge** — translate into your target language, plus a separate reference language. Useful when you're starting a new language and want extra help from another one you already know.
   - **📖 Dictionary** — a standalone word-lookup list: look up individual words and save their definitions, synonyms, and an example sentence. Has no time slots, Transcripts tab, or Setup tab of its own — just word lookups and practice.
-- **Source/target language** (plus a **bridge language** for Bridge contexts), each chosen from a fixed list so every language's name and code stay consistent everywhere.
+- **Source/target language** (plus a **bridge language** for Bridge spaces), each chosen from a fixed list so every language's name and code stay consistent everywhere.
 
-You can also **⇄ migrate** one context into another — this moves its phrases and transcripts into the target context.
+You can also **⇄ migrate** one space into another — this moves its phrases and transcripts into the target space.
 
 ### 🔴 Record
  
-A single red button sits in the middle of the bottom tab bar; tap it, pick which context the recording belongs to, then record straight from the microphone (Android/Chrome) for up to 15 minutes — tap again to stop.
+A single red button sits in the middle of the bottom tab bar; tap it, pick which space the recording belongs to, then record straight from the microphone (Android/Chrome) for up to 15 minutes — tap again to stop.
 
 On browsers without in-browser recording support (iOS Safari, mainly), this button is hidden, and the Add tab's own 🎙️ Record mode (below) — picking an existing recording file instead — is the way in.
  
@@ -79,40 +79,40 @@ Either way, as soon as a recording finishes processing, the app jumps straight t
 A single text input, with three small icon buttons (**⌨️ 📖 🎙️**).
 
 - **⌨️ Type** (the default):
-  - Write in the context's source or target language (or a mix — a phrase, a sentence, a short paragraph) and hit Send.
+  - Write in the space's source or target language (or a mix — a phrase, a sentence, a short paragraph) and hit Send.
   - The language is detected automatically, so there's nothing to pick beforehand: source-language text gets translated, target-language (or mixed) text gets grammar/phrasing-corrected instead.
   - Saved right away as a card — you'll see it in the Practice tab — and automatically tagged with whichever time slot is active right now, if any (see Practice tab below) — no AI involved in that decision, it's a plain time-of-day lookup.
 - **📖 Dictionary**:
-  - Look up a word in the context's source or target language.
-  - Doesn't require switching to a dictionary context at all — if more than one dictionary context exists, a quick picker asks which one first (if there's only one, it's used directly; if there are none yet, you're told to create one).
+  - Look up a word in the space's source or target language.
+  - Doesn't require switching to a dictionary space at all — if more than one dictionary space exists, a quick picker asks which one first (if there's only one, it's used directly; if there are none yet, you're told to create one).
   - if what you typed doesn't match the selected icon (a single word while ⌨️ Type is active, or a full phrase while 📖 Dictionary is active), a quick prompt offers to send it the other way instead — catches the easy mistake of forgetting which mode is selected.
 - **🎙️ Record**:
   - Swaps the text input out for a single "Choose a recording" button, opening the file picker — the fallback for browsers that can't record straight from the microphone (see 🔴 Record above for the always-available in-browser option).
 
 ### 📋 Practice tab
 
-Your full phrase list as cards — in a dictionary context, each card is a looked-up word instead of a phrase.
+Your full phrase list as cards — in a dictionary space, each card is a looked-up word instead of a phrase.
  
 - **The schedule strip** is where you set the moments in your day worth capturing from. Each one gets a notification shortly beforehand, nudging you to record yourself living that part of your day. Anything you capture during that window gets labeled with it automatically, so afterward you can look back at exactly what came out of each part of your day.
-  - Shows every context's slots, not just the active context's.
-  - A slot belonging to the **active** context is tappable: tap it to see just what you captured during that window, with its own phrase count shown right on the pill.
-  - An extra **"Unlabeled"** pill (its own context's name shown underneath, same as a real slot) covers anything captured outside any window.
-  - A slot belonging to a **different** context stays informational only — no count, nothing to tap.
-  - In a dictionary context (no slot concept at all), the whole strip is purely informational.
+  - Shows every space's slots, not just the active space's.
+  - A slot belonging to the **active** space is tappable: tap it to see just what you captured during that window, with its own phrase count shown right on the pill.
+  - An extra **"Unlabeled"** pill (its own space's name shown underneath, same as a real slot) covers anything captured outside any window.
+  - A slot belonging to a **different** space stays informational only — no count, nothing to tap.
+  - In a dictionary space (no slot concept at all), the whole strip is purely informational.
 - **Cards** have:
-  - **Level / language code badge**: toggles which translation is shown — "Level 1"/"Level 2" in a progression context, or the actual language code (e.g. "EN"/"CS") in a bridge context, since there variant 2 is a different language, not a more advanced version of variant 1.
+  - **Level / language code badge**: toggles which translation is shown — "Level 1"/"Level 2" in a progression space, or the actual language code (e.g. "EN"/"CS") in a bridge space, since there variant 2 is a different language, not a more advanced version of variant 1.
   - **Slot badge**: shows which time slot the card belongs to (or "Assign to slot" if it has none yet) — tap to reassign it.
   - **Old badge**: a card created over a month ago gets a solid-blue "Old" pill — just a nudge to go delete it if it's not useful any more. Tapping it opens the same delete confirm as the 🗑️ icon; nothing is ever deleted automatically.
   - **✏️**: edit a phrase's wording, re-translating it in place.
-  - **⇄**: move this one card into another context — moving is always a single-card action, there's no bulk "move several at once".
+  - **⇄**: move this one card into another space — moving is always a single-card action, there's no bulk "move several at once".
   - **🗑️**: delete, with a confirm.
   - **🔊**: hear the shown variant spoken aloud — generated once on first play and cached on this device from then on.
 - **🎯 Practice** — a short, self-graded practice session, the actual daily-review habit loop:
-  - Tap it to pick a scope: a random sample from the whole context, specific time slots, or **✅ Select phrases** to hand-pick exact cards.
+  - Tap it to pick a scope: a random sample from the whole space, specific time slots, or **✅ Select phrases** to hand-pick exact cards.
   - Practice sessions are kept short — around 5 minutes, up to 7 cards each — and that the automatic scopes (Random / time slots) prioritize whatever you haven't practiced in a while.
   - Each unit shows the phrase's source-language sentence, lets you try saying/typing your own attempt (never saved anywhere, not even temporarily), then reveals the real wording it was actually captured/corrected to.
   - A phrase recorded as several sentences back-to-back is drilled one sentence at a time; on the very last sentence (or a dictionary word's own single unit) you choose **Continue** (keep it — just marks it as recently practiced, so future sessions prioritize other things) or **Delete** (it's solid enough that there's no reason to keep seeing it).
-  - In a dictionary context, practice skips the scope picker and just starts a session over the whole context.
+  - In a dictionary space, practice skips the scope picker and just starts a session over the whole space.
 
 ### 🎙️ Transcripts tab
 
@@ -128,20 +128,20 @@ Opening a transcript shows its text broken up into individual, tappable sentence
 
 ### 🔩 Setup tab
 
-Not shown at all for a dictionary context.
+Not shown at all for a dictionary space.
 
 - **Appearance** — switch between **🌙 Dark** (default) and **☀️ Light** mode.
-- **Schedule** — this context's own time slots.
-  - Each slot has a name, a "Notify at" time (when the reminder fires), an "Active until" time (how long its window stays open for labeling anything captured during it), and a color shared across every context in the app, so no two slots anywhere clash.
+- **Schedule** — this space's own time slots.
+  - Each slot has a name, a "Notify at" time (when the reminder fires), an "Active until" time (how long its window stays open for labeling anything captured during it), and a color shared across every space in the app, so no two slots anywhere clash.
   - Each slot has its own on/off toggle for push reminders — turning one on is what triggers the browser's notification-permission prompt the first time.
   - See [🔔 Reminders](#-reminders-and-what-leaves-this-device) below for how the actual push works, and for a phone setting worth double-checking if a reminder isn't showing up.
   - **"Add slot"** sits right here in this section.
 - **Backup** — export or import all your data. See [💾 Backup](#-backup) below.
 - **Invite a friend** — copies a ready-to-send message with the app's link to your clipboard, to paste into WhatsApp or wherever, so you don't have to type it out each time.
-- **Translation & Transcription Guidelines** — this is where you help sharpen the translations: each field you fill in becomes part of the AI prompt that shapes this context's transcription and translation. Four fields, each opening one at a time with its own Save/Cancel and a "Copy from..." option to pull that field's content from another context:
-  - **About this context** — who's speaking, common topics, and terminology particular to this context, so translations sound like they belong in it.
-  - **Level 1 / Level 2** (labeled with the actual target/bridge language names in a Bridge context) — how each level should sound: Level 1 sets the baseline phrasing, Level 2 a step up in fluency from it. In a Bridge context, the second field shapes how that reference-language translation should sound so that it actually helps you learn the target language.
-  - **Audio Recording** — anything that helps transcribe this context's recordings accurately: background noise to expect, long silences, or other quirks particular to how you record.
+- **Translation & Transcription Guidelines** — this is where you help sharpen the translations: each field you fill in becomes part of the AI prompt that shapes this space's transcription and translation. Four fields, each opening one at a time with its own Save/Cancel and a "Copy from..." option to pull that field's content from another space:
+  - **About this space** — who's speaking, common topics, and terminology particular to this space, so translations sound like they belong in it.
+  - **Level 1 / Level 2** (labeled with the actual target/bridge language names in a Bridge space) — how each level should sound: Level 1 sets the baseline phrasing, Level 2 a step up in fluency from it. In a Bridge space, the second field shapes how that reference-language translation should sound so that it actually helps you learn the target language.
+  - **Audio Recording** — anything that helps transcribe this space's recordings accurately: background noise to expect, long silences, or other quirks particular to how you record.
 
 ---
 
@@ -151,7 +151,7 @@ Not shown at all for a dictionary context.
 | -------------------------------- | -------------------------------------------------------------- |
 | Translation & audio processing  | Google Gemini (`gemini-3.6-flash`), called straight from the browser |
 | Text-to-speech                  | Google Gemini TTS (`gemini-3.1-flash-tts-preview`), called straight from the browser |
-| Storage                         | IndexedDB, built into the browser — your phrases, transcripts, and contexts never leave this device unless you export them |
+| Storage                         | IndexedDB, built into the browser — your phrases, transcripts, and spaces never leave this device unless you export them |
 | Reminders                       | OneSignal (Web Push) + a small Cloudflare Worker that decides when each slot's reminder is due — see [🔔 Reminders](#-reminders-and-what-leaves-this-device) below |
 | Hosting                         | Any static file host (GitHub Pages, Netlify, or your own computer for local use) — plain HTML/CSS/JS, no build step, no server process for the app itself |
 | App install                     | PWA (manifest + service worker)                                |
@@ -160,14 +160,14 @@ Not shown at all for a dictionary context.
 
 ## 💾 Backup
 
-Your actual data — contexts, phrases, transcripts — lives only in this device's browser storage (IndexedDB). On first launch on any device, it asks once for your Gemini API key, and remembers it on that device from then on (see [🔑 Keys, and what actually protects your data](#-keys-and-what-actually-protects-your-data)).
+Your actual data — spaces, phrases, transcripts — lives only in this device's browser storage (IndexedDB). On first launch on any device, it asks once for your Gemini API key, and remembers it on that device from then on (see [🔑 Keys, and what actually protects your data](#-keys-and-what-actually-protects-your-data)).
 
 Since your data lives only on this device, **Backup** (in the Setup tab) is the only way it ever moves anywhere else. Two reasons you'd use it:
 
 - **A safety copy** — in case you clear your browser's data, lose the device, or something goes wrong. Export every so often and keep the file somewhere safe (email it to yourself, save it to Drive, etc.).
 - **Switching devices** — export on the old device, then import that same file on the new one, to carry everything over.
 
-**Export** reads everything — every context, phrase, dictionary entry, and transcript — and downloads it as a single `.json` file, then opens your mail app with a draft reminding you to attach it. Browsers can't attach a downloaded file to an email automatically, so you still need to attach it yourself from Downloads if you're sending it somewhere.
+**Export** reads everything — every space, phrase, dictionary entry, and transcript — and downloads it as a single `.json` file, then opens your mail app with a draft reminding you to attach it. Browsers can't attach a downloaded file to an email automatically, so you still need to attach it yourself from Downloads if you're sending it somewhere.
 
 **Import** reads a file produced this way and restores it onto this device. It's meant for restoring into a fresh install, not for merging two devices that have each been used independently: importing overwrites any existing row that shares an ID with the file, rather than combining them. If you've used two devices separately and want everything in one place, there's no automatic way to merge them — you'd need to pick one device's data as the one to keep.
 

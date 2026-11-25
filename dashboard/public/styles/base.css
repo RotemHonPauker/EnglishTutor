@@ -158,7 +158,7 @@ button.danger:hover { background: #b91c1c; }
    "+ Add slot" quick actions that used to flank it (and the #header-row
    wrapper that carried for that) moved into the Practice tab's own
    #table-toolbar instead (index.html), alongside Select, per Rotem's own
-   call — so this is just the context-switcher pill again, nothing else
+   call — so this is just the space-switcher pill again, nothing else
    needs to share its row any more. */
 
 #space-header {
@@ -228,7 +228,7 @@ button.danger:hover { background: #b91c1c; }
    on screen. Hidden by default; .visible is toggled by
    applyGlobalRecordButtonUI, same as every other state-driven class
    already used for the small button. Not shown during "picking" — the
-   context picker modal (#record-routine-modal-overlay, modal.css) is its
+   space picker modal (#record-routine-modal-overlay, modal.css) is its
    own overlay already, and only one of the two should ever cover the
    screen at once. */
 #global-recording-overlay {

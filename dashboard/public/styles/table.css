@@ -1,10 +1,10 @@
 /* ===== Practice-tab slots scroll — one strip, two jobs ===== */
-/* Shows TODAY's reminder schedule across every context (as before), and
+/* Shows TODAY's reminder schedule across every space (as before), and
    is ALSO now the filter for the card list below it — Rotem's own call
-   to drop the separate per-context slot-filter strip this used to sit
+   to drop the separate per-space slot-filter strip this used to sit
    above, rather than have two horizontal scrolls doing related things.
-   A slot belonging to the ACTIVE context is clickable (.selectable) and
-   carries its own phrase count; a slot belonging to any OTHER context
+   A slot belonging to the ACTIVE space is clickable (.selectable) and
+   carries its own phrase count; a slot belonging to any OTHER space
    stays exactly what it always was here — plain, non-interactive,
    "what's coming up today" context, with no count (its cards aren't even
    loaded right now). Every slot is shown in its own color always, not
@@ -81,7 +81,7 @@
     border-color: #2563eb !important;
 }
 
-/* Only a slot belonging to the active context is a real filter control —
+/* Only a slot belonging to the active space is a real filter control —
    cursor:pointer marks that, same as any other tappable chip. */
 .practice-slot-pill.selectable {
     cursor: pointer;
@@ -99,7 +99,7 @@
     border-color: #2563eb !important;
 }
 
-/* "Nothing to show here" note for this strip when a context has no slots
+/* "Nothing to show here" note for this strip when a space has no slots
    (and no unlabeled phrases) at all. */
 .scroll-empty-note {
     color: var(--text-faint);
@@ -343,7 +343,7 @@
 /* A card older than a month (localDb.js's isCardOld) — a pill in the same
    badges row as level/slot, not a quiet note under the text, so it's hard
    to miss. Solid app-blue fill (the same #2563eb used for the active
-   context border in modal.css and #select-mode-btn.active here) rather
+   space border in modal.css and #select-mode-btn.active here) rather
    than a gray tone — fixed, not a theme token, so it reads the same way
    and stays readable with white text in both light and dark mode (unlike
    a surface-family gray, which flips lightness between themes). The goal

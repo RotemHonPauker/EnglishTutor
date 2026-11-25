@@ -69,7 +69,7 @@
 
 /* ===== Global record button — the red, circular, always-available
    recording trigger, raised up out of the middle of the tab bar (not
-   scoped to any one tab/context — see globalRecord.js). Sits between
+   scoped to any one tab/space — see globalRecord.js). Sits between
    Practice and Slots in the markup, which centers it visually. ===== */
 
 .global-record-wrap {
@@ -144,7 +144,7 @@
     font-variant-numeric: tabular-nums; /* keeps the "0:00" timer from jittering in width as digits change */
 }
 
-/* ===== Record context picker (globalRecord.js) — shown every time the
+/* ===== Record space picker (globalRecord.js) — shown every time the
    record button is tapped, before recording starts. Deliberately bigger
    and higher-contrast than the small chip-pickers used elsewhere in the
    app (tags, move-to), since this one needs to be read and tapped in a

@@ -36,7 +36,7 @@ function applyDictionaryModeUI() {
     const dict = isDictionarySpace();
 
     // Tab bar — Transcripts (recordings are never made for a dictionary
-    // space — see globalRecord.js's own context filter) and Setup
+    // space — see globalRecord.js's own space filter) and Setup
     // (space-rules + the Schedule section now living inside it, both
     // phrase-only) don't apply to a dictionary space.
     const transcriptsBtn = document.querySelector('.tab-btn[data-view="transcripts"]');
@@ -67,8 +67,8 @@ function applyDictionaryModeUI() {
     // render, not just on this one-time mode switch. Practice sessions
     // still apply either way (see practiceSession.js's
     // startDictionaryPractice) — "Start practice" stays visible, just
-    // with a simpler flow behind it for a dictionary context (no scope to
-    // pick, straight to a random session over the whole context).
+    // with a simpler flow behind it for a dictionary space (no scope to
+    // pick, straight to a random session over the whole space).
 }
 
 // ===== Quick lookup from a non-dictionary space =====
@@ -87,7 +87,7 @@ function resolveDictionarySpaceIdAndProceed(onResolved) {
     }
     const dictSpaces = (typeof spaces !== 'undefined' ? spaces : []).filter(s => s.space_type === 'dictionary');
     if (dictSpaces.length === 0) {
-        addCaptureMessage('No dictionary context yet — create one from the context picker first.');
+        addCaptureMessage('No dictionary space yet — create one from the space picker first.');
         return;
     }
     if (dictSpaces.length === 1) {

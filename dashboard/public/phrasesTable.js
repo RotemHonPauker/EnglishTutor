@@ -14,10 +14,10 @@ let allPhrases = [];
 let selectMode = false;
 let selectedPhraseIds = new Set();
 
-// Slot filtering itself — picking exactly one of this context's own slots
+// Slot filtering itself — picking exactly one of this space's own slots
 // (or "Unlabeled") to narrow the list down to — now lives in slots.js, as
 // part of the same Practice-tab slots scroll that shows today's
-// cross-context schedule (renderPracticeSlotsScroll/selectSlotBucket).
+// cross-space schedule (renderPracticeSlotsScroll/selectSlotBucket).
 // phraseMatchesSlotFilter is defined there; renderTable below just calls
 // it.
 
@@ -99,7 +99,7 @@ function renderTable() {
                     : `<div class="phrase-card-icons">
                     <button title="Delete phrase" onclick="deletePhraseRow('${p.id}')">🗑️</button>
                     <button title="Edit phrase" onclick="editPhraseRow('${p.id}')">✏️</button>
-                    <button title="Move to another context" onclick="openMovePhraseModalForPhrase('${p.id}')">⇄</button>
+                    <button title="Move to another space" onclick="openMovePhraseModalForPhrase('${p.id}')">⇄</button>
                 </div>`}
                 <div class="phrase-card-badges">
                     ${isCardOld(p) ? `<button class="old-badge" title="Created over a month ago — tap to delete" onclick="deletePhraseRow('${p.id}')" ${selectMode ? 'disabled' : ''}>🕓 Old</button>` : ''}
@@ -284,7 +284,7 @@ function closeSlotPicker() {
     document.getElementById('slot-picker-modal-overlay').style.display = 'none';
 }
 
-// Only this context's own slots are offered — same `slots` global
+// Only this space's own slots are offered — same `slots` global
 // (slots.js) the Schedule tab itself reads from.
 function renderSlotPickerList() {
     const noneChip = `<div class="tag-chip none ${!slotPickerSelectedSlot ? 'selected' : ''}" onclick="selectPickerSlot(null)">—</div>`;
@@ -408,10 +408,10 @@ function updateSelectModeUI() {
 // "⇄" icon =====
 // A direct space_id update (bulkMovePhrases) — no retranslation, no Add-tab
 // round trip. Level carries over unchanged; a slot doesn't, since it
-// belongs to one specific context's own schedule (see localDb.js's
+// belongs to one specific space's own schedule (see localDb.js's
 // bulkMovePhrases). There used to be a bulk entry point too (the
 // selection bar's own "Move to..."), moving everything multi-selected at
-// once — removed (Rotem's own call: moving to another context should only
+// once — removed (Rotem's own call: moving to another space should only
 // ever happen one card at a time, never several together), so Select mode
 // is now purely for picking phrases to practice. openMovePhraseModalForIds
 // still takes an array for bulkMovePhrases's own sake, but every caller
@@ -450,7 +450,7 @@ function renderMovePhraseList() {
         .filter(s => s.id !== activeSpaceId && s.space_type !== 'dictionary');
     container.innerHTML = candidates.length
         ? candidates.map(s => `<div class="tag-chip" onclick="confirmBulkMove('${s.id}')">${escapeHtml(s.name)}</div>`).join('')
-        : `<div class="tag-name">No other phrase context to move these into.</div>`;
+        : `<div class="tag-name">No other phrase space to move these into.</div>`;
 }
 
 async function confirmBulkMove(targetSpaceId) {
@@ -467,7 +467,7 @@ async function confirmBulkMove(targetSpaceId) {
 
 // ===== Start a practice session from a manual selection =====
 // The selection bar's other action besides "Move to...". Unlike the other
-// two practice scopes (random from the context / specific time slots —
+// two practice scopes (random from the space / specific time slots —
 // see practiceSession.js), a manual pick is practiced in full, exactly as
 // selected, with no 7-unit cap — the deliberate choice of phrases IS the
 // scope here, not a sample to be trimmed.

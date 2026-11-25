@@ -59,7 +59,7 @@ window.onload = async () => {
     // Transcripts only ever live for 24h (see localDb.js's
     // TRANSCRIPT_RETENTION_MS) — sweeping expired ones now, once per app
     // load, is enough to keep the Transcripts tab honest without running a
-    // timer in the background. Scans every context's transcripts at once,
+    // timer in the background. Scans every space's transcripts at once,
     // so this doesn't need to wait on activeSpaceId/loadSpaces below.
     if (typeof deleteExpiredTranscripts === 'function') {
         await deleteExpiredTranscripts();

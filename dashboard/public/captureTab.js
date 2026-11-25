@@ -84,7 +84,7 @@ function refreshCaptureLog(previousMode) {
 // that told Gemini which language to expect for transcription — gone now
 // that the transcription prompt (promptTemplates.js's AUDIO_PROMPT_TEMPLATE,
 // via audioEngine.js) transcribes exactly as spoken either way, in
-// whichever of this context's own two languages (or a mix of them) was
+// whichever of this space's own two languages (or a mix of them) was
 // actually used, with no language hint needed up front.
 function startRecordingUpload() {
     document.getElementById('recording-file-input').click();
@@ -116,7 +116,7 @@ function resetCaptureLog() {
     const hasActiveSpace = typeof getActiveSpace === 'function' && !!getActiveSpace();
     applyNoSpaceUI(!hasActiveSpace);
     if (!hasActiveSpace) {
-        captureLog.innerHTML = '<div class="recording-info-note">👋<br>No context yet — tap the title above, then "+ New context" to create one. Come back here once it\'s made.</div>';
+        captureLog.innerHTML = '<div class="recording-info-note">👋<br>No space yet — tap the title above, then "+ New space" to create one. Come back here once it\'s made.</div>';
         return;
     }
 
@@ -143,7 +143,7 @@ async function submitTypedPhrase() {
 
     if ((typeof isDictionarySpace === 'function' && isDictionarySpace()) || addInputMode === 'dictionary') {
         // Only warn when there's an actual Type mode to switch to — a
-        // dictionary context has no alternative, so there's nothing to
+        // dictionary space has no alternative, so there's nothing to
         // mistake it for.
         const canSwitchToType = !(typeof isDictionarySpace === 'function' && isDictionarySpace());
         if (canSwitchToType && looksLikeSentence(text)) {

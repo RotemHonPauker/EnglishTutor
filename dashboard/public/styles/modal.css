@@ -136,7 +136,7 @@
    🗑️/✏️/⇄ icons (table.css's .phrase-card-icons button), just scoped to
    this modal under their own class names — same left-aligned position and
    same delete/rename/migrate order as that card's own delete/edit/move
-   icons, for visual consistency between the two. The active context gets
+   icons, for visual consistency between the two. The active space gets
    a blue border only, no fill — the card's own background/text color stay
    exactly as they are for any other row. */
 
@@ -178,7 +178,7 @@
     white-space: nowrap;
 }
 
-/* A dictionary context is set apart from a regular one by style alone —
+/* A dictionary space is set apart from a regular one by style alone —
    no icon glued onto its name, here or in the header (spacesState.js's
    renderSpaceHeader applies the same italic inline). */
 .space-picker-item-name--dictionary {

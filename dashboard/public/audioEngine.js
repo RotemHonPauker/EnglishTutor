@@ -12,7 +12,7 @@
 //
 // No more "capture" vs "check" mode: AUDIO_PROMPT_TEMPLATE (promptTemplates.js)
 // now just transcribes exactly as spoken either way, restricted to this
-// context's own source/target languages (or a mix of the two) — there was
+// space's own source/target languages (or a mix of the two) — there was
 // never a real reason for the two to behave differently once "capture"
 // stopped silently translating everything into the source language. See
 // captureTab.js's own comment on its single "Choose a recording" button

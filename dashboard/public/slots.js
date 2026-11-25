@@ -1,6 +1,6 @@
 // slots.js — the Schedule section (lives inside the Setup tab now, not a
 // tab of its own — see #schedule-section in index.html), used to manage
-// time-of-day slots for the currently active Context (see localDb.js's
+// time-of-day slots for the currently active Space (see localDb.js's
 // Slots section for the underlying data: start/end minutes, name,
 // space_id, color). Tags are gone — each slot carries its own color
 // directly now, and that color/name is what a phrase captured during its
@@ -8,8 +8,8 @@
 // (see translationEngine.js's translatePhrase and localDb.js's getPhrases).
 //
 // The Schedule list here (#slots-list, inside #schedule-section on the
-// Setup tab) is scoped to activeSpaceId — only that context's own slots.
-// The old "Full schedule" overlay, merging every Context's slots into one
+// Setup tab) is scoped to activeSpaceId — only that space's own slots.
+// The old "Full schedule" overlay, merging every Space's slots into one
 // list, is gone — that's now the Practice tab's own job instead (its
 // slots-scroll, renderPracticeSlotsScroll below), so there's no second
 // place that does the same thing any more.
@@ -19,9 +19,9 @@
 // getActiveSpace) loaded first. COLORS (colorUtils.js) is the shared pool
 // every slot's color comes from, app-wide (see localDb.js's
 // MAX_SLOTS_TOTAL) — the same list backs both the add/edit modal's color
-// picker and the Practice tab's own cross-context slots scroll (below).
+// picker and the Practice tab's own cross-space slots scroll (below).
 
-let slots = []; // the ACTIVE context's own slots only
+let slots = []; // the ACTIVE space's own slots only
 
 // ===== Time text inputs (always 24-hour — "20:00", never "8:00 PM") =====
 // A native <input type="time"> renders in whatever 12h/24h format the
@@ -156,12 +156,12 @@ function formatSlotRange(startMinutes, endMinutes) {
 }
 
 // ===== Which slot is active right now? =====
-// Global across every context, not just the active one — used by
+// Global across every space, not just the active one — used by
 // translationEngine.js (deciding a freshly captured phrase's slot
 // directly, with no model call involved) and by globalRecord.js (deciding
-// which context to route a fresh recording's transcript into). At most
+// which space to route a fresh recording's transcript into). At most
 // one slot can ever match at a given instant, since overlapping slots are
-// blocked at creation time regardless of which context they belong to
+// blocked at creation time regardless of which space they belong to
 // (see localDb.js's findOverlappingSlot) — so there's nothing to
 // disambiguate here.
 async function findActiveSlotNow() {
@@ -173,7 +173,7 @@ async function findActiveSlotNow() {
 
 // ===== Loading the Schedule section =====
 
-// Called on initial load and on every context switch (spacesState.js) —
+// Called on initial load and on every space switch (spacesState.js) —
 // same pattern as renderSpaceRulesForm/renderAnalyticsChart: safe to call
 // even when the Setup tab (where the Schedule section now lives) isn't the
 // one currently on screen, since it just no-ops if the section's elements
@@ -186,7 +186,7 @@ async function loadSlotsScreen() {
     const active = typeof getActiveSpace === 'function' ? getActiveSpace() : null;
     if (!active) {
         slots = [];
-        list.innerHTML = '<div class="recording-info-note">👋<br>No context yet — create one first from the title above.</div>';
+        list.innerHTML = '<div class="recording-info-note">👋<br>No space yet — create one first from the title above.</div>';
         return;
     }
 
@@ -197,20 +197,20 @@ async function loadSlotsScreen() {
     // added/edited/deleted/toggled anywhere, not just when Practice itself
     // is re-entered (see enterPracticeTab below, which refreshes it on tab
     // switch too) — a slot added/renamed/recolored/deleted here changes
-    // that strip's own pills AND, for the active context's own slots,
+    // that strip's own pills AND, for the active space's own slots,
     // what the card-list filter actually offers.
     if (typeof renderPracticeSlotsScroll === 'function') renderPracticeSlotsScroll();
 }
 
 // ===== Practice-tab slots scroll — today's schedule AND the card filter =====
-// Shows TODAY's reminder schedule across every context, same as always —
-// but a slot belonging to the ACTIVE context is now also a real filter
+// Shows TODAY's reminder schedule across every space, same as always —
+// but a slot belonging to the ACTIVE space is now also a real filter
 // control for the card list below it (tap it to narrow down to just that
 // slot's cards), with its own phrase count shown right on the pill. A
-// slot belonging to any OTHER context stays exactly what it always was:
+// slot belonging to any OTHER space stays exactly what it always was:
 // plain, non-interactive "what's coming up today" context — its cards
 // aren't even loaded right now, so there's nothing to count or filter by.
-// One strip doing both jobs, replacing the separate single-context
+// One strip doing both jobs, replacing the separate single-space
 // slot-filter strip that used to sit below it (Rotem's own call — two
 // horizontal scrolls for related things was one too many).
 //
@@ -221,7 +221,7 @@ async function loadSlotsScreen() {
 // so the two visual cues never collide.
 //
 // selectedSlotBucketId is a real slot id (belonging to the active
-// context), 'unlabeled', or null — read by phraseMatchesSlotFilter below,
+// space), 'unlabeled', or null — read by phraseMatchesSlotFilter below,
 // which phrasesTable.js's renderTable filters the card list through.
 let selectedSlotBucketId = null;
 
@@ -297,10 +297,10 @@ async function renderPracticeSlotsScroll() {
         `;
     }).join('');
 
-    // The active context's own untagged phrases — kept clearly apart from
+    // The active space's own untagged phrases — kept clearly apart from
     // a real slot (no time range, no slot color) but just as clickable;
-    // its own context name underneath is what makes it obvious which
-    // context this particular "Unlabeled" belongs to.
+    // its own space name underneath is what makes it obvious which
+    // space this particular "Unlabeled" belongs to.
     const activeSpace = typeof getActiveSpace === 'function' ? getActiveSpace() : null;
     const unlabeledPillHtml = (filteringApplies && unlabeledCount > 0 && activeSpace) ? `
         <div class="practice-slot-pill selectable ${selectedSlotBucketId === 'unlabeled' ? 'selected' : ''}" onclick="selectSlotBucket('unlabeled')">
@@ -332,7 +332,7 @@ function phraseMatchesSlotFilter(phrase) {
     return phrase.slot_id === selectedSlotBucketId;
 }
 
-// Called on context switch (spacesState.js) — the new context's own slots
+// Called on space switch (spacesState.js) — the new space's own slots
 // (and so its own bucket ids) are completely different, so there's
 // nothing to carry over; renderPracticeSlotsScroll picks a fresh default
 // the next time it runs.
@@ -356,10 +356,10 @@ function enterPracticeTab(btnEl) {
     if (typeof renderPracticeSlotsScroll === 'function') renderPracticeSlotsScroll();
 }
 
-// A slot row doesn't carry its own context's name (unlike a phrase, slots
+// A slot row doesn't carry its own space's name (unlike a phrase, slots
 // are never joined against their space in localDb.js) — this is just a
 // lookup against `spaces` (spacesState.js), which already holds every
-// context for the space picker.
+// space for the space picker.
 function getSpaceNameById(spaceId) {
     const space = (typeof spaces !== 'undefined' ? spaces : []).find(s => s.id === spaceId);
     return space ? space.name : '';
@@ -380,14 +380,14 @@ function updateSlotsPermissionWarning() {
     warning.style.display = blocked ? '' : 'none';
 }
 
-// ===== Rendering the per-context list =====
+// ===== Rendering the per-space list =====
 
 function renderSlotsList() {
     const list = document.getElementById('slots-list');
     if (!list) return;
 
     if (!slots.length) {
-        list.innerHTML = '<div class="slots-empty">No time slots yet for this context — add one to get notified when it\'s time to record.</div>';
+        list.innerHTML = '<div class="slots-empty">No time slots yet for this space — add one to get notified when it\'s time to record.</div>';
         return;
     }
 
@@ -463,10 +463,10 @@ function closeSlotModal() {
     document.getElementById('slot-modal-overlay').style.display = 'none';
 }
 
-// Every slot across every context shares ONE pool of colors (see
+// Every slot across every space shares ONE pool of colors (see
 // localDb.js's MAX_SLOTS_TOTAL) — a slot's color IS its identity, so two
 // slots can never share one anywhere in the app. Checked against every
-// slot (getAllSlots), not just this context's own; the slot currently
+// slot (getAllSlots), not just this space's own; the slot currently
 // being edited never disables its own color.
 async function renderSlotColorPicker() {
     const container = document.getElementById('slot-color-picker');
@@ -503,7 +503,7 @@ function showSlotModalError(message) {
 }
 
 // Validates (name present, color chosen, same-day range, then the
-// hard-block cross-context overlap check — see localDb.js's
+// hard-block cross-space overlap check — see localDb.js's
 // findOverlappingSlot), then creates or updates.
 async function submitSlot() {
     const isNewSlot = !editingSlotId; // plain variable read, no await — safe to check this early
@@ -546,7 +546,7 @@ async function submitSlot() {
     const conflict = await findOverlappingSlot({ startMinutes, endMinutes, excludeId: editingSlotId });
     if (conflict) {
         const conflictSpace = (typeof spaces !== 'undefined' ? spaces : []).find(s => s.id === conflict.space_id);
-        const conflictRoutineName = conflictSpace ? conflictSpace.name : 'another context';
+        const conflictRoutineName = conflictSpace ? conflictSpace.name : 'another space';
         showSlotModalError(`That overlaps an existing time slot: "${conflict.name}" (${formatSlotRange(conflict.start_minutes, conflict.end_minutes)}, ${conflictRoutineName}). Adjust one of the times first.`);
         return;
     }

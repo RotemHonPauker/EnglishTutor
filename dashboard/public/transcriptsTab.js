@@ -42,7 +42,7 @@
 // geminiExtractText) and translationEngine.js (translatePhrase) loaded
 // first.
 
-let transcriptsTabList = []; // the active context's own transcripts only
+let transcriptsTabList = []; // the active space's own transcripts only
 let openTranscriptId = null; // which one (if any) the focused editor is showing
 
 // ===== Entering the tab =====
@@ -52,10 +52,10 @@ function enterTranscriptsTab(btnEl) {
     loadTranscriptsTabList();
 }
 
-// Called on initial entry to the tab and on every context switch
+// Called on initial entry to the tab and on every space switch
 // (spacesState.js's resetTranscriptsTab) — sweeps expired transcripts
 // first (cheap; see localDb.js's deleteExpiredTranscripts), then loads
-// this context's own remaining ones.
+// this space's own remaining ones.
 async function loadTranscriptsTabList() {
     if (typeof deleteExpiredTranscripts === 'function') {
         await deleteExpiredTranscripts();
@@ -68,7 +68,7 @@ async function loadTranscriptsTabList() {
 }
 
 // Shared by setActiveSpace (spacesState.js) — closes whatever transcript
-// was open (it belonged to the context being switched away from) and
+// was open (it belonged to the space being switched away from) and
 // reloads fresh. Safe to call even when this tab isn't the one on screen
 // right now, same pattern as loadSlotsScreen/resetCaptureLog.
 async function resetTranscriptsTab() {
@@ -123,10 +123,10 @@ async function renderTranscriptsTabList() {
         return;
     }
 
-    // Every slot across every context, not just this one — a transcript's
+    // Every slot across every space, not just this one — a transcript's
     // slot_id was set from whichever slot was active anywhere in the app
     // the moment it was recorded (see finishRecordingIntoTranscript below),
-    // which may belong to a different context than this transcript itself.
+    // which may belong to a different space than this transcript itself.
     const allSlots = typeof getAllSlots === 'function' ? await getAllSlots() : [];
     const slotById = new Map(allSlots.map(s => [s.id, s]));
 
@@ -445,8 +445,8 @@ function updateTranscriptSelectionBar() {
 // transcript-tab equivalent of captureTab.js's submitPhraseDirect, just
 // looping over however many sentences are selected and logging each into
 // this tab's own #transcripts-tab-log, with no mode-mismatch check (a
-// transcript is never attached to a dictionary context in the first place
-// — see globalRecord.js's own context filter — so there's nothing to
+// transcript is never attached to a dictionary space in the first place
+// — see globalRecord.js's own space filter — so there's nothing to
 // mismatch against). A sentence that fails to translate is logged and
 // skipped, not retried; a missing API key stops the whole batch instead
 // of failing through every remaining sentence one by one.
@@ -516,14 +516,14 @@ function addTranscriptTabLogMessage(text) {
 // Shared by both ways a recording turns into one: picking a file via the
 // Add tab's own Record mode (captureTab.js's handleRecordingFileSelected)
 // and the global record button (globalRecord.js) — which can be tapped
-// from any tab, for any context, not necessarily the one currently open.
+// from any tab, for any space, not necessarily the one currently open.
 
 async function finishRecordingIntoTranscript(spaceId, transcriptText) {
     // Whichever slot is active anywhere in the app right now, if any —
     // same check translatePhrase uses for a freshly captured phrase (see
     // slots.js's findActiveSlotNow). Not scoped to this transcript's own
-    // context: the slot that was open when the recording finished is what
-    // decides its color, regardless of which context it's being saved
+    // space: the slot that was open when the recording finished is what
+    // decides its color, regardless of which space it's being saved
     // into. Decided once, right here, and stored — never recomputed later.
     const activeSlot = typeof findActiveSlotNow === 'function' ? await findActiveSlotNow() : null;
 
@@ -536,7 +536,7 @@ async function finishRecordingIntoTranscript(spaceId, transcriptText) {
     const transcript = await createTranscript({ spaceId, content: transcriptText, slotId: activeSlot?.id || null, suggestions });
 
     if (spaceId !== activeSpaceId) {
-        // Also reloads phrases/slots/transcripts for the new context (via
+        // Also reloads phrases/slots/transcripts for the new space (via
         // setActiveSpace's own resetTranscriptsTab call) — harmless here
         // since the fresh transcript is opened explicitly right below
         // anyway, replacing whatever that reload just showed.

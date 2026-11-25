@@ -50,9 +50,9 @@ const translatePhrase = (function () {
         // Slot assignment is a plain time-of-day lookup now, not something
         // Gemini is asked about — whichever Slot is active right now (see
         // slots.js's findActiveSlotNow) becomes the phrase's slot
-        // directly, as long as it belongs to THIS context. A slot active
-        // for a different context right now simply doesn't apply here
-        // (every context's Add tab only ever colors phrases with ITS OWN
+        // directly, as long as it belongs to THIS space. A slot active
+        // for a different space right now simply doesn't apply here
+        // (every space's Add tab only ever colors phrases with ITS OWN
         // slots). No model call involved in this decision at all.
         const activeSlot = typeof findActiveSlotNow === 'function' ? await findActiveSlotNow() : null;
         const slotId = (activeSlot && activeSlot.space_id === spaceId) ? activeSlot.id : null;

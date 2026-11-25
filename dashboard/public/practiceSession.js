@@ -174,7 +174,7 @@ function closePracticeSession() {
 // ===== Entry points =====
 
 // Wired to the Practice tab toolbar's "🎯 Practice" button, for both
-// phrase contexts and dictionary contexts (dictionary.js's
+// phrase spaces and dictionary spaces (dictionary.js's
 // applyDictionaryModeUI keeps this button visible either way, just with a
 // different flow behind it — dictionary practice has nothing to scope by
 // the way phrases do (no time slots, no manual multi-select there), so it
@@ -198,7 +198,7 @@ function startPracticeFlow() {
 // selectionCap disables any checkbox that would push the running total
 // over it), so by the time this runs the selection can never actually be
 // over ~7 units — capped: true below is just a defensive no-op, not a
-// silent trim. (The selection bar only exists in phrase contexts —
+// silent trim. (The selection bar only exists in phrase spaces —
 // dictionary cards don't currently support multi-select — so this is
 // always phrases.)
 function startManualPracticeFromSelection() {
@@ -216,7 +216,7 @@ function startManualPracticeFromSelection() {
     });
 }
 
-// ===== Dictionary practice (no scope picker — just the whole context) =====
+// ===== Dictionary practice (no scope picker — just the whole space) =====
 
 function startDictionaryPractice() {
     beginPracticeSession({
@@ -252,7 +252,7 @@ function countUnitsForDictionaryEntry() {
     return 1;
 }
 
-// ===== Scope picker (phrase contexts only — the overlay's first screen) =====
+// ===== Scope picker (phrase spaces only — the overlay's first screen) =====
 
 function renderPracticeScopePicker() {
     const title = document.getElementById('practice-modal-title');
@@ -262,7 +262,7 @@ function renderPracticeScopePicker() {
 
     if (!allPhrases.length) {
         body.innerHTML = `
-            <div class="tag-name">No phrases in this context yet.</div>
+            <div class="tag-name">No phrases in this space yet.</div>
             <div class="form-buttons"><button onclick="closePracticeSession()">Close</button></div>
         `;
         return;
@@ -274,7 +274,7 @@ function renderPracticeScopePicker() {
             <div>Phrases are picked automatically — prioritizing the ones you haven't practiced in a while.</div>
         </div>
         <div class="practice-scope-options">
-            <button type="button" class="practice-scope-btn active" onclick="startRandomRoutinePractice()">🔀 Random from this context</button>
+            <button type="button" class="practice-scope-btn active" onclick="startRandomRoutinePractice()">🔀 Random from this space</button>
             <button type="button" class="practice-scope-btn" onclick="renderPracticeSlotScopePicker()">🕐 Choose time slots</button>
             <button type="button" class="practice-scope-btn" onclick="selectPhrasesFromScopePicker()">✅ Select phrases</button>
         </div>
@@ -312,7 +312,7 @@ function renderPracticeSlotScopePicker() {
         const body = document.getElementById('practice-modal-body');
         if (body) {
             body.innerHTML = `
-                <div class="tag-name">This context has no time slots yet.</div>
+                <div class="tag-name">This space has no time slots yet.</div>
                 <div class="form-buttons"><button onclick="renderPracticeScopePicker()">Back</button></div>
             `;
         }
@@ -461,7 +461,7 @@ function countUnitsForPhrase(phrase) {
 }
 
 // Mirrors the level-badge labels used in the table itself (phrasesTable.js's
-// renderTable) — a Bridge context's "second version" is a different
+// renderTable) — a Bridge space's "second version" is a different
 // language entirely, not a step up, so it gets that language's own code
 // instead of "Level 2".
 function getVariantLabels() {
