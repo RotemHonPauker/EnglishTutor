@@ -34,10 +34,13 @@ const VARIANT_GUIDANCE_TEMPLATE = `Translate into two natural \${targetLanguage}
 
 ## General Rules
 * Do not use dashes anywhere in the translated variants.
-* Where possible use different vocabulary from variant 1 — avoid repeating the same key words across both variants.
+* Where possible use different vocabulary from variant 1 — avoid repeating the same key words across both variants. Never let this come at the cost of sounding like real, natural \${targetLanguage} that people actually use day to day — if a different word would feel over-literary, unnatural or stilted, keep the shared word instead.
 
 ## Level Progression
-These two variants are shown to the learner as "Level 1" and "Level 2" — a small step up in fluency, not just an alternate phrasing. Variant 2 should feel like a natural next step from Variant 1: slightly more advanced, native-sounding, or idiomatic vocabulary/phrasing, while remaining just as understandable and no longer than Variant 1. Both must stay fully natural — Level 2 is a step toward native-like phrasing, not a display of obscure vocabulary.`;
+These two variants are shown to the learner as "Level 1" and "Level 2" — a small step up in fluency, not just an alternate phrasing. Variant 2 should feel like a natural next step from Variant 1: slightly more advanced, native-sounding, or idiomatic vocabulary/phrasing, while remaining just as understandable and no longer than Variant 1. Both must stay fully natural — Level 2 is a step toward native-like phrasing, not a display of obscure vocabulary.
+
+## Register
+Even when this space's own guidance below asks for a formal or elevated register, both variants must still sound like \${targetLanguage} spoken naturally between people in everyday life — never literary, bookish or written-only phrasing — unless that guidance explicitly asks for literary language.`;
 
 const DICTIONARY_PROMPT_TEMPLATE = `## Role
 You are a precise \${sourceLanguage}-\${targetLanguage} dictionary.
@@ -85,6 +88,31 @@ Treat other voices or background sound as context, not something to transcribe v
 ## Output
 Respond ONLY with valid JSON in this exact format, no other text:
 {"transcript": "the cleaned transcript as continuous text"}`;
+
+// Used by practiceSession.js's requestPracticeAttemptPolish. ⟦ ⟧ delimiters
+// (rather than a client-side diff) let the model itself mark exactly which
+// words it changed or added, since it's the one doing the rewriting.
+const ATTEMPT_POLISH_PROMPT_TEMPLATE = `## Input
+The person is practicing speaking \${targetLanguage}. They were shown this \${sourceLanguage} sentence to translate on the spot:
+"\${sourceSentence}"
+
+They then said or typed this attempt:
+"\${attempt}"
+
+## Step 1: Check if there's anything to polish
+If the attempt is entirely in \${sourceLanguage}, with no \${targetLanguage} in it at all, respond with {"applicable": false} — there is nothing of theirs to polish.
+
+## Step 2: Polish their own attempt
+Otherwise, produce the closest possible correct \${targetLanguage} version of what they actually said — not a generic or idealized rewrite, and not necessarily matching the exact wording of the reference sentence above, but it must mean the same thing as the \${sourceLanguage} sentence they were asked to say. Keep their own wording, vocabulary and structure wherever it already correctly conveys that meaning in natural \${targetLanguage}; change only what's needed to fix grammar, phrasing, or a wrong word choice — a word that is grammatically fine but doesn't actually mean what they intended. Judge this against the \${sourceLanguage} sentence above, not just by whether their attempt reads smoothly on its own. When you do replace a word, pick the plain, natural word a person would actually say in everyday speech, not a more formal, technical or clinical-sounding synonym, even if that synonym is also technically correct.
+If a word or two was said in \${sourceLanguage} because they didn't know it in \${targetLanguage}, translate just that word or phrase into \${targetLanguage} and insert it in place.
+
+## Step 3: Mark your changes
+Wrap every word or phrase you changed or added — anything that differs from what they actually said — in ⟦ ⟧ delimiters. Leave everything unchanged from their attempt exactly as they wrote it, with no delimiters around it.
+
+## Output
+Respond ONLY with valid JSON, no other text, in one of these two exact shapes:
+{"applicable": false}
+{"applicable": true, "polished": "..."}`;
 
 // Used by transcriptsTab.js's getTranscriptSuggestions. Works off a
 // pre-split, numbered list of sentences and asks for indices back, rather

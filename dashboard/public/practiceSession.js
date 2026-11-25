@@ -4,8 +4,8 @@
 // last sentence of a phrase (or a dictionary word's single unit) either
 // Continue (stamps last_practiced_at) or Delete. Nothing else is written
 // to the database.
-// Needs localDb.js, colorUtils.js, phrasesTable.js, slots.js, and
-// dictionary.js loaded first.
+// Needs localDb.js, colorUtils.js, phrasesTable.js, slots.js, dictionary.js,
+// geminiClient.js, and promptTemplates.js loaded first.
 
 // A phrase captured from one recording can hold several sentences; splitting
 // them into units (splitIntoSentenceUnits) lets a long card be practiced
@@ -481,20 +481,90 @@ function renderDictionaryAnswerHtml(unit) {
     `;
 }
 
+function togglePracticeSavedAccordion() {
+    const content = document.getElementById('practice-saved-content');
+    const toggle = document.getElementById('practice-accordion-toggle');
+    if (!content || !toggle) return;
+    const isOpen = content.style.display !== 'none';
+    content.style.display = isOpen ? 'none' : 'block';
+    toggle.textContent = isOpen ? '▸ Show saved translation' : '▾ Hide saved translation';
+}
+
+// Asks Gemini for the closest correct version of what was actually said,
+// with its own edits/additions wrapped in ⟦ ⟧ (see promptTemplates.js).
+async function requestPracticeAttemptPolish(unit, attemptText) {
+    const spaceFields = await getSpaceRuleFields(activeSpaceId);
+    const content = ATTEMPT_POLISH_PROMPT_TEMPLATE
+        .replace(/\$\{sourceLanguage\}/g, spaceFields.sourceLanguage)
+        .replace(/\$\{targetLanguage\}/g, spaceFields.targetLanguage)
+        .replace('${sourceSentence}', unit.source)
+        .replace('${attempt}', attemptText);
+
+    const response = await geminiGenerateContent({
+        model: 'gemini-3.6-flash',
+        contents: [{ parts: [{ text: content }] }],
+        generationConfig: { responseMimeType: 'application/json' }
+    });
+
+    const rawText = geminiExtractText(response);
+    const cleaned = rawText.trim().replace(/```json|```/g, '').trim();
+    return JSON.parse(cleaned);
+}
+
+// result is null when the request failed or returned unparseable JSON.
+function renderPracticePolishResult(result) {
+    const area = document.getElementById('practice-polish-area');
+    if (!area) return;
+    if (!result) {
+        area.innerHTML = `<div class="practice-polish-error">Couldn't polish that attempt.</div>`;
+        return;
+    }
+    if (!result.applicable) {
+        area.remove();
+        return;
+    }
+    area.innerHTML = `
+        <div class="practice-polish-label">Polished attempt</div>
+        <div class="practice-polish-text">${markPolishDelimiters(escapeHtml(result.polished || ''))}</div>
+    `;
+}
+
+// Converts the model's ⟦...⟧ edit markers into highlighted <mark> spans.
+// Runs after escapeHtml, so the delimiter characters are still plain text.
+function markPolishDelimiters(escapedText) {
+    return escapedText.replace(/⟦([\s\S]*?)⟧/g, '<mark class="practice-polish-mark">$1</mark>');
+}
+
 function revealPracticeAnswer() {
     if (practiceRevealed) return;
     practiceRevealed = true;
     const unit = practiceQueue[practiceStepIndex];
     const attemptInput = document.getElementById('practice-attempt-input');
+    const attemptText = (attemptInput?.value || '').trim();
     if (attemptInput) attemptInput.disabled = true;
     cancelPracticeAttemptRecording();
     const attemptRecordBtn = document.getElementById('practice-attempt-record-btn');
     if (attemptRecordBtn) attemptRecordBtn.disabled = true;
 
+    const savedAnswerHtml = unit.type === 'dictionary' ? renderDictionaryAnswerHtml(unit) : renderPhraseAnswerHtml(unit);
+    const hasAttempt = !!attemptText;
+
     const revealArea = document.getElementById('practice-reveal-area');
     if (revealArea) {
         revealArea.style.display = 'block';
-        revealArea.innerHTML = unit.type === 'dictionary' ? renderDictionaryAnswerHtml(unit) : renderPhraseAnswerHtml(unit);
+        revealArea.innerHTML = `
+            ${hasAttempt ? `<div class="practice-polish-area" id="practice-polish-area"><div class="practice-polish-loading">Polishing what you said…</div></div>` : ''}
+            <div class="practice-saved-accordion">
+                <button type="button" class="practice-accordion-toggle" id="practice-accordion-toggle" onclick="togglePracticeSavedAccordion()">${hasAttempt ? '▸ Show saved translation' : '▾ Hide saved translation'}</button>
+                <div class="practice-saved-content" id="practice-saved-content" style="display:${hasAttempt ? 'none' : 'block'}">${savedAnswerHtml}</div>
+            </div>
+        `;
+    }
+
+    if (hasAttempt) {
+        requestPracticeAttemptPolish(unit, attemptText)
+            .then(renderPracticePolishResult)
+            .catch(() => renderPracticePolishResult(null));
     }
 
     const actions = document.getElementById('practice-step-actions');
