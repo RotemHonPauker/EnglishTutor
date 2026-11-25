@@ -26,7 +26,7 @@
     min-width: 92px;
     padding: 8px 10px;
     border-radius: 10px;
-    border: 1px solid var(--border);
+    border: 1px solid var(--slot-color, var(--border));
     background: var(--surface);
     color: var(--text-muted);
 }
@@ -62,9 +62,7 @@
 .practice-slot-pill.current,
 .practice-slot-pill.next {
     border-width: 2px;
-    /* !important overrides slots.js's inline border-color (the slot's own
-       color) with a fixed signal color for current/next. */
-    border-color: #2563eb !important;
+    border-color: #2563eb;
 }
 
 .practice-slot-pill.selectable {
@@ -73,7 +71,7 @@
 
 .practice-slot-pill.selected {
     border-width: 2px;
-    border-color: #2563eb !important;
+    border-color: #2563eb;
 }
 
 .scroll-empty-note {

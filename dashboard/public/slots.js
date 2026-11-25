@@ -157,7 +157,7 @@ async function renderPracticeSlotsScroll() {
         const isSelected = isOwn && s.id === selectedSlotBucketId;
         const isActive = !!active && s.id === active.id;
         const isNext = !!next && s.id === next.id;
-        const style = s.color ? `background:${s.color}; color:${getContrastColor(s.color)}; border-color:${s.color};` : '';
+        const style = s.color ? `background:${s.color}; color:${getContrastColor(s.color)}; --slot-color:${s.color};` : '';
         const classes = ['practice-slot-pill', isActive ? 'current' : '', isNext ? 'next' : '', isOwn ? 'selectable' : '', isSelected ? 'selected' : ''].filter(Boolean).join(' ');
         return `
         <div class="${classes}" style="${style}" ${isOwn ? `onclick="selectSlotBucket('${s.id}')"` : ''}>
